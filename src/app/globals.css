@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/*
+ * Cadence brand design system.
+ * Source: context.md "Design system (Cadence brand identity)" — the
+ * canonical read of the Cadence Penpot file's Design system page (the
+ * Penpot file itself is not reachable from this environment; that section
+ * is the authoritative record, not the exported guideline PNG's own
+ * annotation labels).
+ */
+:root {
+  /* Brand palette */
+  --color-cadence-yellow: #f7dc7a;
+  --color-cadence-orange: #fa8b4d;
+  --color-cadence-red: #c41e3d;
+  --color-cadence-ink: #242320;
+
+  /* Semantic surface tokens (light) */
+  --background: #f4eed8;
+  --surface: #fdfbf3;
+  --surface-muted: #ede4c7;
+  --foreground: var(--color-cadence-ink);
+  --border: #ddd0a4;
+  --accent: var(--color-cadence-orange);
+  --accent-strong: var(--color-cadence-red);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-cadence-yellow: var(--color-cadence-yellow);
+  --color-cadence-orange: var(--color-cadence-orange);
+  --color-cadence-red: var(--color-cadence-red);
+  --color-cadence-ink: var(--color-cadence-ink);
+
+  /* Heading: Bona Nova SC 96px/400 · Subheading: Chivo Mono 32px/400+700 ·
+     Body: Catamaran 16px/400 · Fine print: Chivo Mono 12px/400 */
+  --font-heading: var(--font-bona-nova-sc);
+  --font-subheading: var(--font-chivo-mono);
+  --font-body: var(--font-catamaran);
+  --font-fine: var(--font-chivo-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
