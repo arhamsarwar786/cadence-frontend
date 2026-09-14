@@ -11,5 +11,9 @@ const TONE: Record<ClientStatus, BadgeTone> = {
 /** Renders the closed enum only — never computes the next status
  * (ARCHITECTURE.md §8 folder rules). */
 export function ClientStatusBadge({ status }: { status: ClientStatus }) {
-  return <Badge tone={TONE[status]}>{CLIENT_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={TONE[status]} tooltip={`Client: ${CLIENT_STATUS_LABELS[status]}`}>
+      {CLIENT_STATUS_LABELS[status]}
+    </Badge>
+  );
 }

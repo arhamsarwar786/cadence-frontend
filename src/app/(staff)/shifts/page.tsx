@@ -12,7 +12,7 @@ import { shiftMarkSchema, type ShiftMarkFormValues } from "@/features/jobs/schem
 import type { Shift } from "@/features/jobs/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Pagination, Select, Table, type Column } from "@/shared/ui";
+import { Button, Dialog, Field, ListSkeleton, Pagination, Select, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(shiftMarkSchema.shape);
@@ -90,10 +90,10 @@ export default function ShiftsListPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-3xl text-cadence-ink">Shifts</h1>
+      <h1 className="mb-0 font-heading text-3xl text-cadence-ink">Shifts</h1>
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (

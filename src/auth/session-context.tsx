@@ -5,6 +5,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { getMe } from "@/features/accounts/api";
 import type { CurrentSession } from "@/features/accounts/types";
+import { isUnreachable } from "@/shared/lib/errors";
 
 export const SESSION_QUERY_KEY = ["session"] as const;
 
@@ -17,6 +18,8 @@ interface SessionContextValue {
    * "signed out" and is surfaced as isError instead. */
   isSignedOut: boolean;
   isError: boolean;
+  /** Network / 5xx / proxy failure talking to Django. */
+  isUnavailable: boolean;
   /** Call after LOGIN so every consumer re-reads the same fetch instead
    * of guessing the new session client-side. */
   refresh: () => Promise<unknown>;
@@ -48,7 +51,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // raced the logout-clear fix above; there is nothing to gain by
     // re-asking the server on every mount.
     refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   const isSignedOut =
@@ -57,16 +60,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       query.error instanceof ApiError &&
       (query.error.status === 401 || query.error.status === 403));
 
+  const isError = query.isError && !isSignedOut;
+  const isUnavailable = isError && isUnreachable(query.error);
+
   const value = useMemo<SessionContextValue>(
     () => ({
       session: query.data ?? undefined,
       isLoading: query.isLoading,
       isSignedOut,
-      isError: query.isError && !isSignedOut,
+      isError,
+      isUnavailable,
       refresh: () => queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY }),
       clear: () => queryClient.setQueryData(SESSION_QUERY_KEY, null),
     }),
-    [query.data, query.isLoading, query.isError, isSignedOut, queryClient],
+    [query.data, query.isLoading, isSignedOut, isError, isUnavailable, queryClient],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

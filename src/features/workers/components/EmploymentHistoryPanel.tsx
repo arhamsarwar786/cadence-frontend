@@ -11,7 +11,7 @@ import {
   type EmploymentHistoryFormValues,
 } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(employmentHistorySchema.shape);
 
@@ -19,6 +19,7 @@ export function EmploymentHistoryPanel({ workerId }: { workerId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["workers", workerId, "employment-history"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerEmploymentHistory(workerId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -55,7 +56,13 @@ export function EmploymentHistoryPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleDelete(rowId: string) {
-    if (!window.confirm("Remove this employment history entry?")) return;
+    const ok = await confirm({
+      title: "Remove this employment history entry?",
+      body: "This record will be deleted from the worker profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteEmploymentHistory(workerId, rowId);
     await invalidate();
   }
@@ -132,6 +139,7 @@ export function EmploymentHistoryPanel({ workerId }: { workerId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

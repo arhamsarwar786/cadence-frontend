@@ -61,11 +61,15 @@ export function listDocuments(): Promise<PortalDocumentLink[]> {
 }
 
 export function listPayslips(): Promise<Payslip[]> {
-  return api.get<Payslip[]>("/api/v1/portal/me/payslips/");
+  return api.get<Payslip[]>("/api/v1/portal/me/pay-statements/");
 }
 
 export function getPayslip(id: string): Promise<PayslipDetail> {
-  return api.get<PayslipDetail>(`/api/v1/portal/me/payslips/${id}/`);
+  return api.get<PayslipDetail>(`/api/v1/portal/me/pay-statements/${id}/`);
+}
+
+export function getConsentText(): Promise<{ consent_text: string; consent_version: number }> {
+  return api.get("/api/v1/portal/me/consent-text/");
 }
 
 export function listSignatureRequests(): Promise<PortalSignatureRequest[]> {

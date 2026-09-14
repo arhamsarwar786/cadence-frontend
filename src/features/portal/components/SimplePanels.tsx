@@ -39,7 +39,7 @@ import {
 import { DAYS_OF_WEEK } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { TIME_OFF_TYPE_LABELS } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const DAY_LABEL = new Map<number, string>(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
 
@@ -95,7 +95,7 @@ export function SkillsPanel() {
               {row.years_exp != null ? <span className="text-cadence-ink/60">{row.years_exp}y</span> : null}
               <button
                 type="button"
-                onClick={() => removeSkill(row.id).then(invalidate)}
+                onClick={() => removeSkill(row.skill_id).then(invalidate)}
                 className="text-cadence-ink/50 hover:text-cadence-red"
                 aria-label={`Remove ${row.skill_name}`}
               >
@@ -143,6 +143,7 @@ export function AvailabilityPanel() {
   const query = useQuery({ queryKey, queryFn: listAvailability });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalAvailabilitySchema.shape);
   const {
     register,
@@ -172,7 +173,13 @@ export function AvailabilityPanel() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this availability window?")) return;
+    const ok = await confirm({
+      title: "Remove this availability window?",
+      body: "The window will be deleted from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteAvailability(id);
     await invalidate();
   }
@@ -229,6 +236,7 @@ export function AvailabilityPanel() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }
@@ -239,6 +247,7 @@ export function EducationPanel() {
   const query = useQuery({ queryKey, queryFn: listEducation });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalEducationSchema.shape);
   const {
     register,
@@ -268,7 +277,13 @@ export function EducationPanel() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this education entry?")) return;
+    const ok = await confirm({
+      title: "Remove this education entry?",
+      body: "This record will be deleted from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteEducation(id);
     await invalidate();
   }
@@ -319,6 +334,7 @@ export function EducationPanel() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }
@@ -329,6 +345,7 @@ export function EmploymentHistoryPanel() {
   const query = useQuery({ queryKey, queryFn: listEmploymentHistory });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalEmploymentHistorySchema.shape);
   const {
     register,
@@ -364,7 +381,13 @@ export function EmploymentHistoryPanel() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this entry?")) return;
+    const ok = await confirm({
+      title: "Remove this employment entry?",
+      body: "This record will be deleted from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteEmploymentHistory(id);
     await invalidate();
   }
@@ -421,6 +444,7 @@ export function EmploymentHistoryPanel() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }
@@ -431,6 +455,7 @@ export function TimeOffPanel() {
   const query = useQuery({ queryKey, queryFn: listTimeOff });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalTimeOffSchema.shape);
   const {
     register,
@@ -458,7 +483,13 @@ export function TimeOffPanel() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this time-off entry?")) return;
+    const ok = await confirm({
+      title: "Remove this time-off entry?",
+      body: "This record will be deleted from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteTimeOff(id);
     await invalidate();
   }
@@ -516,6 +547,7 @@ export function TimeOffPanel() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

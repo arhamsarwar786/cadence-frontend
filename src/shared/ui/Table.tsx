@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
 export interface Column<T> {
@@ -17,8 +17,8 @@ export interface TableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-/** A plain data table. It renders exactly the rows it is given — a list
- * page owns fetching, pagination and filtering (ARCHITECTURE.md §2.5). */
+/** Charcoal list card from the Penpot screens. A list page owns fetching,
+ * pagination and filtering (ARCHITECTURE.md §2.5). */
 export function Table<T>({
   columns,
   rows,
@@ -27,44 +27,72 @@ export function Table<T>({
   onRowClick,
 }: TableProps<T>) {
   if (rows.length === 0) {
-    return <p className="py-10 text-center font-body text-sm text-cadence-ink/60">{emptyMessage}</p>;
+    return (
+      <div className="rounded-[2rem] bg-card px-6 py-16 text-center shadow-card">
+        <p className="font-body text-sm text-on-card-muted">{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  function onRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, row: T) {
+    if (!onRowClick) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onRowClick(row);
+    }
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="min-w-full divide-y divide-border font-body text-sm">
-        <thead className="bg-surface-muted">
-          <tr>
-            {columns.map((col) => (
-              <th
-                key={col.header}
-                scope="col"
-                className={cn(
-                  "px-4 py-2 text-left font-subheading text-xs uppercase tracking-wide text-cadence-ink/70",
-                  col.className,
-                )}
-              >
-                {col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border bg-surface">
-          {rows.map((row) => (
-            <tr
-              key={rowKey(row)}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={cn(onRowClick && "cursor-pointer hover:bg-surface-muted")}
-            >
+    <div className="overflow-hidden rounded-[2rem] bg-card text-on-card shadow-card">
+      <div className="overflow-x-auto">
+        <table className="min-w-full font-body text-sm">
+          <thead>
+            <tr className="text-on-card-muted">
               {columns.map((col) => (
-                <td key={col.header} className={cn("px-4 py-3", col.className)}>
-                  {col.cell(row)}
-                </td>
+                <th
+                  key={col.header}
+                  scope="col"
+                  className={cn(
+                    "px-4 py-3 text-left font-subheading text-[10px] font-normal uppercase tracking-[0.14em]",
+                    col.className,
+                  )}
+                >
+                  {col.header}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={rowKey(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={onRowClick ? (event) => onRowKeyDown(event, row) : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                className={cn(
+                  "border-t border-white/5",
+                  onRowClick &&
+                    "cursor-pointer hover:bg-white/5 focus-visible:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cadence-yellow",
+                )}
+              >
+                {columns.map((col) => (
+                  <td
+                    key={col.header}
+                    className={cn("px-4 py-3.5 text-on-card", col.className)}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("button, a, input, select")) {
+                        event.stopPropagation();
+                      }
+                    }}
+                  >
+                    {col.cell(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

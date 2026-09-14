@@ -12,9 +12,10 @@ import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBad
 import type { ClientBillingFormValues, ClientFormValues } from "@/features/clients/schemas";
 import { PROVINCE_LABELS } from "@/features/clients/schemas";
 import type { ClientBillingWrite, ClientWrite } from "@/features/clients/types";
+import { PERM } from "@/permissions/keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import type { ClientStatus } from "@/shared/lib/status-labels";
-import { Button } from "@/shared/ui";
+import { Button, PermGate, useConfirm } from "@/shared/ui";
 
 const billingQueryKey = (clientId: string) => ["clients", clientId, "billing"] as const;
 
@@ -24,6 +25,7 @@ export default function ClientDetailPage() {
   const queryClient = useQueryClient();
   const [editingClient, setEditingClient] = useState(false);
   const [editingBilling, setEditingBilling] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const clientQuery = useQuery({
     queryKey: clientKeys.detail(clientId),
@@ -64,9 +66,13 @@ export default function ClientDetailPage() {
   }
 
   async function handleArchive() {
-    if (!window.confirm("Archive this client? This can be reversed by staff with edit access.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Archive this client?",
+      body: "The client leaves the live list. Staff with edit access can reverse this with the office process.",
+      confirmLabel: "Archive",
+      danger: true,
+    });
+    if (!ok) return;
     await archiveClient(clientId);
     await queryClient.invalidateQueries({ queryKey: clientKeys.all });
     router.push("/clients");
@@ -94,12 +100,16 @@ export default function ClientDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setEditingClient((v) => !v)}>
-            {editingClient ? "Cancel" : "Edit"}
-          </Button>
-          <Button variant="danger" onClick={handleArchive}>
-            Archive
-          </Button>
+          <PermGate anyOf={PERM.CLIENTS_EDIT}>
+            <Button variant="secondary" onClick={() => setEditingClient((v) => !v)}>
+              {editingClient ? "Cancel" : "Edit"}
+            </Button>
+          </PermGate>
+          <PermGate anyOf={PERM.CLIENTS_DELETE}>
+            <Button variant="danger" onClick={handleArchive}>
+              Archive
+            </Button>
+          </PermGate>
         </div>
       </div>
 
@@ -194,6 +204,7 @@ export default function ClientDetailPage() {
       </section>
 
       <ClientContactsPanel clientId={clientId} />
+      {confirmDialog}
     </div>
   );
 }

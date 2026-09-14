@@ -11,7 +11,7 @@ import {
 import { listWorkerDocuments } from "@/features/workers/api";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/shared/lib/status-labels";
-import { Button, Select } from "@/shared/ui";
+import { Button, Select, useConfirm } from "@/shared/ui";
 
 const UPLOADABLE_TYPES: DocumentType[] = ["resume", "cert", "work_permit", "study_permit", "other"];
 
@@ -22,6 +22,7 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
   const [docType, setDocType] = useState<DocumentType>("other");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   function invalidate() {
     return queryClient.invalidateQueries({ queryKey });
@@ -47,7 +48,13 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleRemove(linkId: string) {
-    if (!window.confirm("Remove this document?")) return;
+    const ok = await confirm({
+      title: "Remove this document?",
+      body: "The file will be detached from this worker.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await removeWorkerDocument(workerId, linkId);
     await invalidate();
   }
@@ -119,6 +126,7 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
       ) : (
         <p className="font-body text-sm text-cadence-ink/60">No documents on file.</p>
       )}
+      {confirmDialog}
     </section>
   );
 }

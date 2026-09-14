@@ -10,7 +10,7 @@ import { invoiceLineSchema, type InvoiceLineFormValues } from "@/features/money/
 import type { InvoiceLine } from "@/features/money/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(invoiceLineSchema.shape);
 
@@ -24,6 +24,7 @@ export function InvoiceLinesPanel({
   editable: boolean;
 }) {
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -52,7 +53,13 @@ export function InvoiceLinesPanel({
   }
 
   async function handleDelete(lineId: string) {
-    if (!window.confirm("Remove this line?")) return;
+    const ok = await confirm({
+      title: "Remove this line?",
+      body: "The line will be deleted from this invoice.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteInvoiceLine(invoiceId, lineId);
     await refetch();
   }
@@ -126,6 +133,7 @@ export function InvoiceLinesPanel({
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

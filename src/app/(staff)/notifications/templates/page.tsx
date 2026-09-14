@@ -9,7 +9,8 @@ import { createTemplate, deleteTemplate, listTemplates, updateTemplate } from "@
 import type { NotificationTemplate } from "@/features/notifications/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { NOTIFICATION_TYPE_LABELS, type NotificationType } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Dialog, Field, Input, ListSkeleton, PermGate, Select, useConfirm } from "@/shared/ui";
 
 const templateSchema = z.object({
   type: z.enum(["shift_offer", "esign", "cert_expiry", "task", "invoice"]),
@@ -26,6 +27,7 @@ export default function NotificationTemplatesPage() {
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: listTemplates });
   const [dialogState, setDialogState] = useState<null | { mode: "create" } | { mode: "edit"; tpl: NotificationTemplate }>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const {
     register,
     handleSubmit,
@@ -57,7 +59,13 @@ export default function NotificationTemplatesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Delete this template?")) return;
+    const ok = await confirm({
+      title: "Delete this template?",
+      body: "The office will no longer be able to send this notification type from this template.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteTemplate(id);
     await invalidate();
   }
@@ -66,11 +74,13 @@ export default function NotificationTemplatesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Notification templates</h1>
-        <Button onClick={() => setDialogState({ mode: "create" })}>New template</Button>
+        <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
+          <Button onClick={() => setDialogState({ mode: "create" })}>New template</Button>
+        </PermGate>
       </div>
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((tpl) => (
@@ -82,12 +92,16 @@ export default function NotificationTemplatesPage() {
                 <p className="font-body text-xs text-cadence-ink/60">{tpl.subject || "No subject"}</p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="secondary" onClick={() => setDialogState({ mode: "edit", tpl })}>
-                  Edit
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => handleDelete(tpl.id)}>
-                  Delete
-                </Button>
+                <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
+                  <Button size="sm" variant="secondary" onClick={() => setDialogState({ mode: "edit", tpl })}>
+                    Edit
+                  </Button>
+                </PermGate>
+                <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
+                  <Button size="sm" variant="ghost" onClick={() => handleDelete(tpl.id)}>
+                    Delete
+                  </Button>
+                </PermGate>
               </div>
             </li>
           ))}
@@ -141,6 +155,7 @@ export default function NotificationTemplatesPage() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

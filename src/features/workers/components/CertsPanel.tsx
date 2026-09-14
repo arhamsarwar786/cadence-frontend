@@ -12,7 +12,7 @@ import {
 import { listWorkerCerts } from "@/features/workers/api";
 import { certSchema, type CertFormValues } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(certSchema.shape);
 
@@ -20,6 +20,7 @@ export function CertsPanel({ workerId }: { workerId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["workers", workerId, "certs"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerCerts(workerId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -52,7 +53,13 @@ export function CertsPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleDelete(certId: string) {
-    if (!window.confirm("Remove this certification?")) return;
+    const ok = await confirm({
+      title: "Remove this certification?",
+      body: "This record will be deleted from the worker profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteWorkerCert(workerId, certId);
     await invalidate();
   }
@@ -129,6 +136,7 @@ export function CertsPanel({ workerId }: { workerId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

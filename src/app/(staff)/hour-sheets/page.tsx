@@ -13,7 +13,8 @@ import { hourSheetSchema, type HourSheetFormValues } from "@/features/jobs/schem
 import type { HourSheet } from "@/features/jobs/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { HourSheetStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Pagination, Select, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Dialog, Field, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(hourSheetSchema.shape);
@@ -126,11 +127,13 @@ export default function HourSheetsListPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Hour sheets</h1>
-        <Button onClick={() => setNewOpen(true)}>New hour sheet</Button>
+        <PermGate anyOf={PERM.HOURSHEETS_EDIT}>
+          <Button onClick={() => setNewOpen(true)}>New hour sheet</Button>
+        </PermGate>
       </div>
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (

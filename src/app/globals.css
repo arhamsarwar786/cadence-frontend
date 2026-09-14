@@ -1,53 +1,103 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
- * Cadence brand design system.
- * Source: context.md "Design system (Cadence brand identity)" — the
- * canonical read of the Cadence Penpot file's Design system page (the
- * Penpot file itself is not reachable from this environment; that section
- * is the authoritative record, not the exported guideline PNG's own
- * annotation labels).
+ * Cadence product UI — cream canvas, charcoal cards, yellow CTAs.
+ * Matches the Penpot mobile screens (tasks board, lists, worker profile).
  */
 :root {
-  /* Brand palette */
   --color-cadence-yellow: #f7dc7a;
   --color-cadence-orange: #fa8b4d;
   --color-cadence-red: #c41e3d;
   --color-cadence-ink: #242320;
+  --color-cadence-lime: #c9d36a;
 
-  /* Semantic surface tokens (light) */
-  --background: #f4eed8;
-  --surface: #fdfbf3;
-  --surface-muted: #ede4c7;
+  --background: #f3ebd0;
+  --background-deep: #efe4b8;
+  --surface: #fbf6e4;
+  --surface-muted: #ebe3c4;
   --foreground: var(--color-cadence-ink);
   --border: #ddd0a4;
-  --accent: var(--color-cadence-orange);
+
+  --card: #2f2c27;
+  --card-muted: #3c3933;
+  --on-card: #f6efd4;
+  --on-card-muted: #ddd6bc;
+
+  --accent: var(--color-cadence-yellow);
   --accent-strong: var(--color-cadence-red);
+
+  --shadow-card: 0 22px 50px rgba(36, 35, 32, 0.18);
+  --radius-card: 2rem;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-deep: var(--background-deep);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-muted: var(--card-muted);
+  --color-on-card: var(--on-card);
+  --color-on-card-muted: var(--on-card-muted);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-cadence-yellow: var(--color-cadence-yellow);
   --color-cadence-orange: var(--color-cadence-orange);
   --color-cadence-red: var(--color-cadence-red);
   --color-cadence-ink: var(--color-cadence-ink);
+  --color-cadence-lime: var(--color-cadence-lime);
 
-  /* Heading: Bona Nova SC 96px/400 · Subheading: Chivo Mono 32px/400+700 ·
-     Body: Catamaran 16px/400 · Fine print: Chivo Mono 12px/400 */
   --font-heading: var(--font-bona-nova-sc);
   --font-subheading: var(--font-chivo-mono);
   --font-body: var(--font-catamaran);
   --font-fine: var(--font-chivo-mono);
+
+  --shadow-card: 0 22px 50px rgba(36, 35, 32, 0.18);
+  --radius-card: 2rem;
+}
+
+html {
+  background: var(--background);
+  height: 100%;
 }
 
 body {
-  background: var(--background);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(120% 80% at 0% 0%, #fbf6e4 0%, transparent 55%),
+    linear-gradient(180deg, #f7f1d8 0%, var(--background) 42%, var(--background-deep) 100%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-body);
+}
+
+.dark-card input,
+.dark-card select,
+.dark-card textarea {
+  background: var(--card-muted) !important;
+  border-color: transparent !important;
+  color: var(--on-card) !important;
+}
+
+.dark-card input::placeholder,
+.dark-card textarea::placeholder {
+  color: var(--on-card-muted);
+}
+
+.dark-card label {
+  color: var(--on-card-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

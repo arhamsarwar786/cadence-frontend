@@ -13,6 +13,7 @@ import { PROVINCE_LABELS, PROVINCES } from "@/features/clients/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { Button, Field, Input, Select } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
+import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 const TABS = ["Profile", "Personal", "Certs", "Skills", "Education", "Employment history"] as const;
 type Tab = (typeof TABS)[number];
@@ -65,26 +66,28 @@ export default function PortalMePage() {
   const me = meQuery.data;
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-3xl text-cadence-ink">
-        {me ? `${me.first_name} ${me.last_name}` : "My profile"}
-      </h1>
+    <PortalFrame
+      title={me ? `${me.first_name} ${me.last_name}` : "My profile"}
+      subtitle="Your own contact details, masked SIN/DOB companions, skills, certs, education, and work history. Names and pay are office-owned."
+    >
 
-      <div className="flex flex-wrap gap-1 border-b border-border">
+      <div className="flex flex-wrap gap-1">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "rounded-t-md px-3 py-2 font-body text-sm",
-              tab === t ? "border-b-2 border-cadence-red text-cadence-ink" : "text-cadence-ink/60 hover:text-cadence-ink",
+              "rounded-full px-4 py-1.5 font-body text-sm",
+              tab === t ? "bg-card text-on-card" : "text-cadence-ink/60 hover:text-cadence-ink",
             )}
           >
             {t}
           </button>
         ))}
       </div>
+
+      <PortalCard>
 
       {tab === "Profile" && me ? (
         editing ? (
@@ -194,6 +197,7 @@ export default function PortalMePage() {
       {tab === "Skills" ? <SkillsPanel /> : null}
       {tab === "Education" ? <EducationPanel /> : null}
       {tab === "Employment history" ? <EmploymentHistoryPanel /> : null}
-    </div>
+      </PortalCard>
+    </PortalFrame>
   );
 }

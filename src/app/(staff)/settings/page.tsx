@@ -58,7 +58,7 @@ export default function SettingsPage() {
 
       <section className="flex flex-col gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Organization logo</h2>
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 font-body text-sm text-cadence-ink hover:bg-surface-muted">
+        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full bg-cadence-yellow px-3 py-1.5 font-body text-sm text-cadence-ink">
           {uploading ? "Uploading…" : "Upload logo"}
           <input
             type="file"
@@ -85,13 +85,26 @@ export default function SettingsPage() {
           rows={6}
           value={consentDraft}
           onChange={(e) => setConsentDraft(e.target.value)}
-          className="w-full rounded-md border border-border bg-surface px-3 py-2 font-body text-sm text-cadence-ink"
+          className="w-full rounded-2xl border border-cadence-ink/10 bg-surface px-3 py-2 font-body text-sm text-cadence-ink"
         />
         <Button onClick={handleSaveConsent} disabled={savingConsent} className="self-start">
           {savingConsent ? "Saving…" : "Save consent text"}
         </Button>
         {consentSaved ? <p className="font-body text-xs text-emerald-700">Saved.</p> : null}
         {consentError ? <p className="font-body text-xs text-cadence-red">{consentError}</p> : null}
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-[1.5rem] bg-surface p-5">
+        <h2 className="font-subheading text-xl text-cadence-ink">Office access (not in this app yet)</h2>
+        <p className="font-body text-sm text-cadence-ink/70">
+          Staff logins, the audit log, and reporting have catalog keys but no API door in this
+          build. Until those screens exist, create and deactivate staff in Django admin, keep an
+          ops runbook for who holds root, and treat server logs as the audit trail.
+        </p>
+        <p className="font-body text-sm text-cadence-ink/70">
+          Credential resets are the same path: a root user (or Django admin) resets the account.
+          There is no self-serve forgot-password on the shared login page.
+        </p>
       </section>
     </div>
   );

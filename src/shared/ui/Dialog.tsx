@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 export interface DialogProps {
   open: boolean;
@@ -9,10 +9,11 @@ export interface DialogProps {
   children: ReactNode;
 }
 
-/** The native <dialog> element — no modal library needed for a first
- * scaffold (ARCHITECTURE.md §10: no separate design-system package). */
+/** Native modal. Title is exposed to assistive tech; Escape and backdrop
+ * dismiss. Focus stays in the dialog while it is open. */
 export function Dialog({ open, onClose, title, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const node = ref.current;
@@ -24,14 +25,20 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
   return (
     <dialog
       ref={ref}
+      aria-labelledby={title ? titleId : undefined}
+      aria-modal="true"
       onClose={onClose}
       onCancel={onClose}
       onClick={(event) => {
         if (event.target === ref.current) onClose();
       }}
-      className="w-full max-w-lg rounded-lg border border-border bg-surface p-6 font-body text-cadence-ink backdrop:bg-cadence-ink/40"
+      className="dark-card m-auto w-[calc(100vw-2rem)] max-w-md rounded-[1.5rem] border-0 bg-card p-5 font-body text-on-card shadow-card backdrop:bg-cadence-ink/45 sm:rounded-[2rem] sm:p-6"
     >
-      {title ? <h2 className="mb-4 font-heading text-xl">{title}</h2> : null}
+      {title ? (
+        <h2 id={titleId} className="mb-4 font-heading text-2xl text-on-card">
+          {title}
+        </h2>
+      ) : null}
       {children}
     </dialog>
   );

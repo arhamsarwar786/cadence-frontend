@@ -6,7 +6,7 @@ import { removeDocument, uploadDocument } from "@/features/portal/actions";
 import { listDocuments } from "@/features/portal/api";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/shared/lib/status-labels";
-import { Button, Select } from "@/shared/ui";
+import { Button, Select, useConfirm } from "@/shared/ui";
 
 const UPLOADABLE_TYPES: DocumentType[] = [
   "resume",
@@ -24,6 +24,7 @@ export function DocumentsPanel() {
   const [docType, setDocType] = useState<DocumentType>("other");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   function invalidate() {
     return queryClient.invalidateQueries({ queryKey: QUERY_KEY });
@@ -43,7 +44,13 @@ export function DocumentsPanel() {
   }
 
   async function handleRemove(linkId: string) {
-    if (!window.confirm("Remove this document?")) return;
+    const ok = await confirm({
+      title: "Remove this document?",
+      body: "The file will be removed from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await removeDocument(linkId);
     await invalidate();
   }
@@ -86,15 +93,20 @@ export function DocumentsPanel() {
                   {DOCUMENT_TYPE_LABELS[doc.document_type as DocumentType] ?? doc.document_type}
                 </p>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => handleRemove(doc.id)}>
-                Remove
-              </Button>
+              {doc.is_verified ? (
+                <span className="font-body text-xs text-cadence-ink/45">Office verified</span>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => handleRemove(doc.id)}>
+                  Remove
+                </Button>
+              )}
             </li>
           ))}
         </ul>
       ) : (
         <p className="font-body text-sm text-cadence-ink/60">No documents on file.</p>
       )}
+      {confirmDialog}
     </div>
   );
 }

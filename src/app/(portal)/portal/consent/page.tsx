@@ -1,19 +1,21 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { useSession } from "@/auth/session-context";
+import { getConsentText } from "@/features/portal/api";
 import { captureConsent } from "@/features/portal/actions";
 import { messageFrom } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui";
+import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 export default function ConsentPage() {
-  const { session } = useSession();
+  const consentQuery = useQuery({ queryKey: ["portal", "consent-text"], queryFn: getConsentText });
   const [captured, setCaptured] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const consentText = session?.organization.consent_text ?? "";
-  const consentVersion = session?.organization.consent_version ?? 0;
+  const consentText = consentQuery.data?.consent_text ?? "";
+  const consentVersion = consentQuery.data?.consent_version ?? 0;
 
   async function handleAgree() {
     setSubmitting(true);
@@ -29,26 +31,27 @@ export default function ConsentPage() {
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="font-heading text-3xl text-cadence-ink">Consent</h1>
-
-      {consentVersion === 0 ? (
+    <PortalFrame
+      title="Consent"
+      subtitle="First consent happens when you submit onboarding. This page is for later re-consent when the agency updates its notice."
+    >
+      {consentQuery.isError ? (
+        <p className="font-body text-sm text-cadence-red">{messageFrom(consentQuery.error)}</p>
+      ) : consentVersion === 0 ? (
         <p className="font-body text-sm text-cadence-ink/70">
           Your agency hasn&apos;t set up a consent notice yet — there&apos;s nothing to agree to
           right now.
         </p>
       ) : (
-        <>
-          <div className="whitespace-pre-wrap rounded-lg border border-border bg-surface-muted p-4 font-body text-sm text-cadence-ink">
-            {consentText}
-          </div>
-          <p className="font-body text-xs text-cadence-ink/60">Version {consentVersion}</p>
-          <Button onClick={handleAgree} disabled={submitting || captured} className="self-start">
+        <PortalCard>
+          <div className="whitespace-pre-wrap font-body text-sm text-cadence-ink">{consentText}</div>
+          <p className="mt-3 font-fine text-[11px] text-cadence-ink/45">Version {consentVersion}</p>
+          <Button onClick={handleAgree} disabled={submitting || captured} className="mt-4">
             {captured ? "Consent recorded" : submitting ? "Recording…" : "I agree"}
           </Button>
-          {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
-        </>
+          {error ? <p className="mt-2 font-body text-sm text-cadence-red">{error}</p> : null}
+        </PortalCard>
       )}
-    </div>
+    </PortalFrame>
   );
 }

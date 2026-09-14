@@ -13,7 +13,13 @@ export class ApiError extends Error {
   readonly body: unknown;
 
   constructor(status: number, body: unknown) {
-    super(`Request failed with status ${status}`);
+    super(
+      status === 0
+        ? typeof body === "string"
+          ? body
+          : "Can't reach the API. Is the backend running?"
+        : `Request failed with status ${status}`,
+    );
     this.name = "ApiError";
     this.status = status;
     this.body = body;
@@ -28,6 +34,8 @@ function readCookie(name: string): string | null {
 
 export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
+  /** Override the default budget (20s JSON, 120s uploads). */
+  timeoutMs?: number;
 }
 
 /**
@@ -58,16 +66,39 @@ async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promi
 
   if (!SAFE_METHODS.has(method.toUpperCase())) {
     const csrfToken = readCookie(CSRF_COOKIE_NAME);
-    if (csrfToken) finalHeaders.set(CSRF_HEADER_NAME, csrfToken);
+    if (csrfToken) {
+      finalHeaders.set(CSRF_HEADER_NAME, csrfToken);
+    } else if (!path.includes("/api/v1/auth/login/") && !path.includes("/api/v1/auth/logout/")) {
+      throw new ApiError(
+        0,
+        "Missing security token. Refresh the page and try again.",
+      );
+    }
   }
 
-  const response = await fetch(path, {
-    ...rest,
-    method,
-    headers: finalHeaders,
-    body: finalBody,
-    credentials: "include",
-  });
+  const timeoutMs =
+    rest.timeoutMs ?? (finalBody instanceof FormData ? 120_000 : 20_000);
+  const { timeoutMs: _ignored, ...fetchRest } = rest;
+
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...fetchRest,
+      method,
+      headers: finalHeaders,
+      body: finalBody,
+      credentials: "include",
+      signal: rest.signal ?? AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    const aborted = error instanceof DOMException && error.name === "AbortError";
+    throw new ApiError(
+      0,
+      aborted
+        ? "Can't reach the API (timed out). Is the backend running?"
+        : "Can't reach the API. Is the backend running?",
+    );
+  }
 
   if (response.status === 204) {
     return undefined as T;

@@ -33,8 +33,10 @@ export function captureConsent(): Promise<void> {
 
 /** applicant -> onboarding (ARCHITECTURE.md §5): the worker's own
  * onboarding submission, once required fields are filled. */
-export function submitOnboarding(): Promise<PortalEmployee> {
-  return api.post<PortalEmployee>("/api/v1/portal/me/submit/");
+export function submitOnboarding(consentAcknowledged: boolean): Promise<PortalEmployee> {
+  return api.post<PortalEmployee>("/api/v1/portal/me/submit/", {
+    consent_acknowledged: consentAcknowledged,
+  });
 }
 
 export function acceptOffer(assignmentId: string): Promise<unknown> {
@@ -112,9 +114,13 @@ export function signRequest(requestId: string): Promise<PortalSignatureRequest> 
   return api.post<PortalSignatureRequest>(`/api/v1/portal/me/signature-requests/${requestId}/sign/`);
 }
 
-export function declineRequest(requestId: string): Promise<PortalSignatureRequest> {
+export function declineRequest(
+  requestId: string,
+  reason: string,
+): Promise<PortalSignatureRequest> {
   return api.post<PortalSignatureRequest>(
     `/api/v1/portal/me/signature-requests/${requestId}/decline/`,
+    { reason },
   );
 }
 

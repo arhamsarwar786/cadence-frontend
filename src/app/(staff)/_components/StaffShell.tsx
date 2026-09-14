@@ -1,28 +1,34 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSession } from "@/auth/session-context";
 import { logout as logoutAction } from "@/features/accounts/actions";
 import { visibleStaffNavItems } from "@/permissions/staff-nav";
-import { cn } from "@/shared/lib/cn";
-import { Button } from "@/shared/ui";
+import { BottomDock, BrandLink, Button, SkipLink } from "@/shared/ui";
 
-/** Grant-driven sidebar (ARCHITECTURE.md §2.4/§6). Root sees every item;
+/** Grant-driven chrome (ARCHITECTURE.md §2.4/§6). Root sees every item;
  * everyone else sees only what visibleStaffNavItems computes from their
  * own grants — missing permission omits the item, it is never shown
  * disabled. */
 export function StaffShell({ children }: { children: ReactNode }) {
   const { session, clear } = useSession();
-  const pathname = usePathname();
   const router = useRouter();
 
-  // RequireStaff (the layout's own wrapper) already gates on session; this
-  // is a defensive fallback, never the real check.
   if (!session) return null;
 
   const navItems = visibleStaffNavItems(session.user);
+  const preferredHrefs = ["/workers", "/jobs"];
+  const pinned = preferredHrefs
+    .map((href) => navItems.find((item) => item.href === href))
+    .filter((item): item is (typeof navItems)[number] => Boolean(item));
+  const leftover = navItems.filter((item) => !preferredHrefs.includes(item.href));
+  const ordered = [...pinned, ...leftover];
+  const dockItems = [
+    { label: "Home", href: "/", tooltip: "Open tasks for this office" },
+    ...ordered.slice(0, 2).map(({ label, href, tooltip }) => ({ label, href, tooltip })),
+  ];
+  const overflow = ordered.slice(2).map(({ label, href, tooltip }) => ({ label, href, tooltip }));
 
   async function handleLogout() {
     await logoutAction();
@@ -31,43 +37,39 @@ export function StaffShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface-muted">
-        <div className="px-4 py-5">
-          <span className="font-heading text-2xl text-cadence-ink">Cadence</span>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-2">
-          <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "block rounded-md px-3 py-2 font-body text-sm transition-colors",
-                      active
-                        ? "bg-cadence-red text-white"
-                        : "text-cadence-ink hover:bg-surface",
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        <div className="border-t border-border p-3">
-          <p className="mb-2 truncate font-body text-xs text-cadence-ink/60">
-            {session.user.login}
-          </p>
-          <Button variant="secondary" size="sm" className="w-full" onClick={handleLogout}>
-            Log out
-          </Button>
-        </div>
-      </aside>
-      <main className="flex-1 overflow-y-auto bg-background px-8 py-6">{children}</main>
+    <div className="flex min-h-dvh flex-col">
+      <SkipLink />
+      <header className="flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
+        <BrandLink href="/" />
+        <p className="hidden max-w-[40%] truncate font-fine text-[11px] text-cadence-ink/45 sm:block">
+          {session.user.login}
+        </p>
+      </header>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:px-8"
+      >
+        {children}
+      </main>
+      <BottomDock
+        items={dockItems}
+        overflow={overflow}
+        footer={
+          <div>
+            <p className="mb-2 truncate px-2 font-fine text-[11px] text-on-card-muted">{session.user.login}</p>
+            <Button
+              variant="inverse"
+              size="sm"
+              className="w-full"
+              tooltip="Sign out of this office"
+              onClick={handleLogout}
+            >
+              Log out
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 }

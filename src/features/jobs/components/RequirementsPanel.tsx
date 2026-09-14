@@ -9,7 +9,7 @@ import { listJobRequirements } from "@/features/jobs/api";
 import { requirementSchema, type RequirementFormValues } from "@/features/jobs/schemas";
 import { listSkillsCatalog } from "@/features/workers/api";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(requirementSchema.shape);
 
@@ -17,6 +17,7 @@ export function RequirementsPanel({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["jobs", jobId, "requirements"] as const;
   const query = useQuery({ queryKey, queryFn: () => listJobRequirements(jobId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const skillsQuery = useQuery({ queryKey: ["skills-catalog"], queryFn: listSkillsCatalog });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -55,7 +56,13 @@ export function RequirementsPanel({ jobId }: { jobId: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this requirement?")) return;
+    const ok = await confirm({
+      title: "Remove this requirement?",
+      body: "The requirement will be deleted from this job.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteRequirement(jobId, id);
     await invalidate();
   }
@@ -127,6 +134,7 @@ export function RequirementsPanel({ jobId }: { jobId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

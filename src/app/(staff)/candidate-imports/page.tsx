@@ -10,7 +10,8 @@ import {
   CANDIDATE_IMPORT_BATCH_STATUS_LABELS,
   type CandidateImportBatchStatus,
 } from "@/shared/lib/status-labels";
-import { Badge, Pagination, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Badge, ListSkeleton, Pagination, PermGate, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const TONE: Record<CandidateImportBatchStatus, "neutral" | "info" | "positive" | "negative" | "warning"> = {
@@ -74,7 +75,8 @@ export default function CandidateImportsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Candidate imports</h1>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-cadence-red px-4 py-2 font-body text-sm text-white hover:bg-cadence-red/90">
+        <PermGate anyOf={PERM.CANDIDATE_IMPORTS_CREATE}>
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-cadence-yellow px-4 py-2 font-body text-sm text-cadence-ink hover:bg-cadence-yellow/90">
           {uploading ? "Uploading…" : "Upload package"}
           <input
             type="file"
@@ -87,6 +89,7 @@ export default function CandidateImportsPage() {
             }}
           />
         </label>
+        </PermGate>
       </div>
       <p className="font-body text-xs text-cadence-ink/60">
         The package must already be encrypted with the org&apos;s public key before upload.
@@ -94,7 +97,7 @@ export default function CandidateImportsPage() {
       {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (

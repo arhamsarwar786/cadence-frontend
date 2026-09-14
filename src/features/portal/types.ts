@@ -1,7 +1,11 @@
 import type { components } from "@openapi/schema";
 
-export type PortalEmployee = components["schemas"]["PortalEmployee"];
-export type PortalMeWrite = components["schemas"]["PatchedPortalMeWrite"];
+export type PortalEmployee = components["schemas"]["PortalEmployee"] & {
+  work_authorization_expiry?: string | null;
+};
+export type PortalMeWrite = components["schemas"]["PatchedPortalMeWrite"] & {
+  work_authorization_expiry?: string | null;
+};
 export type PortalPersonal = components["schemas"]["PortalPersonal"];
 export type PortalShift = components["schemas"]["PortalShift"];
 export type PortalSignature = components["schemas"]["PortalSignature"];

@@ -6,7 +6,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { deleteDocument, documentKeys, listDocuments, uploadDocument } from "@/features/documents/api";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, NON_GENERIC_DOCUMENT_TYPES, type DocumentType } from "@/shared/lib/status-labels";
-import { Button, Pagination, Select, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, PageHeader, Pagination, PermGate, Select, Table, ListSkeleton, useConfirm, type Column } from "@/shared/ui";
 import type { Document } from "@/features/documents/types";
 
 const PAGE_SIZE = 50;
@@ -22,6 +23,7 @@ export default function DocumentsPage() {
   const [docType, setDocType] = useState<DocumentType>("other");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
     queryKey: documentKeys.list({ page }),
@@ -46,7 +48,13 @@ export default function DocumentsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Delete this document?")) return;
+    const ok = await confirm({
+      title: "Delete this document?",
+      body: "The file is removed from the office store. This cannot be undone from this screen.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteDocument(id);
     await invalidate();
   }
@@ -75,13 +83,15 @@ export default function DocumentsPage() {
             href={`/api/v1/documents/${d.id}/download/`}
             target="_blank"
             rel="noreferrer"
-            className="font-body text-sm text-cadence-red underline"
+            className="font-body text-sm text-cadence-yellow underline"
           >
             Download
           </a>
-          <Button size="sm" variant="ghost" onClick={() => handleDelete(d.id)}>
-            Delete
-          </Button>
+          <PermGate anyOf={PERM.DOCUMENTS_DELETE}>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(d.id)}>
+              Delete
+            </Button>
+          </PermGate>
         </div>
       ),
     },
@@ -89,8 +99,10 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-3xl text-cadence-ink">Documents</h1>
+      <PageHeader
+        title="Documents"
+        actions={
+        <PermGate anyOf={PERM.DOCUMENTS_UPLOAD}>
         <div className="flex items-center gap-2">
           <Select value={docType} onChange={(e) => setDocType(e.target.value as DocumentType)} className="w-auto">
             {GENERIC_TYPES.map((t) => (
@@ -99,7 +111,7 @@ export default function DocumentsPage() {
               </option>
             ))}
           </Select>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 font-body text-sm text-cadence-ink hover:bg-surface-muted">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-cadence-yellow px-3 py-1.5 font-body text-sm text-cadence-ink">
             {uploading ? "Uploading…" : "Upload"}
             <input
               type="file"
@@ -113,11 +125,13 @@ export default function DocumentsPage() {
             />
           </label>
         </div>
-      </div>
+        </PermGate>
+        }
+      />
       {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (
@@ -128,6 +142,7 @@ export default function DocumentsPage() {
           ) : null}
         </>
       )}
+      {confirmDialog}
     </div>
   );
 }

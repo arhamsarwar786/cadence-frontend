@@ -8,7 +8,7 @@ import { addCert, deleteCert } from "@/features/portal/actions";
 import { listCerts } from "@/features/portal/api";
 import { portalCertSchema, type PortalCertFormValues } from "@/features/portal/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(portalCertSchema.shape);
 const QUERY_KEY = ["portal", "certs"] as const;
@@ -18,6 +18,7 @@ export function CertsPanel() {
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: listCerts });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const {
     register,
     handleSubmit,
@@ -44,7 +45,13 @@ export function CertsPanel() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this certification?")) return;
+    const ok = await confirm({
+      title: "Remove this certification?",
+      body: "This record will be deleted from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteCert(id);
     await invalidate();
   }
@@ -65,9 +72,13 @@ export function CertsPanel() {
                 {cert.name}
                 {cert.is_verified ? <span className="ml-2 text-xs text-emerald-700">Verified</span> : null}
               </p>
-              <Button size="sm" variant="ghost" onClick={() => handleDelete(cert.id)}>
-                Remove
-              </Button>
+              {cert.is_verified ? (
+                <span className="font-body text-xs text-cadence-ink/45">Office verified</span>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => handleDelete(cert.id)}>
+                  Remove
+                </Button>
+              )}
             </li>
           ))}
         </ul>
@@ -96,6 +107,7 @@ export function CertsPanel() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

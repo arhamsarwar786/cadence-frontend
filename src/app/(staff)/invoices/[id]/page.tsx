@@ -19,17 +19,19 @@ import { getInvoice, invoiceKeys } from "@/features/money/api";
 import { InvoiceLinesPanel } from "@/features/money/components/InvoiceLinesPanel";
 import { InvoiceStatusBadge } from "@/features/money/components/StatusBadges";
 import { autofillSchema, type AutofillFormValues } from "@/features/money/schemas";
+import { PERM } from "@/permissions/keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatDate } from "@/shared/lib/datetime";
 import { formatMoney } from "@/shared/lib/money";
 import type { InvoiceStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, PermGate, useConfirm } from "@/shared/ui";
 
 export default function InvoiceDetailPage() {
   const { id: invoiceId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
     queryKey: invoiceKeys.detail(invoiceId),
@@ -96,43 +98,62 @@ export default function InvoiceDetailPage() {
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           {status === "draft" ? (
-            <>
-              <Button variant="secondary" onClick={() => setAutofillOpen(true)}>
-                Autofill
-              </Button>
-              <Button onClick={() => runAction(() => submitInvoice(invoiceId))}>
-                Submit for approval
-              </Button>
-            </>
+            <PermGate anyOf={PERM.CLIENTS_INVOICE_EDIT}>
+              <>
+                <Button variant="secondary" onClick={() => setAutofillOpen(true)}>
+                  Autofill
+                </Button>
+                <Button onClick={() => runAction(() => submitInvoice(invoiceId))}>
+                  Submit for approval
+                </Button>
+              </>
+            </PermGate>
           ) : null}
           {status === "pending_approval" ? (
-            <>
-              <Button onClick={() => runAction(() => approveInvoice(invoiceId))}>Approve</Button>
-              <Button variant="secondary" onClick={() => runAction(() => returnInvoiceToDraft(invoiceId))}>
-                Return to draft
-              </Button>
-            </>
+            <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
+              <>
+                <Button onClick={() => runAction(() => approveInvoice(invoiceId))}>Approve</Button>
+                <Button variant="secondary" onClick={() => runAction(() => returnInvoiceToDraft(invoiceId))}>
+                  Return to draft
+                </Button>
+              </>
+            </PermGate>
           ) : null}
           {status === "approved" ? (
             <>
-              <Button onClick={() => runAction(() => sendInvoice(invoiceId))}>Send</Button>
-              <Button variant="secondary" onClick={() => runAction(() => unapproveInvoice(invoiceId))}>
-                Unapprove
-              </Button>
+              <PermGate anyOf={PERM.INVOICES_SEND}>
+                <Button onClick={() => runAction(() => sendInvoice(invoiceId))}>Send</Button>
+              </PermGate>
+              <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
+                <Button variant="secondary" onClick={() => runAction(() => unapproveInvoice(invoiceId))}>
+                  Unapprove
+                </Button>
+              </PermGate>
             </>
           ) : null}
-          {status === "sent" ? (
+          {status === "sent" && !invoice.paid_at ? (
             <>
-              {!invoice.paid_at ? (
-                <>
-                  <Button onClick={() => runAction(() => markInvoicePaid(invoiceId))}>
-                    Mark paid
-                  </Button>
-                  <Button variant="danger" onClick={() => runAction(() => voidInvoice(invoiceId))}>
-                    Void
-                  </Button>
-                </>
-              ) : null}
+              <PermGate anyOf={PERM.INVOICES_MARK_PAID}>
+                <Button onClick={() => runAction(() => markInvoicePaid(invoiceId))}>
+                  Mark paid
+                </Button>
+              </PermGate>
+              <PermGate anyOf={[PERM.CLIENTS_INVOICE_EDIT, PERM.INVOICES_SEND]}>
+                <Button
+                  variant="danger"
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: "Void this invoice?",
+                      body: "Voiding a sent invoice is a correction. The client-facing number stays in the register as voided. This cannot be undone from this screen.",
+                      confirmLabel: "Void invoice",
+                      danger: true,
+                    });
+                    if (ok) await runAction(() => voidInvoice(invoiceId));
+                  }}
+                >
+                  Void
+                </Button>
+              </PermGate>
             </>
           ) : null}
           <a
@@ -209,6 +230,7 @@ export default function InvoiceDetailPage() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

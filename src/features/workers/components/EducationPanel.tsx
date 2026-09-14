@@ -8,7 +8,7 @@ import { addEducation, deleteEducation } from "@/features/workers/actions";
 import { listWorkerEducation } from "@/features/workers/api";
 import { educationSchema, type EducationFormValues } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(educationSchema.shape);
 
@@ -16,6 +16,7 @@ export function EducationPanel({ workerId }: { workerId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["workers", workerId, "education"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerEducation(workerId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -48,7 +49,13 @@ export function EducationPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleDelete(rowId: string) {
-    if (!window.confirm("Remove this education entry?")) return;
+    const ok = await confirm({
+      title: "Remove this education entry?",
+      body: "This record will be deleted from the worker profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteEducation(workerId, rowId);
     await invalidate();
   }
@@ -112,6 +119,7 @@ export function EducationPanel({ workerId }: { workerId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

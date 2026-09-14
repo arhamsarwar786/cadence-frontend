@@ -16,7 +16,8 @@ import {
   type PrivacyRequestStatus,
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Dialog, Field, Pagination, Select, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Badge, Button, Dialog, Field, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const createSchema = z.object({
@@ -91,11 +92,13 @@ export default function PrivacyRequestsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Privacy requests</h1>
-        <Button onClick={() => setOpen(true)}>New request</Button>
+        <PermGate anyOf={PERM.PRIVACY_REQUESTS_MANAGE}>
+          <Button onClick={() => setOpen(true)}>New request</Button>
+        </PermGate>
       </div>
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (

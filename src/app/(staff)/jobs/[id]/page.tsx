@@ -13,11 +13,12 @@ import { JobStatusBadge, ShiftStatusBadge } from "@/features/jobs/components/Sta
 import { ShiftPatternsPanel } from "@/features/jobs/components/ShiftPatternsPanel";
 import type { JobFormValues } from "@/features/jobs/schemas";
 import type { JobUpdate } from "@/features/jobs/types";
+import { PERM } from "@/permissions/keys";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { JobStatus, ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, Table, type Column } from "@/shared/ui";
+import { Button, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
 
 export default function JobDetailPage() {
   const { id: jobId } = useParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient();
   const { session } = useSession();
   const [editing, setEditing] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
     queryKey: jobKeys.detail(jobId),
@@ -59,18 +61,36 @@ export default function JobDetailPage() {
   }
 
   async function handleCancel() {
-    if (!window.confirm("Cancel this job?")) return;
+    const ok = await confirm({
+      title: "Cancel this job?",
+      body: "Open shifts on this job will no longer be bookable. This is the cancel act, not a status dropdown.",
+      confirmLabel: "Cancel job",
+      danger: true,
+    });
+    if (!ok) return;
     await cancelJob(jobId);
     await refetch();
   }
 
   async function handleComplete() {
+    const ok = await confirm({
+      title: "Mark this job completed?",
+      body: "Completed jobs leave the open book. This cannot be undone from this screen.",
+      confirmLabel: "Mark completed",
+    });
+    if (!ok) return;
     await completeJob(jobId);
     await refetch();
   }
 
   async function handleArchive() {
-    if (!window.confirm("Archive this job?")) return;
+    const ok = await confirm({
+      title: "Archive this job?",
+      body: "The job leaves the live list. Root only.",
+      confirmLabel: "Archive",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteJob(jobId);
     router.push("/jobs");
   }
@@ -98,17 +118,23 @@ export default function JobDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setEditing((v) => !v)}>
-            {editing ? "Cancel edit" : "Edit"}
-          </Button>
+          <PermGate anyOf={PERM.JOBS_EDIT}>
+            <Button variant="secondary" onClick={() => setEditing((v) => !v)}>
+              {editing ? "Cancel edit" : "Edit"}
+            </Button>
+          </PermGate>
           {job.status === "open" || job.status === "filled" ? (
             <>
-              <Button variant="secondary" onClick={handleComplete}>
-                Mark completed
-              </Button>
-              <Button variant="danger" onClick={handleCancel}>
-                Cancel job
-              </Button>
+              <PermGate anyOf={PERM.JOBS_EDIT}>
+                <Button variant="secondary" onClick={handleComplete}>
+                  Mark completed
+                </Button>
+              </PermGate>
+              <PermGate anyOf={PERM.JOBS_CANCEL}>
+                <Button variant="danger" onClick={handleCancel}>
+                  Cancel job
+                </Button>
+              </PermGate>
             </>
           ) : null}
           {session?.user.is_root ? (
@@ -173,6 +199,7 @@ export default function JobDetailPage() {
           emptyMessage="No shifts generated yet."
         />
       </section>
+      {confirmDialog}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Catamaran, Chivo_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { QueryProvider } from "@/api/query-provider";
 import { SessionProvider } from "@/auth/session-context";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const bonaNovaSC = localFont({
@@ -31,15 +32,23 @@ export const metadata: Metadata = {
   description: "All-in-one staffing agency operations platform.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
       className={`${bonaNovaSC.variable} ${chivoMono.variable} ${catamaran.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-body">
+      <body className="flex min-h-dvh flex-col font-body">
         <QueryProvider>
-          <SessionProvider>{children}</SessionProvider>
+          <SessionProvider>
+            <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          </SessionProvider>
         </QueryProvider>
       </body>
     </html>

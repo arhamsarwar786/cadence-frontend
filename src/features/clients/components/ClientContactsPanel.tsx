@@ -13,7 +13,7 @@ import { listClientContacts } from "@/features/clients/api";
 import { clientContactSchema, type ClientContactFormValues } from "@/features/clients/schemas";
 import type { ClientContact } from "@/features/clients/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
 
 const contactsQueryKey = (clientId: string) => ["clients", clientId, "contacts"] as const;
 const FIELD_NAMES = Object.keys(clientContactSchema.shape);
@@ -109,6 +109,7 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
   const queryClient = useQueryClient();
   const queryKey = contactsQueryKey(clientId);
   const query = useQuery({ queryKey, queryFn: () => listClientContacts(clientId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [dialogState, setDialogState] = useState<DialogState>(null);
 
   function invalidate() {
@@ -128,7 +129,13 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
   }
 
   async function handleDelete(contactId: string) {
-    if (!window.confirm("Remove this contact?")) return;
+    const ok = await confirm({
+      title: "Remove this contact?",
+      body: "The contact will be deleted from this client.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteClientContact(clientId, contactId);
     await invalidate();
   }
@@ -199,6 +206,7 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
           />
         ) : null}
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

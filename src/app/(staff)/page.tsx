@@ -1,23 +1,16 @@
 "use client";
 
-import { useSession } from "@/auth/session-context";
+import { TaskBoard } from "@/features/tasks/components/TaskBoard";
 
 /**
- * Staff home (ARCHITECTURE.md §7: "open tasks / work queue"). The real
- * work-queue content lands with the tasks feature (build order step 10);
- * this is the shell's landing screen until then.
+ * Staff home (ARCHITECTURE.md §7: "open tasks / work queue") — the Penpot
+ * tasks-board layout: clock + counts on the cream canvas, today's queue in
+ * the charcoal card.
  */
 export default function StaffHomePage() {
-  const { session } = useSession();
-
   return (
-    <div>
-      <h1 className="font-heading text-3xl text-cadence-ink">
-        Welcome{session ? `, ${session.user.login}` : ""}
-      </h1>
-      <p className="mt-2 font-body text-sm text-cadence-ink/70">
-        Your open tasks and work queue will appear here.
-      </p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <TaskBoard />
     </div>
   );
 }

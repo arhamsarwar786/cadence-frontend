@@ -96,32 +96,35 @@ export default function WorkerDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">
+          <h1 className="font-heading text-4xl text-cadence-ink sm:text-5xl">
             {worker.first_name} {worker.last_name}
           </h1>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <LifecycleStatusBadge status={worker.lifecycle_status as LifecycleStatus} />
             {"rating" in worker ? (
-              <span className="font-body text-sm text-cadence-ink/60">Rating {worker.rating}</span>
+              <span className="font-body text-sm text-cadence-ink/70">
+                {"★".repeat(Math.max(0, Math.min(5, Math.round(Number(worker.rating) || 0))))}
+                <span className="ml-1 text-cadence-ink/40">
+                  {"★".repeat(Math.max(0, 5 - Math.min(5, Math.round(Number(worker.rating) || 0))))}
+                </span>
+              </span>
             ) : null}
           </div>
         </div>
         <WorkerLifecycleActions worker={worker} onChanged={refetch} />
       </div>
 
-      <div className="flex flex-wrap gap-1 border-b border-border">
+      <div className="flex flex-wrap gap-1.5">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "rounded-t-md px-3 py-2 font-body text-sm",
-              tab === t
-                ? "border-b-2 border-cadence-red text-cadence-ink"
-                : "text-cadence-ink/60 hover:text-cadence-ink",
+              "rounded-full px-3 py-1.5 font-body text-xs",
+              tab === t ? "bg-card text-on-card" : "bg-transparent text-cadence-ink/55 hover:bg-cadence-ink/5",
             )}
           >
             {t}
@@ -129,7 +132,7 @@ export default function WorkerDetailPage() {
         ))}
       </div>
 
-      <div>
+      <div className="rounded-[2rem] bg-surface/70 p-6 shadow-card">
         {tab === "Profile" ? (
           editingProfile ? (
             <WorkerProfileForm

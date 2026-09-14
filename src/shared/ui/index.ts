@@ -1,6 +1,17 @@
 export { Badge, type BadgeProps, type BadgeTone } from "@/shared/ui/Badge";
+export { BottomDock, type DockItem } from "@/shared/ui/BottomDock";
+export { BrandLink, BrandLockup, BrandMark, BrandWordmark } from "@/shared/ui/Brand";
 export { Button, type ButtonProps } from "@/shared/ui/Button";
+export { useConfirm } from "@/shared/ui/ConfirmDialog";
 export { Dialog, type DialogProps } from "@/shared/ui/Dialog";
 export { Field, type FieldProps, Input, Select } from "@/shared/ui/Field";
+export { FilterChip } from "@/shared/ui/FilterChip";
+export { ListLayout, PageHeader, StatRail, type StatItem } from "@/shared/ui/ListLayout";
+export { ListSkeleton } from "@/shared/ui/ListSkeleton";
 export { Pagination, type PaginationProps } from "@/shared/ui/Pagination";
+export { PermGate, useCanAct, useHasPerm } from "@/shared/ui/PermGate";
+export { SearchField } from "@/shared/ui/SearchField";
+export { SkipLink } from "@/shared/ui/SkipLink";
 export { Table, type Column, type TableProps } from "@/shared/ui/Table";
+export { TooltipProvider } from "@/components/ui/tooltip";
+export { Tooltip, type TooltipProps, type TooltipSide } from "@/shared/ui/Tooltip";

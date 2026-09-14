@@ -12,7 +12,8 @@ import { payrollRunCreateSchema, type PayrollRunCreateFormValues } from "@/featu
 import type { PayrollRun } from "@/features/money/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { PayrollRunStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, Pagination, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(payrollRunCreateSchema.shape);
@@ -85,28 +86,43 @@ export default function PayrollRunsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-3xl text-cadence-ink">Pay statements</h1>
-        <Button onClick={() => setNewOpen(true)}>New run</Button>
-      </div>
+      <PageHeader
+        title="Pay statements"
+        actions={
+          <PermGate anyOf={PERM.PAYROLL_RUN}>
+            <Button onClick={() => setNewOpen(true)}>New run</Button>
+          </PermGate>
+        }
+      />
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (
-        <>
-          <Table
-            columns={columns}
-            rows={query.data?.results ?? []}
-            rowKey={(r) => r.id}
-            onRowClick={(r) => router.push(`/payroll/runs/${r.id}`)}
-            emptyMessage="No payroll runs yet."
-          />
-          {query.data ? (
-            <Pagination page={page} pageSize={PAGE_SIZE} count={query.data.count} onPageChange={goToPage} />
-          ) : null}
-        </>
+        <ListLayout
+          stats={[
+            { value: query.data?.count ?? 0, label: "runs", tone: "ink" },
+            {
+              value: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+              label: "today",
+              tone: "orange",
+            },
+          ]}
+        >
+          <div className="flex flex-col gap-4">
+            <Table
+              columns={columns}
+              rows={query.data?.results ?? []}
+              rowKey={(r) => r.id}
+              onRowClick={(r) => router.push(`/payroll/runs/${r.id}`)}
+              emptyMessage="No payroll runs yet."
+            />
+            {query.data ? (
+              <Pagination page={page} pageSize={PAGE_SIZE} count={query.data.count} onPageChange={goToPage} />
+            ) : null}
+          </div>
+        </ListLayout>
       )}
 
       <Dialog open={newOpen} onClose={() => setNewOpen(false)} title="New payroll run">

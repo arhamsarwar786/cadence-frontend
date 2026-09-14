@@ -21,7 +21,7 @@ import {
   type HourSheetStatus,
   type MatchStatus,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Dialog, Field, Input, Select, type BadgeTone } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, Select, useConfirm, type BadgeTone } from "@/shared/ui";
 
 const LINE_FIELD_NAMES = Object.keys(hourSheetLineSchema.shape);
 
@@ -94,6 +94,7 @@ export default function HourSheetDetailPage() {
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const sheetQuery = useQuery({
     queryKey: hourSheetKeys.detail(sheetId),
@@ -136,7 +137,13 @@ export default function HourSheetDetailPage() {
   }
 
   async function handleDeleteLine(lineId: string) {
-    if (!window.confirm("Remove this line?")) return;
+    const ok = await confirm({
+      title: "Remove this line?",
+      body: "The line will be deleted from this hour sheet.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteHourSheetLine(sheetId, lineId);
     await refetchLines();
   }
@@ -231,6 +238,7 @@ export default function HourSheetDetailPage() {
           }}
         />
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

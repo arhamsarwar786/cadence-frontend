@@ -10,5 +10,9 @@ const TONE: Record<LifecycleStatus, BadgeTone> = {
 };
 
 export function LifecycleStatusBadge({ status }: { status: LifecycleStatus }) {
-  return <Badge tone={TONE[status]}>{LIFECYCLE_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={TONE[status]} tooltip={`Worker: ${LIFECYCLE_STATUS_LABELS[status]}`}>
+      {LIFECYCLE_STATUS_LABELS[status]}
+    </Badge>
+  );
 }

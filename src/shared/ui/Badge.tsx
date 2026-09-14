@@ -1,12 +1,15 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { Tooltip } from "@/shared/ui/Tooltip";
 
 const TONE_CLASSES = {
-  neutral: "bg-surface-muted text-cadence-ink",
-  positive: "bg-emerald-100 text-emerald-800",
-  warning: "bg-cadence-yellow/60 text-cadence-ink",
-  negative: "bg-cadence-red/10 text-cadence-red",
-  info: "bg-cadence-orange/15 text-cadence-orange",
+  neutral: "bg-[#e8dfc2] text-cadence-ink",
+  positive: "bg-cadence-lime text-cadence-ink",
+  warning: "bg-cadence-yellow text-cadence-ink",
+  negative: "bg-cadence-red text-white",
+  info: "bg-cadence-orange text-cadence-ink",
 } as const;
 
 export type BadgeTone = keyof typeof TONE_CLASSES;
@@ -15,19 +18,19 @@ export interface BadgeProps {
   children: ReactNode;
   tone?: BadgeTone;
   className?: string;
+  tooltip?: string;
 }
 
 /**
- * A generic tone-only badge. Feature status badges (e.g. ClientStatusBadge)
- * wrap this and map their own closed enum (status-labels.ts) to a tone —
- * this component never computes the next status, only renders the one it's
- * given (ARCHITECTURE.md §8 folder rules).
+ * A generic tone-only badge. Feature status badges wrap this and map their
+ * own closed enum to a tone — this component never computes the next status
+ * (ARCHITECTURE.md §8 folder rules).
  */
-export function Badge({ children, tone = "neutral", className }: BadgeProps) {
-  return (
+export function Badge({ children, tone = "neutral", className, tooltip }: BadgeProps) {
+  const badge = (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium font-body",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-medium font-body tracking-wide",
         TONE_CLASSES[tone],
         className,
       )}
@@ -35,4 +38,5 @@ export function Badge({ children, tone = "neutral", className }: BadgeProps) {
       {children}
     </span>
   );
+  return tooltip ? <Tooltip content={tooltip}>{badge}</Tooltip> : badge;
 }

@@ -1,9 +1,12 @@
+"use client";
+
 import { type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/shared/lib/cn";
+import { Tooltip } from "@/shared/ui/Tooltip";
 
 const CONTROL_CLASSES =
-  "h-10 w-full rounded-md border border-border bg-surface px-3 text-sm font-body text-cadence-ink " +
-  "placeholder:text-cadence-ink/40 focus:border-cadence-orange focus:outline-none focus:ring-2 focus:ring-cadence-orange/30 " +
+  "h-10 w-full rounded-full border border-cadence-ink/10 bg-surface px-4 text-sm font-body text-cadence-ink " +
+  "placeholder:text-cadence-ink/35 focus:border-cadence-orange focus:outline-none focus:ring-2 focus:ring-cadence-yellow/50 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 export interface FieldProps {
@@ -11,18 +14,32 @@ export interface FieldProps {
   htmlFor: string;
   error?: string;
   hint?: string;
+  tooltip?: string;
   children: ReactNode;
 }
 
 /** Label + control + error, the shape every form field takes (React Hook
  * Form drives validation; the server stays the real gate — ARCHITECTURE.md
  * §0). Errors surface from fieldErrorsFrom (shared/lib/errors.ts) or Zod. */
-export function Field({ label, htmlFor, error, hint, children }: FieldProps) {
+export function Field({ label, htmlFor, error, hint, tooltip, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={htmlFor} className="font-body text-sm font-medium text-cadence-ink">
-        {label}
-      </label>
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-center gap-1.5">
+        <label htmlFor={htmlFor} className="font-body text-sm font-medium text-current/80">
+          {label}
+        </label>
+        {tooltip ? (
+          <Tooltip content={tooltip} side="bottom">
+            <button
+              type="button"
+              className="flex h-4 w-4 items-center justify-center rounded-full bg-cadence-yellow/80 font-fine text-[9px] text-cadence-ink"
+              aria-label={tooltip}
+            >
+              i
+            </button>
+          </Tooltip>
+        ) : null}
+      </span>
       {children}
       {hint && !error ? <p className="text-xs text-cadence-ink/60">{hint}</p> : null}
       {error ? <p className="text-xs text-cadence-red">{error}</p> : null}

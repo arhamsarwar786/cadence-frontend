@@ -12,7 +12,7 @@ import {
   type AvailabilityFormValues,
 } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(availabilitySchema.shape);
 const DAY_LABEL = new Map(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
@@ -21,6 +21,7 @@ export function AvailabilityPanel({ workerId }: { workerId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["workers", workerId, "availability"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerAvailability(workerId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -58,7 +59,13 @@ export function AvailabilityPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleDelete(rowId: string) {
-    if (!window.confirm("Remove this availability window?")) return;
+    const ok = await confirm({
+      title: "Remove this availability window?",
+      body: "This window will be deleted from the worker profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteAvailability(workerId, rowId);
     await invalidate();
   }
@@ -119,6 +126,7 @@ export function AvailabilityPanel({ workerId }: { workerId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

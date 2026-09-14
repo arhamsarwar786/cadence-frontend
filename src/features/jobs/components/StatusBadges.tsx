@@ -19,7 +19,11 @@ const JOB_TONE: Record<JobStatus, BadgeTone> = {
 };
 
 export function JobStatusBadge({ status }: { status: JobStatus }) {
-  return <Badge tone={JOB_TONE[status]}>{JOB_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={JOB_TONE[status]} tooltip={`Job: ${JOB_STATUS_LABELS[status]}`}>
+      {JOB_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 const SHIFT_TONE: Record<ShiftStatus, BadgeTone> = {
@@ -29,7 +33,11 @@ const SHIFT_TONE: Record<ShiftStatus, BadgeTone> = {
 };
 
 export function ShiftStatusBadge({ status }: { status: ShiftStatus }) {
-  return <Badge tone={SHIFT_TONE[status]}>{SHIFT_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={SHIFT_TONE[status]} tooltip={`Shift: ${SHIFT_STATUS_LABELS[status]}`}>
+      {SHIFT_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 const HOUR_SHEET_TONE: Record<HourSheetStatus, BadgeTone> = {
@@ -38,7 +46,11 @@ const HOUR_SHEET_TONE: Record<HourSheetStatus, BadgeTone> = {
 };
 
 export function HourSheetStatusBadge({ status }: { status: HourSheetStatus }) {
-  return <Badge tone={HOUR_SHEET_TONE[status]}>{HOUR_SHEET_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={HOUR_SHEET_TONE[status]} tooltip={`Hour sheet: ${HOUR_SHEET_STATUS_LABELS[status]}`}>
+      {HOUR_SHEET_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 const ASSIGNMENT_TONE: Record<AssignmentStatus, BadgeTone> = {
@@ -47,5 +59,9 @@ const ASSIGNMENT_TONE: Record<AssignmentStatus, BadgeTone> = {
 };
 
 export function AssignmentStatusBadge({ status }: { status: AssignmentStatus }) {
-  return <Badge tone={ASSIGNMENT_TONE[status]}>{ASSIGNMENT_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={ASSIGNMENT_TONE[status]} tooltip={`Placement: ${ASSIGNMENT_STATUS_LABELS[status]}`}>
+      {ASSIGNMENT_STATUS_LABELS[status]}
+    </Badge>
+  );
 }

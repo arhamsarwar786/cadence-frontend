@@ -16,7 +16,8 @@ import { AssignmentStatusBadge, ShiftStatusBadge } from "@/features/jobs/compone
 import { applyFieldErrors, isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { AssignmentStatus, ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, Field, Input, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Field, Input, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
 import { optionalNumber } from "@/shared/lib/zod-helpers";
 import { z } from "zod";
 
@@ -35,6 +36,7 @@ export default function AssignmentDetailPage() {
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
     queryKey: ["assignments", assignmentId],
@@ -76,7 +78,13 @@ export default function AssignmentDetailPage() {
   }
 
   async function handleWithdraw() {
-    if (!window.confirm("Withdraw this assignment? This removes it.")) return;
+    const ok = await confirm({
+      title: "Withdraw this assignment?",
+      body: "The placement is removed. This is not a third status — decline/withdraw deletes the offer.",
+      confirmLabel: "Withdraw",
+      danger: true,
+    });
+    if (!ok) return;
     setActionError(null);
     try {
       await withdrawAssignment(assignmentId);
@@ -136,14 +144,20 @@ export default function AssignmentDetailPage() {
         </div>
         <div className="flex gap-2">
           {assignment.status === "offered" ? (
-            <Button onClick={handleConfirm}>Confirm</Button>
+            <PermGate anyOf={PERM.JOBS_ASSIGN}>
+              <Button onClick={handleConfirm}>Confirm</Button>
+            </PermGate>
           ) : null}
-          <Button variant="secondary" onClick={handleRefreshRate}>
-            Refresh rate
-          </Button>
-          <Button variant="danger" onClick={handleWithdraw}>
-            Withdraw
-          </Button>
+          <PermGate anyOf={PERM.JOBS_ASSIGN}>
+            <Button variant="secondary" onClick={handleRefreshRate}>
+              Refresh rate
+            </Button>
+          </PermGate>
+          <PermGate anyOf={PERM.JOBS_ASSIGN}>
+            <Button variant="danger" onClick={handleWithdraw}>
+              Withdraw
+            </Button>
+          </PermGate>
         </div>
       </div>
 
@@ -197,6 +211,7 @@ export default function AssignmentDetailPage() {
         </form>
         {formError ? <p className="font-body text-sm text-cadence-red">{formError}</p> : null}
       </section>
+      {confirmDialog}
     </div>
   );
 }

@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listSignatureRequests, revokeSignatureRequest, signatureRequestKeys } from "@/features/esign/api";
 import type { SignatureRequest } from "@/features/esign/types";
-import { Badge, Button, Pagination, Table, type Column } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Badge, Button, ListSkeleton, Pagination, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
 import { messageFrom } from "@/shared/lib/errors";
 import {
   SIGNATURE_REQUEST_PURPOSE_LABELS,
@@ -20,6 +21,7 @@ export default function EsignPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
     queryKey: signatureRequestKeys.list({ page }),
@@ -33,7 +35,13 @@ export default function EsignPage() {
   }
 
   async function handleRevoke(id: string) {
-    if (!window.confirm("Revoke this signature request?")) return;
+    const ok = await confirm({
+      title: "Revoke this signature request?",
+      body: "The worker will no longer be able to sign this request.",
+      confirmLabel: "Revoke",
+      danger: true,
+    });
+    if (!ok) return;
     await revokeSignatureRequest(id);
     await queryClient.invalidateQueries({ queryKey: signatureRequestKeys.all });
   }
@@ -53,9 +61,11 @@ export default function EsignPage() {
       header: "",
       cell: (r) =>
         r.status === "pending" ? (
-          <Button size="sm" variant="danger" onClick={() => handleRevoke(r.id)}>
-            Revoke
-          </Button>
+          <PermGate anyOf={PERM.ESIGN_REQUEST_SEND}>
+            <Button size="sm" variant="danger" onClick={() => handleRevoke(r.id)}>
+              Revoke
+            </Button>
+          </PermGate>
         ) : null,
     },
   ];
@@ -64,7 +74,7 @@ export default function EsignPage() {
     <div className="flex flex-col gap-4">
       <h1 className="font-heading text-3xl text-cadence-ink">E-sign</h1>
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (
@@ -75,6 +85,7 @@ export default function EsignPage() {
           ) : null}
         </>
       )}
+      {confirmDialog}
     </div>
   );
 }

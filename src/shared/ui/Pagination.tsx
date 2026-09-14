@@ -30,17 +30,19 @@ export function Pagination({ page, pageSize, count, onPageChange }: PaginationPr
           variant="secondary"
           size="sm"
           disabled={page <= 1}
+          tooltip="Previous page"
           onClick={() => onPageChange(page - 1)}
         >
           Previous
         </Button>
-        <span>
+        <span className="font-fine text-xs">
           Page {page} of {totalPages}
         </span>
         <Button
           variant="secondary"
           size="sm"
           disabled={page >= totalPages}
+          tooltip="Next page"
           onClick={() => onPageChange(page + 1)}
         >
           Next

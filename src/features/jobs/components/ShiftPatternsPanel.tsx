@@ -9,7 +9,7 @@ import { listJobShiftPatterns } from "@/features/jobs/api";
 import { shiftPatternSchema, type ShiftPatternFormValues } from "@/features/jobs/schemas";
 import { DAYS_OF_WEEK } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input } from "@/shared/ui";
+import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(shiftPatternSchema.shape);
 const DAY_LABEL = new Map<number, string>(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
@@ -18,6 +18,7 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["jobs", jobId, "shift-patterns"] as const;
   const query = useQuery({ queryKey, queryFn: () => listJobShiftPatterns(jobId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
@@ -50,7 +51,13 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this shift pattern?")) return;
+    const ok = await confirm({
+      title: "Remove this shift pattern?",
+      body: "The pattern will be deleted. Existing generated shifts are unchanged until you regenerate.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteShiftPattern(jobId, id);
     await invalidate();
   }
@@ -134,6 +141,7 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

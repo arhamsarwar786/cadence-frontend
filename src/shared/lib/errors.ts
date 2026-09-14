@@ -72,9 +72,23 @@ export function applyFieldErrors<T extends FieldValues>(
   return matched;
 }
 
+/** True when Django is down, the proxy timed out, or the response is a 5xx.
+ * Guards must not treat this as signed-out (ARCHITECTURE.md §10: only
+ * 401/403 mean that) — but they also must not render a blank page. */
+export function isUnreachable(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 0 || error.status >= 500;
+  }
+  return error instanceof TypeError || error instanceof DOMException;
+}
+
 /** A single human-readable line for a toast/banner. Prefer a specific
  * field error in a form context — this is the fallback summary. */
 export function messageFrom(error: unknown): string {
+  if (isUnreachable(error)) {
+    if (error instanceof ApiError && typeof error.body === "string") return error.body;
+    return "Can't reach the API. Is the backend running?";
+  }
   if (error instanceof ApiError) {
     if (error.status === 403) {
       return detailMessage(error.body) ?? "You don't have permission to do that.";

@@ -1,10 +1,15 @@
 import { DocumentsPanel } from "@/features/portal/components/DocumentsPanel";
+import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 export default function PortalDocumentsPage() {
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-3xl text-cadence-ink">Documents</h1>
-      <DocumentsPanel />
-    </div>
+    <PortalFrame
+      title="Documents"
+      subtitle="Intake files you upload yourself: résumé, IDs, permits. Office-verified files cannot be removed here."
+    >
+      <PortalCard>
+        <DocumentsPanel />
+      </PortalCard>
+    </PortalFrame>
   );
 }

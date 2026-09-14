@@ -9,7 +9,7 @@ import { listWorkerTimeOff } from "@/features/workers/api";
 import { timeOffSchema, type TimeOffFormValues } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { TIME_OFF_TYPE_LABELS } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(timeOffSchema.shape);
 
@@ -17,6 +17,7 @@ export function TimeOffPanel({ workerId }: { workerId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["workers", workerId, "time-off"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerTimeOff(workerId) });
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -45,7 +46,13 @@ export function TimeOffPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleDelete(rowId: string) {
-    if (!window.confirm("Remove this time-off entry?")) return;
+    const ok = await confirm({
+      title: "Remove this time-off entry?",
+      body: "This record will be deleted from the worker profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteTimeOff(workerId, rowId);
     await invalidate();
   }
@@ -107,6 +114,7 @@ export function TimeOffPanel({ workerId }: { workerId: string }) {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }

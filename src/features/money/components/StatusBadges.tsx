@@ -17,7 +17,11 @@ const INVOICE_TONE: Record<InvoiceStatus, BadgeTone> = {
 };
 
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
-  return <Badge tone={INVOICE_TONE[status]}>{INVOICE_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={INVOICE_TONE[status]} tooltip={`Invoice: ${INVOICE_STATUS_LABELS[status]}`}>
+      {INVOICE_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 const PAYROLL_RUN_TONE: Record<PayrollRunStatus, BadgeTone> = {
@@ -26,7 +30,11 @@ const PAYROLL_RUN_TONE: Record<PayrollRunStatus, BadgeTone> = {
 };
 
 export function PayrollRunStatusBadge({ status }: { status: PayrollRunStatus }) {
-  return <Badge tone={PAYROLL_RUN_TONE[status]}>{PAYROLL_RUN_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={PAYROLL_RUN_TONE[status]} tooltip={`Payroll run: ${PAYROLL_RUN_STATUS_LABELS[status]}`}>
+      {PAYROLL_RUN_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 const PAYSLIP_TONE: Record<PayslipStatus, BadgeTone> = {
@@ -36,5 +44,9 @@ const PAYSLIP_TONE: Record<PayslipStatus, BadgeTone> = {
 };
 
 export function PayslipStatusBadge({ status }: { status: PayslipStatus }) {
-  return <Badge tone={PAYSLIP_TONE[status]}>{PAYSLIP_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge tone={PAYSLIP_TONE[status]} tooltip={`Pay statement: ${PAYSLIP_STATUS_LABELS[status]}`}>
+      {PAYSLIP_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
