@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
 
-// The Django origin this dev server proxies to. Same-origin in the browser
-// either way: in dev, Next rewrites /api/v1/* to Django on another port;
-// in production, a reverse proxy serves both from one origin instead — see
-// ARCHITECTURE.md §2.1. Session cookie + CSRF depend on this staying
-// same-origin from the browser's point of view, so this is a rewrite, never
-// a client-side fetch to a different host.
-const DJANGO_ORIGIN = process.env.DJANGO_ORIGIN ?? "http://localhost:8000";
+// The Django origin this Next server proxies to. The browser still calls
+// same-origin `/api/v1/*` (session cookie + CSRF). Override with
+// DJANGO_ORIGIN for a local backend.
+const DJANGO_ORIGIN = process.env.DJANGO_ORIGIN ?? "https://api.app-cadence.com";
 
 const nextConfig: NextConfig = {
   // This repo already has a root AGENTS.md/CLAUDE.md governing the whole

@@ -23,9 +23,10 @@ export function BackendDownScreen() {
   return (
     <StatusScreen title="The API isn’t running">
       <p>
-        The frontend is up. Start the backend (default{" "}
-        <span className="font-fine text-cadence-ink">http://localhost:8000</span>) and refresh, or open
-        sign-in to keep browsing the UI.
+        The frontend is up. It proxies{" "}
+        <span className="font-fine text-cadence-ink">/api/v1</span> to{" "}
+        <span className="font-fine text-cadence-ink">https://api.app-cadence.com</span>. Refresh when
+        that host is reachable, or open sign-in to keep browsing the UI.
       </p>
       <p className="mt-6">
         <Tooltip content="Open the shared sign-in page">

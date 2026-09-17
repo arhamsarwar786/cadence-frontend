@@ -55,7 +55,8 @@ export default function LoginPage() {
           </p>
           {isUnavailable || isError ? (
             <p className="mb-6 rounded-2xl bg-cadence-yellow/50 px-4 py-3 font-body text-sm text-cadence-ink">
-              Can&apos;t reach the API. Start the backend on port 8000 before submitting.
+              Can&apos;t reach the API at api.app-cadence.com. Check that the backend is up
+              before submitting.
             </p>
           ) : null}
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
