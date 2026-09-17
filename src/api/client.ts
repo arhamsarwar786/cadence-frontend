@@ -68,10 +68,7 @@ async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promi
     const csrfToken = readCookie(CSRF_COOKIE_NAME);
     if (csrfToken) {
       finalHeaders.set(CSRF_HEADER_NAME, csrfToken);
-    } else if (!path.includes("/api/v1/auth/login/")) {
-      // Logout (and every other unsafe call) needs the CSRF header once a
-      // session exists. Login is the one public POST that may run before
-      // the cookie is issued.
+    } else if (!path.includes("/api/v1/auth/login/") && !path.includes("/api/v1/auth/logout/")) {
       throw new ApiError(
         0,
         "Missing security token. Refresh the page and try again.",
