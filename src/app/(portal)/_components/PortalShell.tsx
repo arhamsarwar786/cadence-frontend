@@ -28,7 +28,11 @@ export function PortalShell({ children }: { children: ReactNode }) {
   if (!session) return null;
 
   async function handleLogout() {
-    await logoutAction();
+    try {
+      await logoutAction();
+    } catch {
+      // Still leave the UI even if the API rejected the POST (e.g. CSRF).
+    }
     clear();
     router.replace("/login");
   }

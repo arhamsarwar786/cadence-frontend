@@ -31,7 +31,11 @@ export function StaffShell({ children }: { children: ReactNode }) {
   const overflow = ordered.slice(2).map(({ label, href, tooltip }) => ({ label, href, tooltip }));
 
   async function handleLogout() {
-    await logoutAction();
+    try {
+      await logoutAction();
+    } catch {
+      // Still leave the UI even if the API rejected the POST (e.g. CSRF).
+    }
     clear();
     router.replace("/login");
   }
