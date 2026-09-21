@@ -58,8 +58,8 @@ function AddLineForm({ sheetId, onDone }: { sheetId: string; onDone: () => void 
       });
       onDone();
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, LINE_FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, LINE_FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
     }
   }
 

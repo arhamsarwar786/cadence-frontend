@@ -20,7 +20,6 @@ const PORTAL_MORE = [
   { label: "Signatures", href: "/portal/signatures", tooltip: "Forms waiting for your signature" },
   { label: "Availability", href: "/portal/availability", tooltip: "When you can work" },
   { label: "Onboarding", href: "/portal/onboarding", tooltip: "Submit intake to the office" },
-  { label: "Consent", href: "/portal/consent", tooltip: "Privacy notice and re-consent" },
 ];
 
 export function PortalShell({ children }: { children: ReactNode }) {
@@ -51,7 +50,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 sm:px-8"
+        className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden px-3 pb-28 sm:px-8"
       >
         {children}
       </main>

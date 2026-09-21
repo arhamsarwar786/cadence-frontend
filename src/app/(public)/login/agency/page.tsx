@@ -3,29 +3,55 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { AuthSplitLayout } from "@/app/(public)/_components/AuthSplitLayout";
 import { useSession } from "@/auth/session-context";
 import { login as loginAction } from "@/features/accounts/actions";
 import { loginSchema, type LoginFormValues } from "@/features/accounts/schemas";
+import { getReportsDashboard } from "@/features/money/api";
+import type { Dashboard } from "@/features/money/types";
+import { listTasks } from "@/features/tasks/api";
+import type { Task } from "@/features/tasks/types";
+import { hasPerm } from "@/permissions/has-perm";
+import { PERM } from "@/permissions/keys";
 import { messageFrom } from "@/shared/lib/errors";
 import { Button, Field, Input } from "@/shared/ui";
 
 const AGENCY_KEY = "cadence.selectedAgency";
+const SUCCESS_REDIRECT_MS = 2500;
 
 /** Stub until GET /agencies/?q= ships — local pick only, no network call. */
 const DEMO_AGENCIES = [
   { id: "demo", name: "Cadence Demo", subtitle: "Demo staffing office" },
 ];
 
+type SuccessStats = {
+  jobsFilled: number;
+  jobsCount: number;
+  fillRatePct: number | null;
+};
+
+function statsFromDashboard(data: Dashboard): SuccessStats {
+  const fill = data.fill_rate;
+  return {
+    jobsFilled: fill.headcount_filled,
+    jobsCount: fill.jobs_count,
+    fillRatePct: fill.fill_rate != null ? Math.round(Number(fill.fill_rate) * 100) : null,
+  };
+}
+
 export default function AgencyLoginPage() {
   const router = useRouter();
   const { session, isLoading, refresh } = useSession();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [agencyName, setAgencyName] = useState("");
   const [query, setQuery] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [stats, setStats] = useState<SuccessStats | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const stayOnSuccess = useRef(false);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     register,
@@ -34,10 +60,11 @@ export default function AgencyLoginPage() {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
+    if (stayOnSuccess.current || step === 3) return;
     if (!isLoading && session) {
       router.replace(session.user.user_type === "worker" ? "/portal" : "/");
     }
-  }, [isLoading, session, router]);
+  }, [isLoading, session, router, step]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(AGENCY_KEY);
@@ -45,6 +72,12 @@ export default function AgencyLoginPage() {
       setAgencyName(stored);
       setStep(2);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
   }, []);
 
   const filtered = DEMO_AGENCIES.filter(
@@ -60,13 +93,49 @@ export default function AgencyLoginPage() {
     setStep(2);
   }
 
+  function goToDashboard() {
+    if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    router.replace("/");
+  }
+
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);
     try {
       const user = await loginAction(values.login, values.password);
+      if (user.user_type === "worker") {
+        await refresh();
+        router.replace("/portal");
+        return;
+      }
+
+      stayOnSuccess.current = true;
       await refresh();
-      router.replace(user.user_type === "worker" ? "/portal" : "/");
+
+      let nextStats: SuccessStats | null = null;
+      if (hasPerm(user, PERM.REPORTS_DASHBOARD_VIEW)) {
+        try {
+          nextStats = statsFromDashboard(await getReportsDashboard());
+        } catch {
+          nextStats = null;
+        }
+      }
+
+      let nextTasks: Task[] = [];
+      try {
+        const page = await listTasks({ pageSize: 3, status: "open" });
+        nextTasks = page.results.slice(0, 3);
+      } catch {
+        nextTasks = [];
+      }
+
+      setStats(nextStats);
+      setTasks(nextTasks);
+      setStep(3);
+      redirectTimer.current = setTimeout(() => {
+        router.replace("/");
+      }, SUCCESS_REDIRECT_MS);
     } catch (error) {
+      stayOnSuccess.current = false;
       setFormError(messageFrom(error));
     }
   }
@@ -131,7 +200,7 @@ export default function AgencyLoginPage() {
             </Link>
           </p>
         </div>
-      ) : (
+      ) : step === 2 ? (
         <div>
           <div className="mb-6 flex items-center gap-2 rounded-full bg-white px-3 py-1.5 font-body text-sm">
             <span className="font-medium text-cadence-ink">{agencyName}</span>
@@ -176,6 +245,63 @@ export default function AgencyLoginPage() {
               Don&apos;t have access? Contact your Cadence administrator.
             </p>
           </form>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center text-center">
+          <span
+            aria-hidden
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-cadence-lime/50 text-2xl text-cadence-ink"
+          >
+            ✓
+          </span>
+          <h2 className="mt-5 font-heading text-2xl text-cadence-ink">Signed in successfully</h2>
+          <p className="mt-2 font-body text-sm text-cadence-ink/60">
+            Redirecting you to the {agencyName || "agency"} dashboard…
+          </p>
+
+          {stats ? (
+            <div className="mt-8 flex w-full justify-center gap-8">
+              <div>
+                <p className="font-heading text-3xl text-cadence-ink">{stats.jobsFilled}</p>
+                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/55">
+                  Jobs filled
+                </p>
+              </div>
+              <div>
+                <p className="font-heading text-3xl text-cadence-ink">{stats.jobsCount}</p>
+                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/55">
+                  Jobs
+                </p>
+              </div>
+              <div>
+                <p className="font-heading text-3xl text-cadence-ink">
+                  {stats.fillRatePct != null ? `${stats.fillRatePct}%` : "—"}
+                </p>
+                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/55">
+                  Fill rate
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {tasks.length > 0 ? (
+            <div className="mt-8 w-full text-left">
+              <p className="font-subheading text-[10px] uppercase tracking-[0.18em] text-cadence-ink/55">
+                Today&apos;s to-do
+              </p>
+              <ul className="mt-3 divide-y divide-cadence-ink/10 rounded-2xl border border-cadence-ink/10 bg-white">
+                {tasks.map((task) => (
+                  <li key={task.id} className="px-4 py-3 font-body text-sm text-cadence-ink">
+                    {task.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <Button type="button" className="mt-8 h-11 w-full" onClick={goToDashboard}>
+            Go to Dashboard
+          </Button>
         </div>
       )}
     </AuthSplitLayout>

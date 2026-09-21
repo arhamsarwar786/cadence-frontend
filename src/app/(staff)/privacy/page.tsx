@@ -17,7 +17,7 @@ import {
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Badge, Button, Dialog, Field, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const createSchema = z.object({
@@ -69,8 +69,8 @@ export default function PrivacyRequestsPage() {
       setOpen(false);
       router.push(`/privacy/${req.id}`);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
     }
   }
 
@@ -133,6 +133,9 @@ export default function PrivacyRequestsPage() {
               <option value="access">Access</option>
               <option value="correction">Correction</option>
             </Select>
+          </Field>
+          <Field label="Received on" htmlFor="pr-received" error={errors.received_on?.message}>
+            <Input id="pr-received" type="date" {...register("received_on")} />
           </Field>
           {formError ? <p className="font-body text-sm text-cadence-red">{formError}</p> : null}
           <div className="flex gap-2">

@@ -142,6 +142,14 @@ export const STAFF_NAV_ITEMS: readonly StaffNavItem[] = [
     group: "compliance",
   },
   {
+    label: "Disposal schedule",
+    href: "/privacy/disposal",
+    tooltip: "Scheduled destruction of departed worker records",
+    anyOf: [PERM.PRIVACY_DISPOSAL_VIEW],
+    built: true,
+    group: "compliance",
+  },
+  {
     label: "Audit log",
     href: "/audit",
     tooltip: "Who changed what, and when",

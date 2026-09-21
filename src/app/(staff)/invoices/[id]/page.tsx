@@ -6,6 +6,8 @@ import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSession } from "@/auth/session-context";
+import { getClient, getClientBilling } from "@/features/clients/api";
+import { listJobs } from "@/features/jobs/api";
 import {
   approveInvoice,
   autofillInvoice,
@@ -20,12 +22,13 @@ import { getInvoice, invoiceKeys } from "@/features/money/api";
 import { InvoiceLinesPanel } from "@/features/money/components/InvoiceLinesPanel";
 import { InvoiceStatusBadge } from "@/features/money/components/StatusBadges";
 import { autofillSchema, type AutofillFormValues } from "@/features/money/schemas";
+import { getOrgSettings, orgKeys } from "@/features/orgs/api";
 import { PERM } from "@/permissions/keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatDate } from "@/shared/lib/datetime";
 import { formatMoney } from "@/shared/lib/money";
 import type { InvoiceStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, PermGate, useConfirm } from "@/shared/ui";
+import { Button, Dialog, Field, Input, PermGate, Select, useConfirm } from "@/shared/ui";
 
 export default function InvoiceDetailPage() {
   const { id: invoiceId } = useParams<{ id: string }>();
@@ -40,6 +43,28 @@ export default function InvoiceDetailPage() {
     queryKey: invoiceKeys.detail(invoiceId),
     queryFn: () => getInvoice(invoiceId),
     retry: false,
+  });
+
+  const orgQuery = useQuery({
+    queryKey: orgKeys.settings,
+    queryFn: getOrgSettings,
+  });
+
+  const clientId = query.data?.client_id;
+  const clientQuery = useQuery({
+    queryKey: ["client", clientId],
+    queryFn: () => getClient(clientId!),
+    enabled: Boolean(clientId),
+  });
+  const billingQuery = useQuery({
+    queryKey: ["client-billing", clientId],
+    queryFn: () => getClientBilling(clientId!),
+    enabled: Boolean(clientId),
+  });
+  const jobsQuery = useQuery({
+    queryKey: ["jobs-picker", "client", clientId],
+    queryFn: () => listJobs({ pageSize: 200, client: clientId }),
+    enabled: Boolean(clientId) && autofillOpen,
   });
 
   const {
@@ -86,6 +111,14 @@ export default function InvoiceDetailPage() {
   const invoice = query.data;
   if (!invoice) return null;
   const status = invoice.status as InvoiceStatus;
+  const org = orgQuery.data;
+  const orgAddress = [
+    org?.address_line_1,
+    org?.address_line_2,
+    [org?.city, org?.province, org?.postal_code].filter(Boolean).join(", "),
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return (
     <div className="flex flex-col gap-8">
@@ -176,6 +209,41 @@ export default function InvoiceDetailPage() {
 
       {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
 
+      <section className="grid gap-6 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
+        <div className="font-body text-sm">
+          <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">From</p>
+          <p className="mt-1 text-cadence-ink">{org?.legal_name || org?.name || "—"}</p>
+          {orgAddress ? (
+            <p className="mt-1 whitespace-pre-line text-cadence-ink/60">{orgAddress}</p>
+          ) : null}
+          {org?.email ? <p className="text-cadence-ink/60">{org.email}</p> : null}
+          {org?.tax_id ? <p className="text-cadence-ink/60">Tax ID {org.tax_id}</p> : null}
+        </div>
+        <div className="font-body text-sm">
+          <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">To</p>
+          <p className="mt-1 text-cadence-ink">{invoice.client_name}</p>
+          <p className="text-cadence-ink/60">{billingQuery.data?.billing_email || "—"}</p>
+          <p className="text-cadence-ink/60">
+            {[
+              clientQuery.data?.address_line_1,
+              clientQuery.data?.city,
+              clientQuery.data?.province,
+              clientQuery.data?.postal_code,
+            ]
+              .filter(Boolean)
+              .join(", ") || "—"}
+          </p>
+        </div>
+        {org?.remit_to_details ? (
+          <div className="font-body text-sm sm:col-span-2">
+            <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+              Payable IN
+            </p>
+            <p className="mt-1 whitespace-pre-line text-cadence-ink/70">{org.remit_to_details}</p>
+          </div>
+        ) : null}
+      </section>
+
       <dl className="grid max-w-xl grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
         <div>
           <dt className="text-cadence-ink/60">Issue date</dt>
@@ -227,6 +295,16 @@ export default function InvoiceDetailPage() {
               <Input id="autofill-to" type="date" {...register("date_to")} />
             </Field>
           </div>
+          <Field label="Job (optional)" htmlFor="autofill-job">
+            <Select id="autofill-job" {...register("job_id")}>
+              <option value="">All jobs for this client</option>
+              {(jobsQuery.data?.results ?? []).map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <div className="flex gap-2">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Filling…" : "Autofill"}

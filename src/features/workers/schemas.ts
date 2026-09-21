@@ -60,7 +60,7 @@ export const backgroundCheckSchema = z.object({
 export type BackgroundCheckFormValues = z.infer<typeof backgroundCheckSchema>;
 
 export const certSchema = z.object({
-  name: z.string().min(1, "Name is required.").max(255),
+  name: z.string().min(1, "Name is required.").max(150),
   issued: z.string().optional().or(z.literal("")),
   expiry: z.string().optional().or(z.literal("")),
 });
@@ -77,7 +77,7 @@ export type AvailabilityFormValues = z.infer<typeof availabilitySchema>;
 
 export const educationSchema = z.object({
   institution: z.string().min(1, "Institution is required.").max(255),
-  credential: z.string().min(1, "Credential is required.").max(255),
+  credential: z.string().min(1, "Credential is required.").max(150),
   year: optionalNumber(z.coerce.number().int().min(1950).max(2100)),
   completed: z.boolean().optional(),
 });
@@ -86,7 +86,7 @@ export type EducationFormValues = z.infer<typeof educationSchema>;
 
 export const employmentHistorySchema = z.object({
   employer_name: z.string().min(1, "Employer name is required.").max(255),
-  job_title: optionalStr(255),
+  job_title: optionalStr(150),
   started_on: z.string().optional().or(z.literal("")),
   ended_on: z.string().optional().or(z.literal("")),
   supervisor_name: optionalStr(150),

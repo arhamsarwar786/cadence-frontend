@@ -46,8 +46,8 @@ export default function PrivacyRequestDetailPage() {
       await answerPrivacyRequest(requestId, values);
       await queryClient.invalidateQueries({ queryKey: privacyRequestKeys.detail(requestId) });
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
     }
   }
 

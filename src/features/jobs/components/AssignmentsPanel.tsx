@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { createAssignment } from "@/features/jobs/actions";
 import { listJobAssignments } from "@/features/jobs/api";
@@ -17,16 +17,30 @@ import {
   searchWorkers,
 } from "@/features/workers/api";
 import type { EmployeeList } from "@/features/workers/types";
+import { PERM } from "@/permissions/keys";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { AssignmentStatus } from "@/shared/lib/status-labels";
 import { formatMoney } from "@/shared/lib/money";
 import { matchesQuery } from "@/shared/lib/matches";
-import { Avatar, Button, Chip, Dialog, Field, Input, SearchField, Select } from "@/shared/ui";
+import {
+  Avatar,
+  Button,
+  Chip,
+  Dialog,
+  Field,
+  Input,
+  Pagination,
+  PermGate,
+  SearchField,
+  Select,
+  TableSkeleton,
+} from "@/shared/ui";
 import { z } from "zod";
 
 const assignSchema = z.object({ employee_id: z.string().min(1, "Pick a worker.") });
 type AssignFormValues = z.infer<typeof assignSchema>;
 const FIELD_NAMES = Object.keys(assignSchema.shape);
+const PAGE_SIZE = 20;
 
 export function AssignmentsPanel({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient();
@@ -34,6 +48,7 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
   const query = useQuery({ queryKey, queryFn: () => listJobAssignments(jobId) });
 
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [skill, setSkill] = useState("");
   const [cert, setCert] = useState("");
@@ -51,13 +66,18 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
   });
 
   const searchParams = {
-    pageSize: 50,
+    page,
+    pageSize: PAGE_SIZE,
     skill: skill || undefined,
     cert: cert || undefined,
     minYears: minYears ? Number(minYears) : undefined,
     availableOn: availableOn || undefined,
     availableAt: availableAt || undefined,
   };
+
+  useEffect(() => {
+    setPage(1);
+  }, [skill, cert, minYears, availableOn, availableAt]);
 
   const workersQuery = useQuery({
     queryKey: ["workers-search", "assign", searchParams],
@@ -81,8 +101,10 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
     );
   }, [q, workersQuery.data?.results]);
 
+  const showRating = rows.some((w) => "rating" in w);
+
   const profileQueries = useQueries({
-    queries: rows.slice(0, 25).map((w) => ({
+    queries: rows.slice(0, PAGE_SIZE).map((w) => ({
       queryKey: ["assign-profile", w.id],
       queryFn: async () => {
         const [skills, certs, education, availability] = await Promise.all([
@@ -108,7 +130,7 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
         availability: Awaited<ReturnType<typeof listWorkerAvailability>>;
       }
     >();
-    rows.slice(0, 25).forEach((w, i) => {
+    rows.slice(0, PAGE_SIZE).forEach((w, i) => {
       const data = profileQueries[i]?.data;
       if (data) map.set(w.id, data);
     });
@@ -133,9 +155,11 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="font-subheading text-xl text-cadence-ink">Assignments</h2>
-        <Button size="sm" onClick={() => setOpen(true)}>
-          Assign worker
-        </Button>
+        <PermGate anyOf={PERM.JOBS_ASSIGN}>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Assign worker
+          </Button>
+        </PermGate>
       </div>
 
       {query.isLoading ? (
@@ -207,39 +231,52 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
             </div>
           ) : null}
 
-          <div className="max-h-[28rem] overflow-auto rounded-xl border border-border bg-surface text-cadence-ink">
-            <table className="w-full min-w-[48rem] text-left text-sm">
-              <thead className="sticky top-0 bg-surface font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
-                <tr>
-                  <th className="px-3 py-2">Candidate</th>
-                  <th className="px-3 py-2">Experience</th>
-                  <th className="px-3 py-2">Certs</th>
-                  <th className="px-3 py-2">Education</th>
-                  <th className="px-3 py-2">Availability</th>
-                  <th className="px-3 py-2">Rating</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((w) => (
-                  <WorkerPickRow
-                    key={w.id}
-                    worker={w}
-                    profile={profiles.get(w.id)}
-                    selected={selected === w.id}
-                    onSelect={() => {
-                      setSelected(w.id);
-                      setValue("employee_id", w.id, { shouldValidate: true });
-                    }}
-                  />
-                ))}
-              </tbody>
-            </table>
-            {workersQuery.isLoading ? (
-              <p className="px-3 py-6 text-center text-sm text-cadence-ink/60">Searching…</p>
-            ) : rows.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-cadence-ink/60">No candidates match.</p>
-            ) : null}
-          </div>
+          {workersQuery.isLoading ? (
+            <TableSkeleton rows={6} columns={showRating ? 6 : 5} />
+          ) : (
+            <>
+              <div className="max-h-[28rem] overflow-auto rounded-xl border border-border bg-surface text-cadence-ink">
+                <table className="w-full min-w-[48rem] text-left text-sm">
+                  <thead className="sticky top-0 bg-surface font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                    <tr>
+                      <th className="px-3 py-2">Candidate</th>
+                      <th className="px-3 py-2">Experience</th>
+                      <th className="px-3 py-2">Certs</th>
+                      <th className="px-3 py-2">Education</th>
+                      <th className="px-3 py-2">Availability</th>
+                      {showRating ? <th className="px-3 py-2">Rating</th> : null}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((w) => (
+                      <WorkerPickRow
+                        key={w.id}
+                        worker={w}
+                        profile={profiles.get(w.id)}
+                        showRating={showRating}
+                        selected={selected === w.id}
+                        onSelect={() => {
+                          setSelected(w.id);
+                          setValue("employee_id", w.id, { shouldValidate: true });
+                        }}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+                {rows.length === 0 ? (
+                  <p className="px-3 py-6 text-center text-sm text-cadence-ink/60">No candidates match.</p>
+                ) : null}
+              </div>
+              {workersQuery.data ? (
+                <Pagination
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  count={workersQuery.data.count}
+                  onPageChange={setPage}
+                />
+              ) : null}
+            </>
+          )}
           {formError ? <p className="font-body text-sm text-cadence-red">{formError}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
@@ -258,6 +295,7 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
 function WorkerPickRow({
   worker: w,
   profile,
+  showRating,
   selected,
   onSelect,
 }: {
@@ -268,6 +306,7 @@ function WorkerPickRow({
     education: Awaited<ReturnType<typeof listWorkerEducation>>;
     availability: Awaited<ReturnType<typeof listWorkerAvailability>>;
   };
+  showRating: boolean;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -317,9 +356,11 @@ function WorkerPickRow({
         ))}
         {!profile ? "…" : (profile.availability?.length ?? 0) === 0 ? "—" : null}
       </td>
-      <td className="px-3 py-2 align-top">
-        {"rating" in w && w.rating != null ? `★ ${w.rating}` : "—"}
-      </td>
+      {showRating ? (
+        <td className="px-3 py-2 align-top">
+          {"rating" in w && w.rating != null ? `★ ${w.rating}` : "—"}
+        </td>
+      ) : null}
     </tr>
   );
 }

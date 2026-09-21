@@ -1,28 +1,47 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { commitBatch, getBatch, importBatchKeys, listBatchDocuments, listBatchRows } from "@/features/candidate-imports/api";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { CANDIDATE_IMPORT_BATCH_STATUS_LABELS, type CandidateImportBatchStatus } from "@/shared/lib/status-labels";
-import { Badge, Button } from "@/shared/ui";
+import { Badge, Button, Pagination } from "@/shared/ui";
+
+const PAGE_SIZE = 50;
 
 export default function CandidateImportBatchDetailPage() {
   const { id: batchId } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [commitError, setCommitError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
+
+  const rowsPage = Number(searchParams.get("rowsPage") ?? "1") || 1;
+  const docsPage = Number(searchParams.get("docsPage") ?? "1") || 1;
 
   const batchQuery = useQuery({
     queryKey: importBatchKeys.detail(batchId),
     queryFn: () => getBatch(batchId),
     retry: false,
   });
-  const rowsQuery = useQuery({ queryKey: ["candidate-imports", batchId, "rows"], queryFn: () => listBatchRows(batchId) });
-  const docsQuery = useQuery({ queryKey: ["candidate-imports", batchId, "documents"], queryFn: () => listBatchDocuments(batchId) });
+  const rowsQuery = useQuery({
+    queryKey: ["candidate-imports", batchId, "rows", rowsPage],
+    queryFn: () => listBatchRows(batchId, rowsPage),
+  });
+  const docsQuery = useQuery({
+    queryKey: ["candidate-imports", batchId, "documents", docsPage],
+    queryFn: () => listBatchDocuments(batchId, docsPage),
+  });
 
   if (batchQuery.isError && isNotFound(batchQuery.error)) notFound();
+
+  function setPageParam(key: "rowsPage" | "docsPage", page: number) {
+    const params = new URLSearchParams(searchParams);
+    params.set(key, String(page));
+    router.push(`/candidate-imports/${batchId}?${params.toString()}`);
+  }
 
   async function handleCommit() {
     setCommitting(true);
@@ -46,7 +65,7 @@ export default function CandidateImportBatchDetailPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl text-cadence-ink">{batch.source_filename ?? "Import batch"}</h1>
           <Badge tone="info" className="mt-1">
@@ -62,7 +81,7 @@ export default function CandidateImportBatchDetailPage() {
       {commitError ? <p className="font-body text-sm text-cadence-red">{commitError}</p> : null}
       {batch.error ? <p className="font-body text-sm text-cadence-red">{batch.error}</p> : null}
 
-      <dl className="grid max-w-md grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
+      <dl className="grid max-w-md grid-cols-1 gap-x-8 gap-y-3 font-body text-sm sm:grid-cols-2">
         <div>
           <dt className="text-cadence-ink/60">Rows</dt>
           <dd className="text-cadence-ink">
@@ -86,24 +105,30 @@ export default function CandidateImportBatchDetailPage() {
       <section className="flex flex-col gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Rows</h2>
         {rowsQuery.data && rowsQuery.data.results.length > 0 ? (
-          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
-            {rowsQuery.data.results.map((row) => {
-              // errors rides an untyped JSON field server-side (no items
-              // schema in the contract) — only trust it at render time.
-              const errors = Array.isArray(row.errors) ? (row.errors as unknown[]) : [];
-              return (
-                <li key={row.id} className="flex items-center justify-between px-4 py-3">
-                  <p className="font-body text-sm text-cadence-ink">
-                    Row {row.row_number}
-                    {errors.length > 0 ? ` — ${errors.map(String).join(", ")}` : ""}
-                  </p>
-                  <Badge tone={row.match_status === "valid" ? "positive" : "negative"}>
-                    {row.match_status}
-                  </Badge>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+              {rowsQuery.data.results.map((row) => {
+                const errors = Array.isArray(row.errors) ? (row.errors as unknown[]) : [];
+                return (
+                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                    <p className="min-w-0 font-body text-sm text-cadence-ink">
+                      Row {row.row_number}
+                      {errors.length > 0 ? ` — ${errors.map(String).join(", ")}` : ""}
+                    </p>
+                    <Badge tone={row.match_status === "valid" ? "positive" : "negative"}>
+                      {row.match_status}
+                    </Badge>
+                  </li>
+                );
+              })}
+            </ul>
+            <Pagination
+              page={rowsPage}
+              pageSize={PAGE_SIZE}
+              count={rowsQuery.data.count}
+              onPageChange={(page) => setPageParam("rowsPage", page)}
+            />
+          </>
         ) : (
           <p className="font-body text-sm text-cadence-ink/60">No rows.</p>
         )}
@@ -112,14 +137,22 @@ export default function CandidateImportBatchDetailPage() {
       <section className="flex flex-col gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Documents</h2>
         {docsQuery.data && docsQuery.data.results.length > 0 ? (
-          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
-            {docsQuery.data.results.map((doc) => (
-              <li key={doc.id} className="flex items-center justify-between px-4 py-3">
-                <p className="font-body text-sm text-cadence-ink">{doc.original_filename}</p>
-                <Badge tone={doc.match_status === "matched" ? "positive" : "warning"}>{doc.match_status}</Badge>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+              {docsQuery.data.results.map((doc) => (
+                <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                  <p className="min-w-0 truncate font-body text-sm text-cadence-ink">{doc.original_filename}</p>
+                  <Badge tone={doc.match_status === "matched" ? "positive" : "warning"}>{doc.match_status}</Badge>
+                </li>
+              ))}
+            </ul>
+            <Pagination
+              page={docsPage}
+              pageSize={PAGE_SIZE}
+              count={docsQuery.data.count}
+              onPageChange={(page) => setPageParam("docsPage", page)}
+            />
+          </>
         ) : (
           <p className="font-body text-sm text-cadence-ink/60">No documents.</p>
         )}

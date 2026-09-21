@@ -48,6 +48,7 @@ export function searchWorkers(params: {
   if (params.minYears != null) search.set("min_years", String(params.minYears));
   if (params.availableOn) search.set("available_on", params.availableOn);
   if (params.availableAt) search.set("available_at", params.availableAt);
+  if (params.q) search.set("q", params.q);
   if (params.page) search.set("page", String(params.page));
   if (params.pageSize) search.set("page_size", String(params.pageSize));
   const qs = search.toString();

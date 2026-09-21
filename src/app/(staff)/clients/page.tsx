@@ -73,6 +73,7 @@ export default function ClientsListPage() {
     },
     {
       header: "Office address",
+      className: "hidden sm:table-cell",
       cell: (c) =>
         [c.address_line_1, c.city, c.province, c.postal_code].filter(Boolean).join(", ") || "—",
     },

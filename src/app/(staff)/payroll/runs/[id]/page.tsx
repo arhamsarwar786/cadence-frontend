@@ -10,19 +10,42 @@ import {
   PayStatementStatusBadge,
   PayrollRunStatusBadge,
 } from "@/features/money/components/StatusBadges";
-import { listWorkers, getWorker } from "@/features/workers/api";
+import { listWorkers } from "@/features/workers/api";
 import type { PayStatement } from "@/features/money/types";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import type { PayStatementStatus, PayrollRunStatus } from "@/shared/lib/status-labels";
+import {
+  PAY_METHOD_LABELS,
+  PAY_STATEMENT_STATUS_LABELS,
+  type PayMethod,
+  type PayStatementStatus,
+  type PayrollRunStatus,
+} from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Avatar, Button, ListLayout, PermGate, SearchField, Table, type Column } from "@/shared/ui";
+import {
+  Avatar,
+  Button,
+  FilterChip,
+  ListLayout,
+  PermGate,
+  SearchField,
+  Select,
+  Table,
+  type Column,
+} from "@/shared/ui";
+
+function preferenceLabel(method: string | undefined): string {
+  if (!method) return "—";
+  return PAY_METHOD_LABELS[method as PayMethod] ?? method.replaceAll("_", " ");
+}
 
 export default function PayrollRunDetailPage() {
   const { id: runId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [preference, setPreference] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const query = useQuery({
     queryKey: payrollRunKeys.detail(runId),
@@ -61,13 +84,20 @@ export default function PayrollRunDetailPage() {
   }, [workersLookup.data?.results]);
 
   const filtered = useMemo(() => {
-    if (!q.trim()) return statements;
-    const needle = q.toLowerCase();
-    return statements.filter((p) => p.employee_name.toLowerCase().includes(needle));
-  }, [q, statements]);
+    return statements.filter((p) => {
+      if (q.trim() && !p.employee_name.toLowerCase().includes(q.toLowerCase())) return false;
+      if (statusFilter && p.status !== statusFilter) return false;
+      if (preference) {
+        const method = payMethodByEmployee.get(p.employee_id) ?? "";
+        if (method !== preference) return false;
+      }
+      return true;
+    });
+  }, [q, preference, statusFilter, statements, payMethodByEmployee]);
 
-  const paid = statements.filter((p) => p.status === "paid").length;
-  const pending = statements.filter((p) => p.status !== "paid").length;
+  const draftCount = statements.filter((p) => p.status === "draft").length;
+  const issuedCount = statements.filter((p) => p.status === "issued").length;
+  const paidCount = statements.filter((p) => p.status === "paid").length;
 
   const columns: Column<PayStatement>[] = [
     {
@@ -81,8 +111,8 @@ export default function PayrollRunDetailPage() {
     },
     {
       header: "Preference",
-      cell: (p) =>
-        (payMethodByEmployee.get(p.employee_id) ?? "—").replaceAll("_", " "),
+      className: "hidden sm:table-cell",
+      cell: (p) => preferenceLabel(payMethodByEmployee.get(p.employee_id)),
     },
     {
       header: "Amount",
@@ -94,6 +124,7 @@ export default function PayrollRunDetailPage() {
     },
     {
       header: "Hours",
+      className: "hidden md:table-cell",
       cell: (p) => ("hours_total" in p && p.hours_total != null ? `${p.hours_total}h` : "—"),
     },
   ];
@@ -141,12 +172,37 @@ export default function PayrollRunDetailPage() {
 
       {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
 
-      <SearchField value={q} onChange={setQ} placeholder="Find by name" label="Find payees" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <SearchField value={q} onChange={setQ} placeholder="Find by name" label="Find payees" />
+        <div className="flex flex-wrap items-center gap-2">
+          {(["", "draft", "issued", "paid"] as const).map((s) => (
+            <FilterChip
+              key={s || "all"}
+              active={statusFilter === s}
+              onClick={() => setStatusFilter(s)}
+            >
+              {s ? PAY_STATEMENT_STATUS_LABELS[s] : "All"}
+            </FilterChip>
+          ))}
+          <Select
+            className="!w-auto"
+            value={preference}
+            onChange={(e) => setPreference(e.target.value)}
+            aria-label="Filter by preference"
+          >
+            <option value="">All preferences</option>
+            <option value="etransfer">{PAY_METHOD_LABELS.etransfer}</option>
+            <option value="direct_deposit">{PAY_METHOD_LABELS.direct_deposit}</option>
+            <option value="cheque">{PAY_METHOD_LABELS.cheque}</option>
+          </Select>
+        </div>
+      </div>
 
       <ListLayout
         stats={[
-          { value: paid, label: "paid", tone: "lime" },
-          { value: pending, label: "pending", tone: "orange" },
+          { value: draftCount, label: "draft", tone: "ink" },
+          { value: issuedCount, label: "issued", tone: "orange" },
+          { value: paidCount, label: "paid", tone: "lime" },
           { value: run.payday, label: "payday", tone: "ink" },
           { value: statements.length, label: "total payees", tone: "ink" },
         ]}

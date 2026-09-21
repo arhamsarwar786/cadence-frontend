@@ -30,3 +30,8 @@ export function uploadDocument(file: File, type: DocumentType): Promise<Document
 export function deleteDocument(id: string): Promise<void> {
   return api.delete<void>(`/api/v1/documents/${id}/`);
 }
+
+/** Same-origin download door — cookies ride the browser request. */
+export function documentDownloadUrl(id: string): string {
+  return `/api/v1/documents/${id}/download/`;
+}

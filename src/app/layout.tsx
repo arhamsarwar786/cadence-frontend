@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { QueryProvider } from "@/api/query-provider";
 import { SessionProvider } from "@/auth/session-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ToastProvider } from "@/shared/ui/Toast";
 import "./globals.css";
 
 const bonaNovaSC = localFont({
@@ -47,7 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-dvh flex-col font-body">
         <QueryProvider>
           <SessionProvider>
-            <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+            <ToastProvider>
+              <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+            </ToastProvider>
           </SessionProvider>
         </QueryProvider>
       </body>

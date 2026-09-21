@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import type { ConsentRecord } from "@/features/workers/types";
 import type {
   PortalAvailability,
   PortalAvailabilityWrite,
@@ -27,8 +28,8 @@ export function updateMe(body: PortalMeWrite): Promise<PortalEmployee> {
  * — refused until a root has set one (ARCHITECTURE.md, org consent
  * unset = consent_text="" / consent_version=0). No body: nothing to
  * choose, the org's live text is what's being agreed to. */
-export function captureConsent(): Promise<void> {
-  return api.post<void>("/api/v1/portal/me/consent/");
+export function captureConsent(): Promise<ConsentRecord> {
+  return api.post<ConsentRecord>("/api/v1/portal/me/consent/");
 }
 
 /** applicant -> onboarding (ARCHITECTURE.md §5): the worker's own
@@ -53,12 +54,20 @@ export function addCert(body: PortalCertWrite): Promise<PortalCert> {
   return api.post<PortalCert>("/api/v1/portal/me/certs/", body);
 }
 
+export function updateCert(certId: string, body: Partial<PortalCertWrite>): Promise<PortalCert> {
+  return api.patch<PortalCert>(`/api/v1/portal/me/certs/${certId}/`, body);
+}
+
 export function deleteCert(certId: string): Promise<void> {
   return api.delete<void>(`/api/v1/portal/me/certs/${certId}/`);
 }
 
 export function addSkill(body: PortalSkillWrite): Promise<PortalSkill> {
   return api.post<PortalSkill>("/api/v1/portal/me/skills/", body);
+}
+
+export function updateSkill(skillId: string, body: Partial<PortalSkillWrite>): Promise<PortalSkill> {
+  return api.patch<PortalSkill>(`/api/v1/portal/me/skills/${skillId}/`, body);
 }
 
 export function removeSkill(skillId: string): Promise<void> {
@@ -69,12 +78,26 @@ export function addAvailability(body: PortalAvailabilityWrite): Promise<PortalAv
   return api.post<PortalAvailability>("/api/v1/portal/me/availability/", body);
 }
 
+export function updateAvailability(
+  rowId: string,
+  body: Partial<PortalAvailabilityWrite>,
+): Promise<PortalAvailability> {
+  return api.patch<PortalAvailability>(`/api/v1/portal/me/availability/${rowId}/`, body);
+}
+
 export function deleteAvailability(rowId: string): Promise<void> {
   return api.delete<void>(`/api/v1/portal/me/availability/${rowId}/`);
 }
 
 export function addEducation(body: PortalEducationWrite): Promise<PortalEducation> {
   return api.post<PortalEducation>("/api/v1/portal/me/education/", body);
+}
+
+export function updateEducation(
+  rowId: string,
+  body: Partial<PortalEducationWrite>,
+): Promise<PortalEducation> {
+  return api.patch<PortalEducation>(`/api/v1/portal/me/education/${rowId}/`, body);
 }
 
 export function deleteEducation(rowId: string): Promise<void> {
@@ -93,6 +116,13 @@ export function deleteEmploymentHistory(rowId: string): Promise<void> {
 
 export function addTimeOff(body: PortalTimeOffWrite): Promise<PortalTimeOff> {
   return api.post<PortalTimeOff>("/api/v1/portal/me/time-off/", body);
+}
+
+export function updateTimeOff(
+  rowId: string,
+  body: Partial<PortalTimeOffWrite>,
+): Promise<PortalTimeOff> {
+  return api.patch<PortalTimeOff>(`/api/v1/portal/me/time-off/${rowId}/`, body);
 }
 
 export function deleteTimeOff(rowId: string): Promise<void> {

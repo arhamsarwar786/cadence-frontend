@@ -2,8 +2,8 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { api, type Paginated } from "@/api/client";
-import { resourceKeys } from "@/api/query-keys";
+import { api } from "@/api/client";
+import { listUsers, userKeys } from "@/features/accounts/api";
 import { PERM, type PermissionKey } from "@/permissions/keys";
 import { messageFrom } from "@/shared/lib/errors";
 import {
@@ -18,24 +18,9 @@ import {
   useConfirm,
 } from "@/shared/ui";
 
-const userKeys = resourceKeys("admin-users");
-
-interface StaffUser {
-  id: string;
-  login_masked: string;
-  status: string;
-  is_root: boolean;
-  user_type: string;
-  employee_id: string | null;
-}
-
 interface UserGrant {
   permission_key: string;
   scope: "own" | "assigned" | "all";
-}
-
-function listUsers(): Promise<Paginated<StaffUser> | StaffUser[]> {
-  return api.get("/api/v1/auth/users/");
 }
 
 function inviteUser(email: string): Promise<{ id: string; token?: string }> {
@@ -50,11 +35,11 @@ function resetCredentials(id: string): Promise<void> {
   return api.post(`/api/v1/auth/users/${id}/reset-credentials/`);
 }
 
-function getPermissions(id: string): Promise<{ grants: UserGrant[] }> {
+function getPermissions(id: string): Promise<UserGrant[]> {
   return api.get(`/api/v1/auth/users/${id}/permissions/`);
 }
 
-function putPermissions(id: string, grants: UserGrant[]): Promise<{ grants: UserGrant[] }> {
+function putPermissions(id: string, grants: UserGrant[]): Promise<UserGrant[]> {
   return api.put(`/api/v1/auth/users/${id}/permissions/`, { grants });
 }
 
@@ -85,9 +70,9 @@ export default function AdminUsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const query = useQuery({
-    queryKey: userKeys.list(),
+    queryKey: userKeys.list({ pageSize: 200 }),
     queryFn: async () => {
-      const data = await listUsers();
+      const data = await listUsers({ pageSize: 200 });
       return Array.isArray(data) ? data : data.results;
     },
   });
@@ -103,7 +88,7 @@ export default function AdminUsersPage() {
   async function openEditor(id: string) {
     setEditingId(id);
     const data = await getPermissions(id);
-    setDraftGrants(data.grants ?? []);
+    setDraftGrants(Array.isArray(data) ? data : []);
   }
 
   return (

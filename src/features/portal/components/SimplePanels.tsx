@@ -15,6 +15,10 @@ import {
   deleteEmploymentHistory,
   deleteTimeOff,
   removeSkill,
+  updateAvailability,
+  updateEducation,
+  updateSkill,
+  updateTimeOff,
 } from "@/features/portal/actions";
 import {
   listAvailability,
@@ -36,6 +40,12 @@ import {
   type PortalSkillLinkFormValues,
   type PortalTimeOffFormValues,
 } from "@/features/portal/schemas";
+import type {
+  PortalAvailability,
+  PortalEducation,
+  PortalSkill,
+  PortalTimeOff,
+} from "@/features/portal/types";
 import { DAYS_OF_WEEK } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { TIME_OFF_TYPE_LABELS } from "@/shared/lib/status-labels";
@@ -49,6 +59,7 @@ export function SkillsPanel() {
   const query = useQuery({ queryKey, queryFn: listSkills });
   const catalogQuery = useQuery({ queryKey: ["portal", "skill-catalog"], queryFn: listSkillCatalog });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<PortalSkill | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const FIELD_NAMES = Object.keys(portalSkillLinkSchema.shape);
   const {
@@ -63,24 +74,47 @@ export function SkillsPanel() {
     return queryClient.invalidateQueries({ queryKey });
   }
 
+  function openCreate() {
+    setEditing(null);
+    reset({ skill_id: "", years_exp: "" });
+    setFormError(null);
+    setOpen(true);
+  }
+
+  function openEdit(row: PortalSkill) {
+    setEditing(row);
+    reset({ skill_id: row.skill_id, years_exp: row.years_exp ?? "" });
+    setFormError(null);
+    setOpen(true);
+  }
+
   async function submit(values: PortalSkillLinkFormValues) {
     setFormError(null);
     try {
-      await addSkill({ skill_id: values.skill_id, years_exp: values.years_exp || undefined });
+      if (editing) {
+        await updateSkill(editing.skill_id, {
+          skill_id: values.skill_id,
+          years_exp: values.years_exp || undefined,
+        });
+      } else {
+        await addSkill({ skill_id: values.skill_id, years_exp: values.years_exp || undefined });
+      }
       await invalidate();
       reset();
+      setEditing(null);
       setOpen(false);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
+      else setFormError(messageFrom(error));
     }
   }
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Skills</h2>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={openCreate}>
           Add skill
         </Button>
       </div>
@@ -95,6 +129,14 @@ export function SkillsPanel() {
               {row.years_exp != null ? <span className="text-cadence-ink/60">{row.years_exp}y</span> : null}
               <button
                 type="button"
+                onClick={() => openEdit(row)}
+                className="text-cadence-ink/50 hover:text-cadence-ink"
+                aria-label={`Edit ${row.skill_name}`}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
                 onClick={() => removeSkill(row.skill_id).then(invalidate)}
                 className="text-cadence-ink/50 hover:text-cadence-red"
                 aria-label={`Remove ${row.skill_name}`}
@@ -107,10 +149,17 @@ export function SkillsPanel() {
       ) : (
         <p className="font-body text-sm text-cadence-ink/60">No skills on file.</p>
       )}
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add skill">
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+        title={editing ? "Edit skill" : "Add skill"}
+      >
         <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">
           <Field label="Skill" htmlFor="p-skill-id" error={errors.skill_id?.message}>
-            <Select id="p-skill-id" {...register("skill_id")}>
+            <Select id="p-skill-id" {...register("skill_id")} disabled={Boolean(editing)}>
               <option value="">Select…</option>
               {catalogQuery.data?.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -127,7 +176,14 @@ export function SkillsPanel() {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : "Save"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setOpen(false);
+                setEditing(null);
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -142,6 +198,7 @@ export function AvailabilityPanel() {
   const queryKey = ["portal", "availability"] as const;
   const query = useQuery({ queryKey, queryFn: listAvailability });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<PortalAvailability | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalAvailabilitySchema.shape);
@@ -159,16 +216,40 @@ export function AvailabilityPanel() {
     return queryClient.invalidateQueries({ queryKey });
   }
 
+  function openCreate() {
+    setEditing(null);
+    reset({ day_of_week: 1, start_time: "", end_time: "" });
+    setFormError(null);
+    setOpen(true);
+  }
+
+  function openEdit(row: PortalAvailability) {
+    setEditing(row);
+    reset({
+      day_of_week: row.day_of_week,
+      start_time: row.start_time,
+      end_time: row.end_time,
+    });
+    setFormError(null);
+    setOpen(true);
+  }
+
   async function submit(values: PortalAvailabilityFormValues) {
     setFormError(null);
     try {
-      await addAvailability(values as Parameters<typeof addAvailability>[0]);
+      if (editing) {
+        await updateAvailability(editing.id, values as Parameters<typeof updateAvailability>[1]);
+      } else {
+        await addAvailability(values as Parameters<typeof addAvailability>[0]);
+      }
       await invalidate();
       reset();
+      setEditing(null);
       setOpen(false);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
+      else setFormError(messageFrom(error));
     }
   }
 
@@ -186,29 +267,41 @@ export function AvailabilityPanel() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Availability</h2>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={openCreate}>
           Add window
         </Button>
       </div>
       {query.data && query.data.length > 0 ? (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
-            <li key={row.id} className="flex items-center justify-between px-4 py-3">
-              <p className="font-body text-sm text-cadence-ink">
+            <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
+              <p className="min-w-0 font-body text-sm text-cadence-ink">
                 {DAY_LABEL.get(row.day_of_week)} · {row.start_time}–{row.end_time}
               </p>
-              <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
-                Remove
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button size="sm" variant="ghost" onClick={() => openEdit(row)}>
+                  Edit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
+                  Remove
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
       ) : (
         <p className="font-body text-sm text-cadence-ink/60">No availability set.</p>
       )}
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add availability window">
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+        title={editing ? "Edit availability window" : "Add availability window"}
+      >
         <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">
           <Field label="Day" htmlFor="p-avail-day" error={errors.day_of_week?.message}>
             <Select id="p-avail-day" {...register("day_of_week")}>
@@ -230,7 +323,14 @@ export function AvailabilityPanel() {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : "Save"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setOpen(false);
+                setEditing(null);
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -246,6 +346,7 @@ export function EducationPanel() {
   const queryKey = ["portal", "education"] as const;
   const query = useQuery({ queryKey, queryFn: listEducation });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<PortalEducation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalEducationSchema.shape);
@@ -263,16 +364,41 @@ export function EducationPanel() {
     return queryClient.invalidateQueries({ queryKey });
   }
 
+  function openCreate() {
+    setEditing(null);
+    reset({ institution: "", credential: "", year: undefined, completed: false });
+    setFormError(null);
+    setOpen(true);
+  }
+
+  function openEdit(row: PortalEducation) {
+    setEditing(row);
+    reset({
+      institution: row.institution,
+      credential: row.credential,
+      year: row.year ?? undefined,
+      completed: row.completed ?? false,
+    });
+    setFormError(null);
+    setOpen(true);
+  }
+
   async function submit(values: PortalEducationFormValues) {
     setFormError(null);
     try {
-      await addEducation(values);
+      if (editing) {
+        await updateEducation(editing.id, values);
+      } else {
+        await addEducation(values);
+      }
       await invalidate();
       reset();
+      setEditing(null);
       setOpen(false);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
+      else setFormError(messageFrom(error));
     }
   }
 
@@ -290,29 +416,42 @@ export function EducationPanel() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Education</h2>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={openCreate}>
           Add entry
         </Button>
       </div>
       {query.data && query.data.length > 0 ? (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
-            <li key={row.id} className="flex items-center justify-between px-4 py-3">
-              <p className="font-body text-sm text-cadence-ink">
+            <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
+              <p className="min-w-0 font-body text-sm text-cadence-ink">
                 {row.credential} — {row.institution}
+                {row.year != null ? ` (${row.year})` : ""}
               </p>
-              <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
-                Remove
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button size="sm" variant="ghost" onClick={() => openEdit(row)}>
+                  Edit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
+                  Remove
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
       ) : (
         <p className="font-body text-sm text-cadence-ink/60">No education on file.</p>
       )}
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add education">
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+        title={editing ? "Edit education" : "Add education"}
+      >
         <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">
           <Field label="Institution" htmlFor="p-edu-institution" error={errors.institution?.message}>
             <Input id="p-edu-institution" {...register("institution")} />
@@ -328,7 +467,14 @@ export function EducationPanel() {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : "Save"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setOpen(false);
+                setEditing(null);
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -375,8 +521,8 @@ export function EmploymentHistoryPanel() {
       reset();
       setOpen(false);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
     }
   }
 
@@ -394,17 +540,17 @@ export function EmploymentHistoryPanel() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Employment history</h2>
         <Button size="sm" onClick={() => setOpen(true)}>
           Add entry
         </Button>
       </div>
       {query.data && query.data.length > 0 ? (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
-            <li key={row.id} className="flex items-center justify-between px-4 py-3">
-              <p className="font-body text-sm text-cadence-ink">
+            <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
+              <p className="min-w-0 font-body text-sm text-cadence-ink">
                 {row.job_title ? `${row.job_title} — ` : ""}
                 {row.employer_name}
               </p>
@@ -425,7 +571,7 @@ export function EmploymentHistoryPanel() {
           <Field label="Job title" htmlFor="p-eh-title" error={errors.job_title?.message}>
             <Input id="p-eh-title" {...register("job_title")} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Started" htmlFor="p-eh-started" error={errors.started_on?.message}>
               <Input id="p-eh-started" type="date" {...register("started_on")} />
             </Field>
@@ -454,6 +600,7 @@ export function TimeOffPanel() {
   const queryKey = ["portal", "time-off"] as const;
   const query = useQuery({ queryKey, queryFn: listTimeOff });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<PortalTimeOff | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalTimeOffSchema.shape);
@@ -469,16 +616,40 @@ export function TimeOffPanel() {
     return queryClient.invalidateQueries({ queryKey });
   }
 
+  function openCreate() {
+    setEditing(null);
+    reset({ type: "vacation", start_date: "", end_date: "" });
+    setFormError(null);
+    setOpen(true);
+  }
+
+  function openEdit(row: PortalTimeOff) {
+    setEditing(row);
+    reset({
+      type: row.type as PortalTimeOffFormValues["type"],
+      start_date: row.start_date,
+      end_date: row.end_date,
+    });
+    setFormError(null);
+    setOpen(true);
+  }
+
   async function submit(values: PortalTimeOffFormValues) {
     setFormError(null);
     try {
-      await addTimeOff(values);
+      if (editing) {
+        await updateTimeOff(editing.id, values);
+      } else {
+        await addTimeOff(values);
+      }
       await invalidate();
       reset();
+      setEditing(null);
       setOpen(false);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
+      else setFormError(messageFrom(error));
     }
   }
 
@@ -496,29 +667,41 @@ export function TimeOffPanel() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-subheading text-xl text-cadence-ink">Time off</h2>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button size="sm" onClick={openCreate}>
           Add entry
         </Button>
       </div>
       {query.data && query.data.length > 0 ? (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
-            <li key={row.id} className="flex items-center justify-between px-4 py-3">
-              <p className="font-body text-sm text-cadence-ink">
+            <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
+              <p className="min-w-0 font-body text-sm text-cadence-ink">
                 {TIME_OFF_TYPE_LABELS[row.type]} · {row.start_date} – {row.end_date}
               </p>
-              <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
-                Remove
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button size="sm" variant="ghost" onClick={() => openEdit(row)}>
+                  Edit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
+                  Remove
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
       ) : (
         <p className="font-body text-sm text-cadence-ink/60">No time off on file.</p>
       )}
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add time off">
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+        title={editing ? "Edit time off" : "Add time off"}
+      >
         <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">
           <Field label="Type" htmlFor="p-to-type" error={errors.type?.message}>
             <Select id="p-to-type" {...register("type")}>
@@ -528,7 +711,7 @@ export function TimeOffPanel() {
               <option value="other">Other</option>
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Start date" htmlFor="p-to-start" error={errors.start_date?.message}>
               <Input id="p-to-start" type="date" {...register("start_date")} />
             </Field>
@@ -541,7 +724,14 @@ export function TimeOffPanel() {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : "Save"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setOpen(false);
+                setEditing(null);
+              }}
+            >
               Cancel
             </Button>
           </div>

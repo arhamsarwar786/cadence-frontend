@@ -12,6 +12,7 @@ import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBad
 import type { ClientBillingFormValues, ClientFormValues } from "@/features/clients/schemas";
 import { PROVINCE_LABELS } from "@/features/clients/schemas";
 import type { ClientBillingWrite, ClientWrite } from "@/features/clients/types";
+import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog";
 import { PERM } from "@/permissions/keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import type { ClientStatus } from "@/shared/lib/status-labels";
@@ -99,7 +100,12 @@ export default function ClientDetailPage() {
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <LogFollowUpButton
+            entityType="client"
+            entityId={client.id}
+            entityLabel={client.name}
+          />
           <PermGate anyOf={PERM.CLIENTS_EDIT}>
             <Button variant="secondary" onClick={() => setEditingClient((v) => !v)}>
               {editingClient ? "Cancel" : "Edit"}

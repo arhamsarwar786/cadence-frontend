@@ -33,11 +33,28 @@ export const invoiceLineSchema = z.object({
 
 export type InvoiceLineFormValues = z.infer<typeof invoiceLineSchema>;
 
-export const payrollRunCreateSchema = z.object({
-  period_start: z.string().min(1, "Start date is required."),
-  period_end: z.string().min(1, "End date is required."),
-  payday: z.string().min(1, "Payday is required."),
-});
+export const payrollRunCreateSchema = z
+  .object({
+    period_start: z.string().min(1, "Start date is required."),
+    period_end: z.string().min(1, "End date is required."),
+    payday: z.string().min(1, "Payday is required."),
+  })
+  .superRefine((values, ctx) => {
+    if (values.period_start && values.period_end && values.period_end < values.period_start) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["period_end"],
+        message: "Period end cannot precede the start.",
+      });
+    }
+    if (values.period_end && values.payday && values.payday < values.period_end) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["payday"],
+        message: "Payday cannot precede the period end.",
+      });
+    }
+  });
 
 export type PayrollRunCreateFormValues = z.infer<typeof payrollRunCreateSchema>;
 

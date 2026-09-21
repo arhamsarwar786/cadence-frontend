@@ -152,7 +152,9 @@ export function BottomDock({
           <div
             className={cn(
               "absolute bottom-24 w-[min(22rem,calc(100vw-2rem))] rounded-[1.75rem] bg-card p-4 text-on-card shadow-card",
-              align === "start" ? "left-4 sm:left-6" : "left-1/2 -translate-x-1/2",
+              align === "start"
+                ? "left-1/2 -translate-x-1/2 sm:left-6 sm:translate-x-0"
+                : "left-1/2 -translate-x-1/2",
             )}
             onClick={(event) => event.stopPropagation()}
             role="dialog"
@@ -222,7 +224,7 @@ export function BottomDock({
       <nav
         className={cn(
           "pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-50 flex px-4",
-          align === "start" ? "justify-start sm:px-6" : "justify-center",
+          align === "start" ? "justify-center sm:justify-start sm:px-6" : "justify-center",
         )}
       >
         <ul className="pointer-events-auto flex items-center gap-1 overflow-visible rounded-full bg-card p-1.5 text-on-card shadow-card">

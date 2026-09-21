@@ -6,13 +6,26 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { clearShiftMark, getShiftBackfill, markShiftNotWorked } from "@/features/jobs/actions";
-import { listShifts, shiftKeys } from "@/features/jobs/api";
+import { listJobs, listShifts, shiftKeys } from "@/features/jobs/api";
 import { ShiftStatusBadge } from "@/features/jobs/components/StatusBadges";
 import { shiftMarkSchema, type ShiftMarkFormValues } from "@/features/jobs/schemas";
 import type { Shift } from "@/features/jobs/types";
+import { listWorkers } from "@/features/workers/api";
+import { PERM } from "@/permissions/keys";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, ListSkeleton, Pagination, Select, Table, type Column } from "@/shared/ui";
+import {
+  Button,
+  Dialog,
+  Field,
+  Input,
+  ListSkeleton,
+  Pagination,
+  PermGate,
+  Select,
+  Table,
+  type Column,
+} from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(shiftMarkSchema.shape);
@@ -24,9 +37,20 @@ export default function ShiftsListPage() {
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const from = searchParams.get("from") ?? "";
   const to = searchParams.get("to") ?? "";
+  const job = searchParams.get("job") ?? "";
+  const employee = searchParams.get("employee") ?? "";
   const [markTarget, setMarkTarget] = useState<Shift | null>(null);
   const [backfillTarget, setBackfillTarget] = useState<Shift | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const jobsQuery = useQuery({
+    queryKey: ["jobs-picker"],
+    queryFn: () => listJobs({ pageSize: 200 }),
+  });
+  const workersQuery = useQuery({
+    queryKey: ["workers-picker"],
+    queryFn: () => listWorkers({ pageSize: 200 }),
+  });
 
   const backfillQuery = useQuery({
     queryKey: ["shift-backfill", backfillTarget?.id],
@@ -34,7 +58,14 @@ export default function ShiftsListPage() {
     enabled: Boolean(backfillTarget),
   });
 
-  const listParams = { page, pageSize: PAGE_SIZE, from: from || undefined, to: to || undefined };
+  const listParams = {
+    page,
+    pageSize: PAGE_SIZE,
+    from: from || undefined,
+    to: to || undefined,
+    job: job || undefined,
+    employee: employee || undefined,
+  };
   const query = useQuery({
     queryKey: shiftKeys.list(listParams),
     queryFn: () => listShifts(listParams),
@@ -96,18 +127,24 @@ export default function ShiftsListPage() {
         <div className="flex flex-wrap gap-2">
           {s.status === "not_worked" ? (
             <>
-              <Button size="sm" variant="secondary" onClick={() => handleClearMark(s)}>
-                Clear mark
-              </Button>
-              <Button size="sm" onClick={() => setBackfillTarget(s)}>
-                Backfill
-              </Button>
+              <PermGate anyOf={PERM.SHIFTS_EDIT}>
+                <Button size="sm" variant="secondary" onClick={() => handleClearMark(s)}>
+                  Clear mark
+                </Button>
+              </PermGate>
+              <PermGate anyOf={PERM.SHIFTS_EDIT}>
+                <Button size="sm" onClick={() => setBackfillTarget(s)}>
+                  Backfill
+                </Button>
+              </PermGate>
             </>
           ) : null}
           {s.status === "scheduled" ? (
-            <Button size="sm" variant="secondary" onClick={() => setMarkTarget(s)}>
-              Mark not worked
-            </Button>
+            <PermGate anyOf={PERM.SHIFTS_EDIT}>
+              <Button size="sm" variant="secondary" onClick={() => setMarkTarget(s)}>
+                Mark not worked
+              </Button>
+            </PermGate>
           ) : null}
         </div>
       ),
@@ -133,6 +170,34 @@ export default function ShiftsListPage() {
             value={to}
             onChange={(e) => setParams({ to: e.target.value || null, page: "1" })}
           />
+        </Field>
+        <Field label="Job" htmlFor="shifts-job">
+          <Select
+            id="shifts-job"
+            value={job}
+            onChange={(e) => setParams({ job: e.target.value || null, page: "1" })}
+          >
+            <option value="">All jobs</option>
+            {(jobsQuery.data?.results ?? []).map((j) => (
+              <option key={j.id} value={j.id}>
+                {j.title}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Employee" htmlFor="shifts-employee">
+          <Select
+            id="shifts-employee"
+            value={employee}
+            onChange={(e) => setParams({ employee: e.target.value || null, page: "1" })}
+          >
+            <option value="">All employees</option>
+            {(workersQuery.data?.results ?? []).map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.first_name} {w.last_name}
+              </option>
+            ))}
+          </Select>
         </Field>
       </div>
 

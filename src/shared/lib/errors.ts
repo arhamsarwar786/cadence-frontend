@@ -7,6 +7,8 @@ import { ApiError } from "@/api/client";
  * never invents a friendlier story for that distinction.
  */
 
+const META_KEYS = new Set(["detail", "non_field_errors"]);
+
 export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
@@ -25,8 +27,40 @@ export function isBadRequest(error: unknown): boolean {
 
 export type FieldErrors = Record<string, string[]>;
 
-/** A 400's field errors, for React Hook Form's setError. Empty for any
- * other status or an unrecognized body shape — never guessed. */
+function collectMessages(value: unknown, path = ""): string[] {
+  if (value == null) return [];
+  if (typeof value === "string") {
+    const text = value.trim();
+    return text ? [path ? `${path}: ${text}` : text] : [];
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return [path ? `${path}: ${String(value)}` : String(value)];
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return [];
+    if (value.every((item) => typeof item === "string")) {
+      const joined = value.map(String).join(" ").trim();
+      return joined ? [path ? `${path}: ${joined}` : joined] : [];
+    }
+    return value.flatMap((item, index) =>
+      collectMessages(item, path ? `${path}[${index}]` : `[${index}]`),
+    );
+  }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).flatMap(([key, nested]) =>
+      collectMessages(nested, path ? `${path}.${key}` : key),
+    );
+  }
+  return [];
+}
+
+function stringListMessage(value: unknown): string | null {
+  const messages = collectMessages(value);
+  return messages.length ? messages.join(" ") : null;
+}
+
+/** A 400's field errors for React Hook Form. Meta keys (`detail`,
+ * `non_field_errors`) are excluded — those belong on the form banner. */
 export function fieldErrorsFrom(error: unknown): FieldErrors {
   if (!(error instanceof ApiError) || error.status !== 400) return {};
   const body = error.body;
@@ -34,42 +68,69 @@ export function fieldErrorsFrom(error: unknown): FieldErrors {
 
   const fieldErrors: FieldErrors = {};
   for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
-    if (Array.isArray(value)) {
-      fieldErrors[key] = value.map(String);
-    } else if (typeof value === "string") {
-      fieldErrors[key] = [value];
-    }
+    if (META_KEYS.has(key)) continue;
+    const messages = collectMessages(value)
+      .map((message) => {
+        const prefix = `${key}: `;
+        return message.startsWith(prefix) ? message.slice(prefix.length) : message;
+      })
+      .filter(Boolean);
+    if (messages.length) fieldErrors[key] = messages;
   }
   return fieldErrors;
 }
 
 function detailMessage(body: unknown): string | null {
-  if (body !== null && typeof body === "object" && "detail" in body) {
-    const detail = (body as { detail?: unknown }).detail;
-    return typeof detail === "string" ? detail : null;
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return typeof body === "string" && body.trim() ? body.trim() : null;
   }
-  return null;
+  const record = body as Record<string, unknown>;
+  // Django ValidationError → {"detail": ["…"]}
+  // DRF serializer cross-field → {"non_field_errors": ["…"]}
+  return stringListMessage(record.detail) ?? stringListMessage(record.non_field_errors);
 }
 
-/** Maps a 400's field errors onto a React Hook Form instance — the shared
- * shape of "submit, catch a 400, show it on the right field" every
- * feature's form repeats. Returns whether anything actually matched a
- * known field, so the caller can fall back to a form-level message
- * (a 400 naming a field the form doesn't render, e.g. a cross-field
- * validator) instead of silently swallowing it. */
+function fieldMessagesSummary(error: unknown, excludeKeys: readonly string[] = []): string | null {
+  const exclude = new Set(excludeKeys);
+  const parts: string[] = [];
+  for (const [field, messages] of Object.entries(fieldErrorsFrom(error))) {
+    if (exclude.has(field) || !messages[0]) continue;
+    parts.push(`${field}: ${messages[0]}`);
+  }
+  return parts.length ? parts.join(" ") : null;
+}
+
+/**
+ * Maps a 400's field errors onto a React Hook Form instance.
+ * Returns a form-level message for anything not pinned to a known field
+ * (`non_field_errors`, `detail`, unknown keys, nested leftovers). Null when
+ * every API error landed on a rendered field.
+ */
 export function applyFieldErrors<T extends FieldValues>(
   setError: UseFormSetError<T>,
   error: unknown,
   validKeys: readonly string[],
-): boolean {
-  let matched = false;
+): string | null {
+  const valid = new Set(validKeys);
+  const applied: string[] = [];
+  const unmatched: string[] = [];
+
   for (const [field, messages] of Object.entries(fieldErrorsFrom(error))) {
-    if (validKeys.includes(field) && messages[0]) {
+    if (!messages[0]) continue;
+    if (valid.has(field)) {
       setError(field as Path<T>, { message: messages[0] });
-      matched = true;
+      applied.push(field);
+    } else {
+      unmatched.push(`${field}: ${messages[0]}`);
     }
   }
-  return matched;
+
+  const meta =
+    error instanceof ApiError ? detailMessage(error.body) : null;
+  const residual = [meta, ...unmatched].filter(Boolean) as string[];
+  if (residual.length) return residual.join(" ");
+  if (applied.length) return null;
+  return messageFrom(error);
 }
 
 /** True when Django is down, the proxy timed out, or the response is a 5xx.
@@ -82,8 +143,9 @@ export function isUnreachable(error: unknown): boolean {
   return error instanceof TypeError || error instanceof DOMException;
 }
 
-/** A single human-readable line for a toast/banner. Prefer a specific
- * field error in a form context — this is the fallback summary. */
+/** A single human-readable line for a banner / form-level error. Prefer
+ * pinning field errors via `applyFieldErrors` in forms; this is the
+ * fallback that must still speak the API's words. */
 export function messageFrom(error: unknown): string {
   if (isUnreachable(error)) {
     if (error instanceof ApiError && typeof error.body === "string") return error.body;
@@ -94,7 +156,16 @@ export function messageFrom(error: unknown): string {
       return detailMessage(error.body) ?? "You don't have permission to do that.";
     }
     if (error.status === 404) return "Not found.";
-    if (error.status === 401) return "Please sign in again.";
+    if (error.status === 401) {
+      return detailMessage(error.body) ?? "Please sign in again.";
+    }
+    if (error.status === 400) {
+      return (
+        detailMessage(error.body) ??
+        fieldMessagesSummary(error) ??
+        "Something went wrong. Please try again."
+      );
+    }
     return detailMessage(error.body) ?? "Something went wrong. Please try again.";
   }
   if (error instanceof Error) return error.message;

@@ -1,15 +1,16 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { submitOnboarding, updateMe } from "@/features/portal/actions";
-import { getConsentText, getMe, listDocuments } from "@/features/portal/api";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { captureConsent, saveSignature, submitOnboarding, updateMe } from "@/features/portal/actions";
+import { getConsentText, getMe, listDocuments, portalConsentKey } from "@/features/portal/api";
 import { CertsPanel } from "@/features/portal/components/CertsPanel";
 import { DocumentsPanel } from "@/features/portal/components/DocumentsPanel";
 import { AvailabilityPanel } from "@/features/portal/components/SimplePanels";
+import type { ConsentRecord } from "@/features/workers/types";
 import { messageFrom } from "@/shared/lib/errors";
-import { Button, Select } from "@/shared/ui";
+import { Button, Select, SignaturePad, type SignaturePadHandle } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 const ME_KEY = ["portal", "me"] as const;
@@ -25,23 +26,61 @@ const STEPS = [
   "Submit",
 ] as const;
 
+const STEP_ALIASES: Record<string, number> = {
+  welcome: 0,
+  "work-auth": 1,
+  work_auth: 1,
+  docs: 2,
+  documents: 2,
+  certs: 3,
+  certifications: 3,
+  availability: 4,
+  consent: 5,
+  agreement: 5,
+  submit: 6,
+};
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const meQuery = useQuery({ queryKey: ME_KEY, queryFn: getMe });
   const docsQuery = useQuery({ queryKey: DOCS_KEY, queryFn: listDocuments });
-  const consentQuery = useQuery({ queryKey: ["portal", "consent-text"], queryFn: getConsentText });
+  const consentTextQuery = useQuery({ queryKey: ["portal", "consent-text"], queryFn: getConsentText });
+  const cachedConsent = queryClient.getQueryData<ConsentRecord>(portalConsentKey);
 
-  const [step, setStep] = useState(0);
+  const initialStep = STEP_ALIASES[searchParams.get("step") ?? ""] ?? 0;
+  const [step, setStep] = useState(initialStep);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [workAuth, setWorkAuth] = useState("");
   const [permitExpiry, setPermitExpiry] = useState("");
   const [done, setDone] = useState(false);
+  const signatureRef = useRef<SignaturePadHandle>(null);
 
   const me = meQuery.data;
   const docs = docsQuery.data ?? [];
+  const consentVersion = consentTextQuery.data?.consent_version ?? 0;
+  const serverConsent = me?.consent ?? cachedConsent ?? null;
+  const consentCaptured =
+    Boolean(serverConsent) &&
+    (consentVersion === 0 || serverConsent?.version === consentVersion);
+
+  useEffect(() => {
+    if (serverConsent) {
+      queryClient.setQueryData(portalConsentKey, serverConsent);
+      setAcknowledged(true);
+    }
+  }, [serverConsent, queryClient]);
+
+  useEffect(() => {
+    const alias = searchParams.get("step");
+    if (alias && alias in STEP_ALIASES) setStep(STEP_ALIASES[alias]);
+  }, [searchParams]);
+
   const resume = docs.some((d) => d.document_type === "resume");
   const sin = docs.some((d) => d.document_type === "sin_document");
   const govIds = docs.filter((d) => d.document_type === "gov_id").length;
@@ -53,7 +92,12 @@ export default function OnboardingPage() {
 
   const checks = useMemo(
     () => [
-      { ok: acknowledged, label: "Consent acknowledged" },
+      {
+        ok: consentCaptured || acknowledged,
+        label: consentCaptured
+          ? `Consent on file (v${serverConsent?.version ?? consentVersion})`
+          : "Consent acknowledged",
+      },
       {
         ok: authorization === "citizen_pr" || authorization === "permit",
         label: "Work authorization",
@@ -65,11 +109,20 @@ export default function OnboardingPage() {
         label: "Permit + expiry (if on a permit)",
       },
       { ok: resume, label: "Résumé" },
-      { ok: sin, label: "SIN document" },
-      { ok: govIds >= 2, label: `Two photo IDs (${govIds}/2)` },
+      {
+        ok: sin,
+        label: "SIN document (office may collect if you cannot upload)",
+      },
+      {
+        ok: govIds >= 2,
+        label: `Two photo IDs (${govIds}/2 — office may collect)`,
+      },
     ],
     [
+      consentCaptured,
       acknowledged,
+      serverConsent?.version,
+      consentVersion,
       authorization,
       permitNeeded,
       permitDoc,
@@ -100,11 +153,49 @@ export default function OnboardingPage() {
     }
   }
 
+  async function persistConsent() {
+    if (consentCaptured) return true;
+    if (!acknowledged) return false;
+    if (consentVersion === 0) return acknowledged;
+    setConsentSaving(true);
+    setConsentError(null);
+    try {
+      const record = await captureConsent();
+      queryClient.setQueryData(portalConsentKey, record);
+      await queryClient.invalidateQueries({ queryKey: ME_KEY });
+      return true;
+    } catch (error) {
+      setConsentError(messageFrom(error));
+      return false;
+    } finally {
+      setConsentSaving(false);
+    }
+  }
+
+  async function handleConsentContinue() {
+    setConsentError(null);
+    if (signatureRef.current && !signatureRef.current.isEmpty()) {
+      try {
+        const blob = await signatureRef.current.toBlob();
+        if (blob) {
+          const file = new File([blob], "signature.png", { type: "image/png" });
+          await saveSignature(file);
+        }
+      } catch (error) {
+        setConsentError(messageFrom(error));
+        return;
+      }
+    }
+    const ok = await persistConsent();
+    if (ok) setStep(6);
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await submitOnboarding(acknowledged);
+      const consentOk = consentCaptured || (await persistConsent());
+      await submitOnboarding(Boolean(consentOk || acknowledged));
       await queryClient.invalidateQueries({ queryKey: ME_KEY });
       setDone(true);
     } catch (error) {
@@ -152,19 +243,19 @@ export default function OnboardingPage() {
       </div>
 
       {step === 0 ? (
-        <PortalCard>
+        <PortalCard className="overflow-hidden">
           <h2 className="font-heading text-2xl text-cadence-ink">Let&apos;s get you set up</h2>
           <p className="mt-2 text-sm text-cadence-ink/60">Takes about 5 minutes.</p>
           <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-cadence-ink/70">
             <li>Work authorization</li>
-            <li>Document uploads</li>
+            <li>Résumé and permit uploads</li>
             <li>Certifications &amp; licenses</li>
             <li>Availability</li>
             <li>Agreement &amp; consent</li>
           </ul>
           <p className="mt-4 rounded-xl bg-cadence-yellow/30 px-3 py-2 text-xs text-cadence-ink/70">
-            SIN, date of birth, banking, and account creation at the end need new portal doors —
-            your office may still collect those after review.
+            SIN, date of birth, banking, photo ID on the encrypted path, and self-serve account
+            creation need new portal doors — your office may still collect those after review.
           </p>
           <Button className="mt-6" onClick={() => setStep(1)}>
             Get started
@@ -203,10 +294,11 @@ export default function OnboardingPage() {
         <PortalCard>
           <h2 className="font-subheading text-xl text-cadence-ink">Upload your documents</h2>
           <p className="mt-1 mb-4 font-body text-sm text-cadence-ink/60">
-            Required to submit: résumé, SIN document, two government photo IDs
-            {permitNeeded ? ", and your work/study permit" : ""}.
+            Upload your résumé
+            {permitNeeded ? " and work/study permit" : ""}. SIN and government photo IDs may be
+            collected by your office until those portal doors exist.
           </p>
-          <DocumentsPanel />
+          <DocumentsPanel allowedTypes={["resume", "work_permit", "study_permit"]} />
           <StepNav onBack={() => setStep(1)} onNext={() => setStep(3)} />
         </PortalCard>
       ) : null}
@@ -234,33 +326,66 @@ export default function OnboardingPage() {
       {step === 5 ? (
         <PortalCard>
           <h2 className="font-subheading text-xl text-cadence-ink">Agreement &amp; consent</h2>
-          {consentQuery.data?.consent_version ? (
+          {consentCaptured ? (
+            <p className="mt-3 rounded-xl bg-cadence-lime/25 px-3 py-2 font-body text-sm text-cadence-ink">
+              Consent already on file
+              {serverConsent?.version != null ? ` (version ${serverConsent.version})` : ""}.
+            </p>
+          ) : null}
+          {consentTextQuery.data?.consent_version ? (
             <>
               <div className="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-2xl bg-surface-muted p-4 font-body text-sm text-cadence-ink">
-                {consentQuery.data.consent_text}
+                {consentTextQuery.data.consent_text}
               </div>
               <p className="mt-2 font-fine text-[11px] text-cadence-ink/60">
-                Version {consentQuery.data.consent_version}
+                Version {consentTextQuery.data.consent_version}
               </p>
-              <label className="mt-4 flex items-start gap-2 font-body text-sm text-cadence-ink">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={acknowledged}
-                  onChange={(e) => setAcknowledged(e.target.checked)}
-                />
-                I consent to this collection and use of my information, and I agree to the terms
-                above.
-              </label>
+              {!consentCaptured ? (
+                <label className="mt-4 flex items-start gap-2 font-body text-sm text-cadence-ink">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={acknowledged}
+                    onChange={(e) => setAcknowledged(e.target.checked)}
+                  />
+                  I consent to this collection and use of my information, and I agree to the terms
+                  above.
+                </label>
+              ) : null}
+              <div className="mt-4">
+                <p className="mb-2 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                  Signature
+                </p>
+                <SignaturePad ref={signatureRef} label="Tap to sign" />
+                <button
+                  type="button"
+                  className="mt-2 font-body text-xs text-cadence-ink/55 underline"
+                  onClick={() => signatureRef.current?.clear()}
+                >
+                  Clear signature
+                </button>
+              </div>
             </>
           ) : (
             <p className="mt-2 font-body text-sm text-cadence-ink/60">
-              {consentQuery.isError
-                ? messageFrom(consentQuery.error)
+              {consentTextQuery.isError
+                ? messageFrom(consentTextQuery.error)
                 : "Your agency has not published a consent notice yet."}
             </p>
           )}
-          <StepNav onBack={() => setStep(4)} onNext={() => setStep(6)} nextDisabled={!acknowledged} />
+          {consentError ? (
+            <p className="mt-2 font-body text-sm text-cadence-red">{consentError}</p>
+          ) : null}
+          <StepNav
+            onBack={() => setStep(4)}
+            onNext={() => void handleConsentContinue()}
+            nextDisabled={
+              (!consentCaptured && !acknowledged) ||
+              consentSaving ||
+              (consentVersion > 0 && !consentCaptured && !acknowledged)
+            }
+            nextLabel={consentSaving ? "Saving…" : "Continue"}
+          />
         </PortalCard>
       ) : null}
 
@@ -274,12 +399,26 @@ export default function OnboardingPage() {
               </li>
             ))}
           </ul>
+          <p className="mt-3 font-fine text-[11px] text-cadence-ink/55">
+            The server still requires résumé, SIN, two photo IDs, and a permit when applicable —
+            items your office may complete if you cannot upload them here.
+          </p>
           {submitError ? <p className="mt-3 font-body text-sm text-cadence-red">{submitError}</p> : null}
-          <div className="mt-6 flex gap-2">
+          <div className="mt-6 flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => setStep(5)}>
               Back
             </Button>
-            <Button onClick={handleSubmit} disabled={submitting || checks.some((c) => !c.ok)}>
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                submitting ||
+                !(consentCaptured || acknowledged) ||
+                !(authorization === "citizen_pr" || authorization === "permit") ||
+                !resume ||
+                (permitNeeded &&
+                  !(permitDoc && Boolean(permitExpiry || me?.work_authorization_expiry)))
+              }
+            >
               {submitting ? "Submitting…" : "Agree & submit"}
             </Button>
           </div>
@@ -293,18 +432,20 @@ function StepNav({
   onBack,
   onNext,
   nextDisabled,
+  nextLabel = "Continue",
 }: {
   onBack: () => void;
   onNext: () => void;
   nextDisabled?: boolean;
+  nextLabel?: string;
 }) {
   return (
-    <div className="mt-6 flex gap-2">
+    <div className="mt-6 flex flex-wrap gap-2">
       <Button type="button" variant="secondary" onClick={onBack}>
         Back
       </Button>
       <Button type="button" onClick={onNext} disabled={nextDisabled}>
-        Continue
+        {nextLabel}
       </Button>
     </div>
   );

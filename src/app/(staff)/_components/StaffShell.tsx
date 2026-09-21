@@ -1,11 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSession } from "@/auth/session-context";
 import { logout as logoutAction } from "@/features/accounts/actions";
-import { api } from "@/api/client";
 import {
   dockStaffNavItems,
   moreStaffNavItems,
@@ -26,22 +24,6 @@ const DOCK_ICONS: Record<string, "payroll" | "employees" | "clients"> = {
 export function StaffShell({ children }: { children: ReactNode }) {
   const { session, clear } = useSession();
   const router = useRouter();
-
-  const notifQuery = useQuery({
-    queryKey: ["staff-notifications-unread"],
-    queryFn: async () => {
-      try {
-        const data = await api.get<{ count?: number; results?: unknown[] }>(
-          "/api/v1/notifications/portal/me/notifications/?page_size=1",
-        );
-        return data.count ?? data.results?.length ?? 0;
-      } catch {
-        return 0;
-      }
-    },
-    staleTime: 60_000,
-    retry: false,
-  });
 
   if (!session) return null;
 
@@ -78,8 +60,7 @@ export function StaffShell({ children }: { children: ReactNode }) {
       </main>
       <BottomDock
         showLogo
-        notificationDot={(notifQuery.data ?? 0) > 0}
-        align="start"
+        align="center"
         items={dock.map(({ label, href, tooltip }) => ({
           label,
           href,

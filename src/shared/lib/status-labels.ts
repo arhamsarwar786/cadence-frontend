@@ -271,7 +271,9 @@ export type TaskType =
   | "employee_followup"
   | "cert_renewal"
   | "invoice_approval"
-  | "privacy_request";
+  | "privacy_request"
+  | "permit_renewal"
+  | "client_notice_approval";
 export const TASK_TYPE_LABELS = labels<TaskType>({
   custom: "Custom",
   job: "Job",
@@ -280,11 +282,17 @@ export const TASK_TYPE_LABELS = labels<TaskType>({
   cert_renewal: "Certification renewal",
   invoice_approval: "Invoice approval",
   privacy_request: "Privacy request",
+  permit_renewal: "Permit renewal",
+  client_notice_approval: "Client notice approval",
 });
 
-/** These two types mirror server state; the UI refuses a manual Complete
- * on them (ARCHITECTURE.md §5.1) — the linked act is what closes them. */
-export const MIRRORED_TASK_TYPES: readonly TaskType[] = ["invoice_approval", "privacy_request"];
+/** State-mirrored types: the UI refuses a manual Complete — the linked
+ * act is what closes them (ARCHITECTURE.md §5.1). */
+export const MIRRORED_TASK_TYPES: readonly TaskType[] = [
+  "invoice_approval",
+  "privacy_request",
+  "client_notice_approval",
+];
 
 // ---- notifications ----------------------------------------------------
 

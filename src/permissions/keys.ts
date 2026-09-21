@@ -130,6 +130,8 @@ export const PERM = {
   PRIVACY_EXPORT: "privacy.export",
   PRIVACY_BREACHES_VIEW: "privacy.breaches.view",
   PRIVACY_BREACHES_MANAGE: "privacy.breaches.manage",
+  PRIVACY_DISPOSAL_VIEW: "privacy.disposal.view",
+  PRIVACY_DISPOSAL_MANAGE: "privacy.disposal.manage",
 
   // 13. Tasks
   TASKS_VIEW: "tasks.view",

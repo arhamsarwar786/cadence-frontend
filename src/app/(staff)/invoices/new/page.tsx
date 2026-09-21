@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { getClient, getClientBilling, listClients } from "@/features/clients/api";
+import { listJobs } from "@/features/jobs/api";
 import { autofillInvoice, createInvoice } from "@/features/money/actions";
 import { getInvoice, invoiceKeys } from "@/features/money/api";
 import { invoiceCreateSchema, type InvoiceCreateFormValues } from "@/features/money/schemas";
+import { getOrgSettings, orgKeys } from "@/features/orgs/api";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import { Button, Field, Input, Select } from "@/shared/ui";
@@ -27,7 +29,13 @@ export default function NewInvoicePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [autofillFrom, setAutofillFrom] = useState("");
   const [autofillTo, setAutofillTo] = useState("");
+  const [autofillJobId, setAutofillJobId] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const orgQuery = useQuery({
+    queryKey: orgKeys.settings,
+    queryFn: getOrgSettings,
+  });
 
   const {
     register,
@@ -53,11 +61,24 @@ export default function NewInvoicePage() {
     queryFn: () => getInvoice(invoiceId!),
     enabled: Boolean(invoiceId),
   });
+  const jobsQuery = useQuery({
+    queryKey: ["jobs-picker", "client", clientId],
+    queryFn: () => listJobs({ pageSize: 200, client: clientId }),
+    enabled: Boolean(clientId),
+  });
 
   const selectedClient = clientsQuery.data?.results.find((c) => c.id === clientId);
   const billing = billingQuery.data;
   const invoice = invoiceQuery.data;
+  const org = orgQuery.data;
   const lines = invoice?.lines ?? [];
+  const orgAddress = [
+    org?.address_line_1,
+    org?.address_line_2,
+    [org?.city, org?.province, org?.postal_code].filter(Boolean).join(", "),
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const preview = useMemo(() => {
     const subtotal = lines.reduce((sum, line) => sum + Number(line.amount ?? 0), 0);
@@ -94,6 +115,7 @@ export default function NewInvoicePage() {
       await autofillInvoice(invoiceId, {
         date_from: autofillFrom || undefined,
         date_to: autofillTo || undefined,
+        job_id: autofillJobId || undefined,
       });
       await queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(invoiceId) });
       setStep(3);
@@ -205,6 +227,16 @@ export default function NewInvoicePage() {
                   <Input id="af-to" type="date" value={autofillTo} onChange={(e) => setAutofillTo(e.target.value)} />
                 </Field>
               </div>
+              <Field label="Job (optional)" htmlFor="af-job">
+                <Select id="af-job" value={autofillJobId} onChange={(e) => setAutofillJobId(e.target.value)}>
+                  <option value="">All jobs for this client</option>
+                  {(jobsQuery.data?.results ?? []).map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.title}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
               {formError ? <p className="text-sm text-cadence-red">{formError}</p> : null}
               <div className="flex gap-2">
                 <Button type="button" variant="secondary" onClick={() => setStep(1)}>
@@ -269,7 +301,12 @@ export default function NewInvoicePage() {
           <div className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
             <div>
               <p className="font-fine text-[10px] uppercase text-on-card-muted">From</p>
-              <p>Your agency</p>
+              <p>{org?.legal_name || org?.name || "—"}</p>
+              {orgAddress ? (
+                <p className="whitespace-pre-line text-on-card-muted">{orgAddress}</p>
+              ) : null}
+              {org?.email ? <p className="text-on-card-muted">{org.email}</p> : null}
+              {org?.tax_id ? <p className="text-on-card-muted">Tax ID {org.tax_id}</p> : null}
             </div>
             <div>
               <p className="font-fine text-[10px] uppercase text-on-card-muted">To</p>
@@ -286,6 +323,12 @@ export default function NewInvoicePage() {
               </p>
             </div>
           </div>
+          {org?.remit_to_details ? (
+            <div className="mt-4 border-t border-white/10 pt-4 text-sm">
+              <p className="font-fine text-[10px] uppercase text-on-card-muted">Payable IN</p>
+              <p className="mt-1 whitespace-pre-line text-on-card-muted">{org.remit_to_details}</p>
+            </div>
+          ) : null}
           <table className="mt-6 w-full text-left text-sm">
             <thead className="font-fine text-[10px] uppercase text-on-card-muted">
               <tr>

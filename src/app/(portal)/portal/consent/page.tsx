@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { getConsentText } from "@/features/portal/api";
 import { captureConsent } from "@/features/portal/actions";
@@ -8,6 +9,9 @@ import { messageFrom } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
+/**
+ * Re-consent only — first capture lives in onboarding. Not listed in portal More.
+ */
 export default function ConsentPage() {
   const consentQuery = useQuery({ queryKey: ["portal", "consent-text"], queryFn: getConsentText });
   const [captured, setCaptured] = useState(false);
@@ -33,23 +37,35 @@ export default function ConsentPage() {
   return (
     <PortalFrame
       title="Consent"
-      subtitle="First consent happens when you submit onboarding. This page is for later re-consent when the agency updates its notice."
+      subtitle="First consent happens in onboarding. Use this page only when your agency updates its privacy notice."
     >
+      <p className="mb-4 font-body text-sm text-cadence-ink/60">
+        New here?{" "}
+        <Link href="/portal/onboarding?step=consent" className="underline">
+          Continue onboarding
+        </Link>
+      </p>
       {consentQuery.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(consentQuery.error)}</p>
       ) : consentVersion === 0 ? (
-        <p className="font-body text-sm text-cadence-ink/70">
-          Your agency hasn&apos;t set up a consent notice yet — there&apos;s nothing to agree to
-          right now.
-        </p>
-      ) : (
         <PortalCard>
-          <div className="whitespace-pre-wrap font-body text-sm text-cadence-ink">{consentText}</div>
-          <p className="mt-3 font-fine text-[11px] text-cadence-ink/60">Version {consentVersion}</p>
-          <Button onClick={handleAgree} disabled={submitting || captured} className="mt-4">
-            {captured ? "Consent recorded" : submitting ? "Recording…" : "I agree"}
+          <p className="font-body text-sm text-cadence-ink/70">
+            Your agency has not published a consent notice yet. Check back after they set one.
+          </p>
+        </PortalCard>
+      ) : captured ? (
+        <PortalCard>
+          <p className="font-body text-sm text-cadence-ink">Consent recorded for version {consentVersion}.</p>
+        </PortalCard>
+      ) : (
+        <PortalCard className="flex flex-col gap-4">
+          <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl bg-surface p-4 font-body text-sm text-cadence-ink/80">
+            {consentText || "Loading…"}
+          </div>
+          {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
+          <Button onClick={handleAgree} disabled={submitting || !consentText}>
+            {submitting ? "Saving…" : "I agree"}
           </Button>
-          {error ? <p className="mt-2 font-body text-sm text-cadence-red">{error}</p> : null}
         </PortalCard>
       )}
     </PortalFrame>

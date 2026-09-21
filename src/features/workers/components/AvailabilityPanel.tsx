@@ -53,8 +53,8 @@ export function AvailabilityPanel({ workerId }: { workerId: string }) {
       reset();
       setOpen(false);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
     }
   }
 

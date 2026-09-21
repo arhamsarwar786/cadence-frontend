@@ -2,6 +2,8 @@ import type { components } from "@openapi/schema";
 
 export type PortalEmployee = components["schemas"]["PortalEmployee"] & {
   work_authorization_expiry?: string | null;
+  /** Present when the backend embeds the worker's consent capture on /portal/me/. */
+  consent?: components["schemas"]["ConsentRecord"] | null;
 };
 export type PortalMeWrite = components["schemas"]["PatchedPortalMeWrite"] & {
   work_authorization_expiry?: string | null;

@@ -92,8 +92,8 @@ function PersonalEditForm({
       await setPersonal(workerId, payload);
       onDone();
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, Object.keys(personalSchema.shape));
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, Object.keys(personalSchema.shape));
+      if (formMessage) setFormError(formMessage);
     }
   }
 

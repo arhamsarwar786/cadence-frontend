@@ -12,14 +12,24 @@ import { NOTIFICATION_TYPE_LABELS, type NotificationType } from "@/shared/lib/st
 import { PERM } from "@/permissions/keys";
 import { Button, Dialog, Field, Input, ListSkeleton, PermGate, Select, useConfirm } from "@/shared/ui";
 
-const templateSchema = z.object({
-  type: z.enum(["shift_offer", "esign", "cert_expiry", "task", "invoice"]),
-  channel: z.enum(["email", "in_app", "sms"]).optional(),
-  subject: z.string().optional().or(z.literal("")),
-  body: z.string().min(1, "Body is required."),
-});
+const templateSchema = z
+  .object({
+    type: z.enum(["shift_offer", "esign", "cert_expiry", "task", "invoice"]),
+    channel: z.enum(["email", "in_app", "sms"]),
+    subject: z.string().optional().or(z.literal("")),
+    body: z.string().min(1, "Body is required."),
+  })
+  .superRefine((values, ctx) => {
+    if (values.channel === "email" && !values.subject?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["subject"],
+        message: "Email templates need a subject.",
+      });
+    }
+  });
 type TemplateFormValues = z.infer<typeof templateSchema>;
-const FIELD_NAMES = Object.keys(templateSchema.shape);
+const FIELD_NAMES = ["type", "channel", "subject", "body"] as const;
 const QUERY_KEY = ["notification-templates"] as const;
 
 export default function NotificationTemplatesPage() {
@@ -34,7 +44,10 @@ export default function NotificationTemplatesPage() {
     reset,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<TemplateFormValues>({ resolver: zodResolver(templateSchema) });
+  } = useForm<TemplateFormValues>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: { channel: "email", subject: "", body: "" },
+  });
 
   function invalidate() {
     return queryClient.invalidateQueries({ queryKey: QUERY_KEY });
@@ -53,8 +66,8 @@ export default function NotificationTemplatesPage() {
       reset();
       setDialogState(null);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (formMessage) setFormError(formMessage);
     }
   }
 

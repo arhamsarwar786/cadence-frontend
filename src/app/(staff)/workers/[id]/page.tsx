@@ -8,6 +8,7 @@ import {
   getWorker,
   listWorkerAvailability,
   listWorkerCerts,
+  listWorkerDocuments,
   listWorkerEducation,
   listWorkerSkills,
   workerKeys,
@@ -29,9 +30,11 @@ import { WorkerProfileForm } from "@/features/workers/components/WorkerProfileFo
 import type { WorkerProfileFormValues } from "@/features/workers/schemas";
 import type { EmployeeWrite } from "@/features/workers/types";
 import { listShifts as listJobShifts, shiftKeys } from "@/features/jobs/api";
+import { documentDownloadUrl } from "@/features/documents/api";
+import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
-import { Button, Chip, Tabs } from "@/shared/ui";
+import { Button, Chip, EmptyState, PDFViewer, Tabs } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 
 type MainTab = "resume" | "history" | "personal" | "more";
@@ -81,6 +84,11 @@ export default function WorkerDetailPage() {
     queryFn: () => listJobShifts({ employee: workerId, pageSize: 50 }),
     enabled: tab === "history",
   });
+  const docsQuery = useQuery({
+    queryKey: ["workers", workerId, "documents"],
+    queryFn: () => listWorkerDocuments(workerId),
+    enabled: tab === "resume",
+  });
 
   if (query.isError && isNotFound(query.error)) notFound();
 
@@ -124,6 +132,8 @@ export default function WorkerDetailPage() {
   const roleLabel = topSkill
     ? `${topSkill.skill_name}${topSkill.years_exp != null ? ` · ${topSkill.years_exp}y` : ""}`
     : worker.work_status?.replaceAll("_", " ") || "—";
+  const resumeDoc =
+    docsQuery.data?.find((d) => d.document_type === "resume") ?? docsQuery.data?.[0] ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -158,7 +168,14 @@ export default function WorkerDetailPage() {
             <span className="font-body text-sm text-cadence-ink/50">{roleLabel}</span>
           </div>
         </div>
-        <WorkerLifecycleActions worker={worker} onChanged={refetch} />
+        <div className="flex flex-wrap items-center gap-2">
+          <LogFollowUpButton
+            entityType="employee"
+            entityId={worker.id}
+            entityLabel={`${worker.first_name} ${worker.last_name}`}
+          />
+          <WorkerLifecycleActions worker={worker} onChanged={refetch} />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -251,11 +268,20 @@ export default function WorkerDetailPage() {
 
           <div className="mt-5">
             {tab === "resume" ? (
-              <div>
-                <p className="mb-3 text-sm text-cadence-ink/60">
-                  Résumé document for this worker. Use Documents under More to upload or replace.
-                </p>
-                <WorkerDocumentsPanel workerId={workerId} />
+              <div className="flex flex-col gap-4">
+                {docsQuery.isLoading ? (
+                  <p className="text-sm text-cadence-ink/60">Loading résumé…</p>
+                ) : resumeDoc ? (
+                  <PDFViewer
+                    src={documentDownloadUrl(resumeDoc.document_id)}
+                    title={resumeDoc.original_filename || "Resume.pdf"}
+                  />
+                ) : (
+                  <EmptyState
+                    title="No résumé on file"
+                    description="Upload a résumé under More → Documents."
+                  />
+                )}
               </div>
             ) : null}
 

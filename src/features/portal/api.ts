@@ -72,6 +72,8 @@ export function getConsentText(): Promise<{ consent_text: string; consent_versio
   return api.get("/api/v1/portal/me/consent-text/");
 }
 
+export const portalConsentKey = ["portal", "consent"] as const;
+
 export function listSignatureRequests(): Promise<PortalSignatureRequest[]> {
   return api.get<PortalSignatureRequest[]>("/api/v1/portal/me/signature-requests/");
 }

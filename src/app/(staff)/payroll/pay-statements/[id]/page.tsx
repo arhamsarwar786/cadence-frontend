@@ -158,10 +158,47 @@ export default function PayStatementDetailPage() {
 
       {ytdQuery.data ? (
         <section className="rounded-2xl bg-surface p-4">
-          <h2 className="mb-2 font-subheading text-lg">Year to date</h2>
-          <pre className="overflow-auto font-fine text-xs text-cadence-ink/70">
-            {JSON.stringify(ytdQuery.data, null, 2)}
-          </pre>
+          <h2 className="mb-3 font-subheading text-lg">Year to date</h2>
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <div>
+              <dt className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                Tax year
+              </dt>
+              <dd className="mt-1 font-heading text-xl text-cadence-ink">{ytdQuery.data.tax_year}</dd>
+            </div>
+            <div>
+              <dt className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                Gross
+              </dt>
+              <dd className="mt-1 font-heading text-xl text-cadence-ink">
+                {ytdQuery.data.gross != null ? formatMoney(ytdQuery.data.gross) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                Net
+              </dt>
+              <dd className="mt-1 font-heading text-xl text-cadence-ink">
+                {ytdQuery.data.net != null ? formatMoney(ytdQuery.data.net) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                Hours
+              </dt>
+              <dd className="mt-1 font-heading text-xl text-cadence-ink">
+                {ytdQuery.data.hours_total ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                Deductions
+              </dt>
+              <dd className="mt-1 font-heading text-xl text-cadence-ink">
+                {ytdQuery.data.deductions != null ? formatMoney(ytdQuery.data.deductions) : "—"}
+              </dd>
+            </div>
+          </dl>
         </section>
       ) : null}
     </div>
