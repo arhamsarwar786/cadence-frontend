@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { jobKeys, listJobs } from "@/features/jobs/api";
+import { listClients } from "@/features/clients/api";
 import { JobStatusBadge } from "@/features/jobs/components/StatusBadges";
 import type { Job } from "@/features/jobs/types";
 import { formatMoney } from "@/shared/lib/money";
@@ -21,6 +22,7 @@ import {
   Pagination,
   PermGate,
   SearchField,
+  Select,
   Table,
   type Column,
 } from "@/shared/ui";
@@ -33,16 +35,23 @@ export default function JobsListPage() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const status = searchParams.get("status") ?? undefined;
+  const client = searchParams.get("client") ?? undefined;
   const q = searchParams.get("q") ?? "";
   const finding = q.trim().length > 0;
 
+  const clientsQuery = useQuery({
+    queryKey: ["clients-picker"],
+    queryFn: () => listClients({ pageSize: 200 }),
+  });
+
   const query = useQuery({
-    queryKey: jobKeys.list({ page: finding ? 1 : page, status, find: finding }),
+    queryKey: jobKeys.list({ page: finding ? 1 : page, status, client, find: finding }),
     queryFn: () =>
       listJobs({
         page: finding ? 1 : page,
         pageSize: finding ? FIND_WINDOW : PAGE_SIZE,
         status,
+        client,
       }),
   });
 
@@ -91,7 +100,20 @@ export default function JobsListPage() {
           placeholder="Find by title or client"
           label="Find jobs"
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            className="!w-auto"
+            value={client ?? ""}
+            onChange={(e) => setParams({ client: e.target.value || null, page: "1" })}
+            aria-label="Filter by client"
+          >
+            <option value="">All clients</option>
+            {(clientsQuery.data?.results ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
           {["", "open", "filled", "cancelled", "completed"].map((s) => (
             <FilterChip
               key={s || "all"}

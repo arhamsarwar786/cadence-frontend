@@ -2,44 +2,52 @@ import type { CurrentUser } from "@/features/accounts/types";
 import { hasAnyPerm, hasPerm } from "@/permissions/has-perm";
 import { PERM, type PermissionKey } from "@/permissions/keys";
 
+export type StaffNavGroup = "work" | "money" | "people" | "compliance" | "admin";
+
 export interface StaffNavItem {
   label: string;
   href: string;
   tooltip: string;
   /** Root always passes; otherwise ANY one of these keys shows the item. */
   anyOf: readonly PermissionKey[];
-  /** Root-only, no catalog key (org settings — ARCHITECTURE.md §6/§7). */
+  /** Root-only, no catalog key (org settings). */
   rootOnly?: boolean;
-  /** Table exists in ARCHITECTURE.md §6/§7 but the backend door doesn't
-   * exist yet (or the screen is explicitly deferred) — never rendered,
-   * kept here so the nav model stays a complete, honest read of the doc. */
+  /**
+   * Kept false only when the screen is deferred or the API door is missing.
+   * Missing permission omits the item — never greys it out.
+   */
   built: boolean;
+  /** More-overlay group. Dock primaries still carry a group for Money/People. */
+  group: StaffNavGroup;
+  /** Primary floating-dock button (Payroll / Employees / Clients). */
+  dock?: boolean;
 }
 
-/** Section order and gating key(s) straight from ARCHITECTURE.md §6.
- * Missing permission -> omit the item, never a disabled/greyed one
- * ("Missing permission -> omit the nav item"). */
+export const STAFF_NAV_GROUP_LABELS: Record<StaffNavGroup, string> = {
+  work: "Work",
+  money: "Money",
+  people: "People",
+  compliance: "Compliance",
+  admin: "Admin",
+};
+
+export const STAFF_NAV_GROUP_ORDER: readonly StaffNavGroup[] = [
+  "work",
+  "money",
+  "people",
+  "compliance",
+  "admin",
+];
+
+/** Section order and gating from the product nav decision (2026-09-17). */
 export const STAFF_NAV_ITEMS: readonly StaffNavItem[] = [
-  {
-    label: "Clients",
-    href: "/clients",
-    tooltip: "Companies you staff",
-    anyOf: [PERM.CLIENTS_VIEW],
-    built: true,
-  },
-  {
-    label: "Workers",
-    href: "/workers",
-    tooltip: "People you place on jobs",
-    anyOf: [PERM.WORKERS_VIEW],
-    built: true,
-  },
   {
     label: "Jobs",
     href: "/jobs",
     tooltip: "Roles at a client site",
     anyOf: [PERM.JOBS_VIEW],
     built: true,
+    group: "work",
   },
   {
     label: "Shifts",
@@ -47,6 +55,7 @@ export const STAFF_NAV_ITEMS: readonly StaffNavItem[] = [
     tooltip: "Scheduled work windows",
     anyOf: [PERM.SHIFTS_VIEW],
     built: true,
+    group: "work",
   },
   {
     label: "Hour sheets",
@@ -54,6 +63,7 @@ export const STAFF_NAV_ITEMS: readonly StaffNavItem[] = [
     tooltip: "Hours submitted for a job",
     anyOf: [PERM.HOURSHEETS_VIEW],
     built: true,
+    group: "work",
   },
   {
     label: "Invoices",
@@ -61,41 +71,41 @@ export const STAFF_NAV_ITEMS: readonly StaffNavItem[] = [
     tooltip: "Bills sent to clients",
     anyOf: [PERM.CLIENTS_INVOICE_CREATE, PERM.CLIENTS_INVOICE_APPROVE, PERM.INVOICES_SEND],
     built: true,
+    group: "money",
   },
   {
-    label: "Pay statements",
+    label: "Credit notes",
+    href: "/credit-notes",
+    tooltip: "Credits against issued invoices",
+    anyOf: [PERM.CLIENTS_VIEW],
+    built: true,
+    group: "money",
+  },
+  {
+    label: "Payroll runs",
     href: "/payroll",
     tooltip: "Worker pay runs and statements",
     anyOf: [PERM.PAYROLL_PAGE_VIEW],
     built: true,
+    group: "money",
+    dock: true,
   },
   {
-    label: "Documents",
-    href: "/documents",
-    tooltip: "Files held for workers and jobs",
-    anyOf: [PERM.DOCUMENTS_VIEW],
+    label: "Perm placements",
+    href: "/perm-placements",
+    tooltip: "One-time placement fees",
+    anyOf: [PERM.CLIENTS_VIEW],
     built: true,
+    group: "money",
   },
   {
-    label: "E-sign",
-    href: "/esign",
-    tooltip: "Signature requests the office sent",
-    anyOf: [PERM.ESIGN_STATUS_VIEW],
+    label: "Workers",
+    href: "/workers",
+    tooltip: "People you place on jobs",
+    anyOf: [PERM.WORKERS_VIEW],
     built: true,
-  },
-  {
-    label: "Tasks",
-    href: "/tasks",
-    tooltip: "Follow-ups for this office",
-    anyOf: [PERM.TASKS_VIEW],
-    built: true,
-  },
-  {
-    label: "Privacy",
-    href: "/privacy",
-    tooltip: "Access and deletion requests",
-    anyOf: [PERM.PRIVACY_REQUESTS_VIEW],
-    built: true,
+    group: "people",
+    dock: true,
   },
   {
     label: "Candidate imports",
@@ -103,45 +113,89 @@ export const STAFF_NAV_ITEMS: readonly StaffNavItem[] = [
     tooltip: "Bulk worker intake batches",
     anyOf: [PERM.CANDIDATE_IMPORTS_VIEW],
     built: true,
+    group: "people",
   },
   {
-    label: "Notifications",
+    label: "Clients",
+    href: "/clients",
+    tooltip: "Companies you staff",
+    anyOf: [PERM.CLIENTS_VIEW],
+    built: true,
+    // Dock primary only — not listed in the More overlay groups.
+    group: "people",
+    dock: true,
+  },
+  {
+    label: "Privacy requests",
+    href: "/privacy",
+    tooltip: "Access and correction requests",
+    anyOf: [PERM.PRIVACY_REQUESTS_VIEW],
+    built: true,
+    group: "compliance",
+  },
+  {
+    label: "Breach register",
+    href: "/privacy/breaches",
+    tooltip: "Security-safeguard breach records",
+    anyOf: [PERM.PRIVACY_BREACHES_VIEW],
+    built: true,
+    group: "compliance",
+  },
+  {
+    label: "Audit log",
+    href: "/audit",
+    tooltip: "Who changed what, and when",
+    anyOf: [PERM.AUDIT_LOG_VIEW],
+    built: true,
+    group: "compliance",
+  },
+  {
+    label: "Users & permissions",
+    href: "/admin/users",
+    tooltip: "Staff accounts for this office",
+    anyOf: [PERM.ADMIN_USERS_VIEW],
+    built: true,
+    group: "admin",
+  },
+  {
+    label: "Notification templates",
     href: "/notifications/templates",
     tooltip: "Message templates the office sends",
     anyOf: [PERM.NOTIFICATIONS_TEMPLATES_MANAGE],
     built: true,
-  },
-  // Blocked on a backend door that doesn't exist yet — see context.md
-  // (2026-09-09 session contract entry) and ARCHITECTURE.md §7.
-  {
-    label: "Admin users",
-    href: "/admin/users",
-    tooltip: "Staff accounts for this office",
-    anyOf: [PERM.ADMIN_USERS_VIEW],
-    built: false,
+    group: "admin",
   },
   {
-    label: "Audit",
-    href: "/audit",
-    tooltip: "Who changed what, and when",
-    anyOf: [PERM.AUDIT_LOG_VIEW],
-    built: false,
+    label: "E-sign",
+    href: "/esign",
+    tooltip: "Signature requests the office sent",
+    anyOf: [PERM.ESIGN_STATUS_VIEW],
+    built: true,
+    group: "admin",
   },
-  // Catalog-only per ARCHITECTURE.md §6 — no dashboard in the first build.
   {
-    label: "Reporting",
+    label: "Documents",
+    href: "/documents",
+    tooltip: "Files held for workers and jobs",
+    anyOf: [PERM.DOCUMENTS_VIEW],
+    built: true,
+    group: "admin",
+  },
+  {
+    label: "Reports",
     href: "/reports",
     tooltip: "Office-wide reports",
     anyOf: [PERM.REPORTS_DASHBOARD_VIEW],
-    built: false,
+    built: true,
+    group: "admin",
   },
   {
-    label: "Settings",
+    label: "Org settings",
     href: "/settings",
-    tooltip: "Consent copy and office settings",
-    anyOf: [],
-    rootOnly: true,
+    tooltip: "Agency address, timezone, and onboarding mode",
+    anyOf: [PERM.ADMIN_ORG_VIEW],
     built: true,
+    group: "admin",
   },
 ] as const;
 
@@ -151,6 +205,20 @@ export function visibleStaffNavItems(user: CurrentUser): StaffNavItem[] {
     if (item.rootOnly) return user.is_root;
     return user.is_root || hasAnyPerm(user, item.anyOf);
   });
+}
+
+export function dockStaffNavItems(user: CurrentUser): StaffNavItem[] {
+  const visible = visibleStaffNavItems(user);
+  const order = ["/payroll", "/workers", "/clients"] as const;
+  return order
+    .map((href) => visible.find((item) => item.href === href && item.dock))
+    .filter((item): item is StaffNavItem => Boolean(item));
+}
+
+export function moreStaffNavItems(user: CurrentUser): StaffNavItem[] {
+  // Clients is dock-only. Payroll and Workers also appear under Money / People.
+  const dockOnly = new Set(["/clients"]);
+  return visibleStaffNavItems(user).filter((item) => !dockOnly.has(item.href));
 }
 
 export { hasPerm };

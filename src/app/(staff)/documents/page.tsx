@@ -3,7 +3,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { deleteDocument, documentKeys, listDocuments, uploadDocument } from "@/features/documents/api";
+import { formatDate } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, NON_GENERIC_DOCUMENT_TYPES, type DocumentType } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
@@ -18,6 +20,7 @@ const GENERIC_TYPES = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).filt
 export default function DocumentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const timeZone = useOrgTimeZone();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const queryClient = useQueryClient();
   const [docType, setDocType] = useState<DocumentType>("other");
@@ -25,9 +28,17 @@ export default function DocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
 
+  const typeFilter = searchParams.get("type") ?? "";
   const query = useQuery({
-    queryKey: documentKeys.list({ page }),
-    queryFn: () => listDocuments({ page, pageSize: PAGE_SIZE }),
+    queryKey: documentKeys.list({ page, type: typeFilter || "generic-pool" }),
+    queryFn: () =>
+      listDocuments({
+        page,
+        pageSize: PAGE_SIZE,
+        // Prefer API type filter when set; otherwise leave unfiltered and
+        // still hide non-generic types only if the API cannot express "generic".
+        type: typeFilter || undefined,
+      }),
   });
 
   function invalidate() {
@@ -65,16 +76,22 @@ export default function DocumentsPage() {
     router.push(`/documents?${params.toString()}`);
   }
 
-  // Generic documents UI never lists invoice/payslip/signed_form/esign_form
-  // rows — those ride the money/esign screens (ARCHITECTURE.md §5.1).
-  const rows = (query.data?.results ?? []).filter(
-    (d) => !NON_GENERIC_DOCUMENT_TYPES.includes(d.type as DocumentType),
-  );
+  function setType(next: string) {
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set("type", next);
+    else params.delete("type");
+    params.set("page", "1");
+    router.push(`/documents?${params.toString()}`);
+  }
+
+  // Always trust the API page. Use ?type= to narrow; do not filter after fetch.
+  const rows = query.data?.results ?? [];
+
 
   const columns: Column<Document>[] = [
     { header: "File", cell: (d) => d.original_filename ?? "—" },
     { header: "Type", cell: (d) => DOCUMENT_TYPE_LABELS[d.type as DocumentType] ?? d.type },
-    { header: "Uploaded", cell: (d) => new Date(d.created_at).toLocaleDateString() },
+    { header: "Uploaded", cell: (d) => (timeZone ? formatDate(d.created_at, timeZone) : "—") },
     {
       header: "",
       cell: (d) => (
@@ -129,6 +146,25 @@ export default function DocumentsPage() {
         }
       />
       {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="font-body text-sm text-cadence-ink/60" htmlFor="doc-filter">
+          Filter type
+        </label>
+        <Select
+          id="doc-filter"
+          value={typeFilter}
+          onChange={(e) => setType(e.target.value)}
+          className="w-auto"
+        >
+          <option value="">All types</option>
+          {GENERIC_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {DOCUMENT_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </Select>
+      </div>
 
       {query.isLoading ? (
         <ListSkeleton />

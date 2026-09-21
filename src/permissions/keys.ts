@@ -18,6 +18,8 @@ export const PERM = {
   ADMIN_PERMISSIONS_VIEW: "admin.permissions.view",
   ADMIN_PERMISSIONS_MANAGE: "admin.permissions.manage",
   ADMIN_INTEGRATIONS_MANAGE: "admin.integrations.manage",
+  ADMIN_ORG_VIEW: "admin.org.view",
+  ADMIN_ORG_MANAGE: "admin.org.manage",
 
   // 2. Compliance, logs & data lifecycle
   AUDIT_LOG_VIEW: "audit.log.view",
@@ -81,12 +83,18 @@ export const PERM = {
   // 7. Payroll
   PAYROLL_PAGE_VIEW: "payroll.page.view",
   PAYROLL_RUN: "payroll.run",
-  PAYROLL_PAYSLIPS_VIEW: "payroll.payslips.view",
-  PAYROLL_PAYSLIPS_EDIT: "payroll.payslips.edit",
+  PAYROLL_PAY_STATEMENTS_VIEW: "payroll.pay_statements.view",
+  PAYROLL_PAY_STATEMENTS_EDIT: "payroll.pay_statements.edit",
   PAYROLL_APPROVE: "payroll.approve",
   PAYROLL_RELEASE: "payroll.release",
-  PAYROLL_PAYSLIPS_GENERATE: "payroll.payslips.generate",
+  PAYROLL_PAY_STATEMENTS_GENERATE: "payroll.pay_statements.generate",
   PAYROLL_EXPORT: "payroll.export",
+  /** @deprecated Alias — catalog renamed to pay_statements. */
+  PAYROLL_PAYSLIPS_VIEW: "payroll.pay_statements.view",
+  /** @deprecated Alias — catalog renamed to pay_statements. */
+  PAYROLL_PAYSLIPS_EDIT: "payroll.pay_statements.edit",
+  /** @deprecated Alias — catalog renamed to pay_statements. */
+  PAYROLL_PAYSLIPS_GENERATE: "payroll.pay_statements.generate",
 
   // 8. Invoicing
   CLIENTS_INVOICE_CREATE: "clients.invoice.create",
@@ -120,6 +128,8 @@ export const PERM = {
   PRIVACY_REQUESTS_VIEW: "privacy.requests.view",
   PRIVACY_REQUESTS_MANAGE: "privacy.requests.manage",
   PRIVACY_EXPORT: "privacy.export",
+  PRIVACY_BREACHES_VIEW: "privacy.breaches.view",
+  PRIVACY_BREACHES_MANAGE: "privacy.breaches.manage",
 
   // 13. Tasks
   TASKS_VIEW: "tasks.view",

@@ -5,14 +5,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { clearShiftMark, markShiftNotWorked } from "@/features/jobs/actions";
+import { clearShiftMark, getShiftBackfill, markShiftNotWorked } from "@/features/jobs/actions";
 import { listShifts, shiftKeys } from "@/features/jobs/api";
 import { ShiftStatusBadge } from "@/features/jobs/components/StatusBadges";
 import { shiftMarkSchema, type ShiftMarkFormValues } from "@/features/jobs/schemas";
 import type { Shift } from "@/features/jobs/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, ListSkeleton, Pagination, Select, Table, type Column } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListSkeleton, Pagination, Select, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(shiftMarkSchema.shape);
@@ -22,12 +22,22 @@ export default function ShiftsListPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
+  const from = searchParams.get("from") ?? "";
+  const to = searchParams.get("to") ?? "";
   const [markTarget, setMarkTarget] = useState<Shift | null>(null);
+  const [backfillTarget, setBackfillTarget] = useState<Shift | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const backfillQuery = useQuery({
+    queryKey: ["shift-backfill", backfillTarget?.id],
+    queryFn: () => getShiftBackfill(backfillTarget!.id),
+    enabled: Boolean(backfillTarget),
+  });
+
+  const listParams = { page, pageSize: PAGE_SIZE, from: from || undefined, to: to || undefined };
   const query = useQuery({
-    queryKey: shiftKeys.list({ page }),
-    queryFn: () => listShifts({ page, pageSize: PAGE_SIZE }),
+    queryKey: shiftKeys.list(listParams),
+    queryFn: () => listShifts(listParams),
   });
 
   const {
@@ -38,10 +48,17 @@ export default function ShiftsListPage() {
     formState: { errors, isSubmitting },
   } = useForm<ShiftMarkFormValues>({ resolver: zodResolver(shiftMarkSchema) });
 
-  function goToPage(nextPage: number) {
+  function setParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams);
-    params.set("page", String(nextPage));
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
     router.push(`/shifts?${params.toString()}`);
+  }
+
+  function goToPage(nextPage: number) {
+    setParams({ page: String(nextPage) });
   }
 
   function invalidate() {
@@ -75,22 +92,49 @@ export default function ShiftsListPage() {
     { header: "Status", cell: (s) => <ShiftStatusBadge status={s.status as ShiftStatus} /> },
     {
       header: "Actions",
-      cell: (s) =>
-        s.status === "not_worked" ? (
-          <Button size="sm" variant="secondary" onClick={() => handleClearMark(s)}>
-            Clear mark
-          </Button>
-        ) : s.status === "scheduled" ? (
-          <Button size="sm" variant="secondary" onClick={() => setMarkTarget(s)}>
-            Mark not worked
-          </Button>
-        ) : null,
+      cell: (s) => (
+        <div className="flex flex-wrap gap-2">
+          {s.status === "not_worked" ? (
+            <>
+              <Button size="sm" variant="secondary" onClick={() => handleClearMark(s)}>
+                Clear mark
+              </Button>
+              <Button size="sm" onClick={() => setBackfillTarget(s)}>
+                Backfill
+              </Button>
+            </>
+          ) : null}
+          {s.status === "scheduled" ? (
+            <Button size="sm" variant="secondary" onClick={() => setMarkTarget(s)}>
+              Mark not worked
+            </Button>
+          ) : null}
+        </div>
+      ),
     },
   ];
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="mb-0 font-heading text-3xl text-cadence-ink">Shifts</h1>
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="From" htmlFor="shifts-from">
+          <Input
+            id="shifts-from"
+            type="date"
+            value={from}
+            onChange={(e) => setParams({ from: e.target.value || null, page: "1" })}
+          />
+        </Field>
+        <Field label="To" htmlFor="shifts-to">
+          <Input
+            id="shifts-to"
+            type="date"
+            value={to}
+            onChange={(e) => setParams({ to: e.target.value || null, page: "1" })}
+          />
+        </Field>
+      </div>
 
       {query.isLoading ? (
         <ListSkeleton />
@@ -134,6 +178,38 @@ export default function ShiftsListPage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      <Dialog
+        open={backfillTarget !== null}
+        onClose={() => setBackfillTarget(null)}
+        title="Who can cover this shift"
+      >
+        {backfillQuery.isLoading ? (
+          <p className="text-sm text-cadence-ink/60">Loading…</p>
+        ) : backfillQuery.isError ? (
+          <p className="text-sm text-cadence-red">{messageFrom(backfillQuery.error)}</p>
+        ) : (
+          <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+            {(backfillQuery.data?.results ?? []).map((c) => {
+              const name =
+                c.employee_name ??
+                [c.first_name, c.last_name].filter(Boolean).join(" ") ??
+                c.id;
+              return (
+                <li
+                  key={c.id}
+                  className="rounded-xl border border-border px-3 py-2 font-body text-sm"
+                >
+                  {name}
+                </li>
+              );
+            })}
+            {(backfillQuery.data?.results ?? []).length === 0 ? (
+              <li className="text-sm text-cadence-ink/50">No candidates available.</li>
+            ) : null}
+          </ul>
+        )}
       </Dialog>
     </div>
   );

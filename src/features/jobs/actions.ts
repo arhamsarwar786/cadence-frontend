@@ -148,6 +148,18 @@ export function clearShiftMark(id: string): Promise<Shift> {
   return api.post<Shift>(`/api/v1/shifts/${id}/clear-mark/`);
 }
 
+export function getShiftBackfill(id: string): Promise<{
+  results?: Array<{ id: string; first_name?: string; last_name?: string; employee_name?: string }>;
+  count?: number;
+  scope_visible?: boolean;
+}> {
+  return api.get(`/api/v1/shifts/${id}/backfill/`);
+}
+
+export function notifyClientAssignment(id: string): Promise<unknown> {
+  return api.post(`/api/v1/assignments/${id}/notify-client/`);
+}
+
 // --- Hour sheets ----------------------------------------------------
 
 export function createHourSheet(body: HourSheetWrite): Promise<HourSheet> {

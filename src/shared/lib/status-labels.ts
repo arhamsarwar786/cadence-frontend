@@ -206,23 +206,30 @@ export const PAYROLL_RUN_STATUS_LABELS = labels<PayrollRunStatus>({
   approved: "Approved",
 });
 
-/** UI copy says "pay statement" everywhere; the field/status name stays
- * `payslip` in code and API paths (ARCHITECTURE.md §1/§10). */
-export type PayslipStatus = "draft" | "issued" | "paid";
-export const PAYSLIP_STATUS_LABELS = labels<PayslipStatus>({
+/** UI copy says "pay statement" everywhere. */
+export type PayStatementStatus = "draft" | "issued" | "paid";
+export const PAY_STATEMENT_STATUS_LABELS = labels<PayStatementStatus>({
   draft: "Draft",
   issued: "Issued",
   paid: "Paid",
 });
+/** @deprecated Use PayStatementStatus */
+export type PayslipStatus = PayStatementStatus;
+/** @deprecated */
+export const PAYSLIP_STATUS_LABELS = PAY_STATEMENT_STATUS_LABELS;
 
-export type PayslipLineType = "shift" | "bonus" | "adjustment" | "allowance" | "other";
-export const PAYSLIP_LINE_TYPE_LABELS = labels<PayslipLineType>({
+export type PayStatementLineType = "shift" | "bonus" | "adjustment" | "allowance" | "other";
+export const PAY_STATEMENT_LINE_TYPE_LABELS = labels<PayStatementLineType>({
   shift: "Shift",
   bonus: "Bonus",
   adjustment: "Adjustment",
   allowance: "Allowance",
   other: "Other",
 });
+/** @deprecated */
+export type PayslipLineType = PayStatementLineType;
+/** @deprecated */
+export const PAYSLIP_LINE_TYPE_LABELS = PAY_STATEMENT_LINE_TYPE_LABELS;
 
 export type DeductionCode = "cpp" | "ei" | "federal_tax" | "provincial_tax" | "other";
 export const DEDUCTION_CODE_LABELS = labels<DeductionCode>({

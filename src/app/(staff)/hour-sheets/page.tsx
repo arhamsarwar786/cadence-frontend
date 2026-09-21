@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { listClients } from "@/features/clients/api";
-import { createHourSheet } from "@/features/jobs/actions";
+import { createHourSheet, uploadHourSheet } from "@/features/jobs/actions";
 import { hourSheetKeys, listHourSheets, listJobs } from "@/features/jobs/api";
 import { HourSheetStatusBadge } from "@/features/jobs/components/StatusBadges";
 import { hourSheetSchema, type HourSheetFormValues } from "@/features/jobs/schemas";
@@ -14,7 +14,7 @@ import type { HourSheet } from "@/features/jobs/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { HourSheetStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(hourSheetSchema.shape);
@@ -100,6 +100,7 @@ export default function HourSheetsListPage() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const [newOpen, setNewOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const query = useQuery({
     queryKey: hourSheetKeys.list({ page }),
@@ -128,7 +129,12 @@ export default function HourSheetsListPage() {
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Hour sheets</h1>
         <PermGate anyOf={PERM.HOURSHEETS_EDIT}>
-          <Button onClick={() => setNewOpen(true)}>New hour sheet</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setUploadOpen(true)}>
+              Upload
+            </Button>
+            <Button onClick={() => setNewOpen(true)}>New hour sheet</Button>
+          </div>
         </PermGate>
       </div>
 
@@ -165,6 +171,94 @@ export default function HourSheetsListPage() {
           }}
         />
       </Dialog>
+      <Dialog open={uploadOpen} onClose={() => setUploadOpen(false)} title="Upload hour sheet">
+        <UploadHourSheetForm
+          onDone={(id) => {
+            setUploadOpen(false);
+            queryClient.invalidateQueries({ queryKey: hourSheetKeys.all });
+            router.push(`/hour-sheets/${id}`);
+          }}
+        />
+      </Dialog>
     </div>
+  );
+}
+
+function UploadHourSheetForm({ onDone }: { onDone: (id: string) => void }) {
+  const clientsQuery = useQuery({ queryKey: ["clients-picker"], queryFn: () => listClients({ pageSize: 200 }) });
+  const jobsQuery = useQuery({ queryKey: ["jobs-picker"], queryFn: () => listJobs({ pageSize: 200 }) });
+  const [clientId, setClientId] = useState("");
+  const [jobId, setJobId] = useState("");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file || !clientId || !periodStart || !periodEnd) {
+      setFormError("Client, period, and file are required.");
+      return;
+    }
+    setBusy(true);
+    setFormError(null);
+    try {
+      const sheet = await uploadHourSheet(file, {
+        client_id: clientId,
+        job_id: jobId || undefined,
+        period_start: periodStart,
+        period_end: periodEnd,
+      });
+      onDone(sheet.id);
+    } catch (error) {
+      setFormError(messageFrom(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <Field label="Client" htmlFor="up-client">
+        <Select id="up-client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+          <option value="">Select…</option>
+          {(clientsQuery.data?.results ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Job (optional)" htmlFor="up-job">
+        <Select id="up-job" value={jobId} onChange={(e) => setJobId(e.target.value)}>
+          <option value="">—</option>
+          {(jobsQuery.data?.results ?? []).map((j) => (
+            <option key={j.id} value={j.id}>
+              {j.title}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Period start" htmlFor="up-start">
+          <Input id="up-start" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+        </Field>
+        <Field label="Period end" htmlFor="up-end">
+          <Input id="up-end" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+        </Field>
+      </div>
+      <Field label="File" htmlFor="up-file">
+        <Input
+          id="up-file"
+          type="file"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+      </Field>
+      {formError ? <p className="text-sm text-cadence-red">{formError}</p> : null}
+      <Button type="submit" disabled={busy}>
+        {busy ? "Uploading…" : "Upload"}
+      </Button>
+    </form>
   );
 }

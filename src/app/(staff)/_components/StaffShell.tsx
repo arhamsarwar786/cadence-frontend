@@ -1,34 +1,60 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSession } from "@/auth/session-context";
 import { logout as logoutAction } from "@/features/accounts/actions";
-import { visibleStaffNavItems } from "@/permissions/staff-nav";
-import { BottomDock, BrandLink, Button, SkipLink } from "@/shared/ui";
+import { api } from "@/api/client";
+import {
+  dockStaffNavItems,
+  moreStaffNavItems,
+  STAFF_NAV_GROUP_ORDER,
+  type StaffNavGroup,
+  type StaffNavItem,
+} from "@/permissions/staff-nav";
+import { BottomDock, Button, SkipLink } from "@/shared/ui";
 
-/** Grant-driven chrome (ARCHITECTURE.md §2.4/§6). Root sees every item;
- * everyone else sees only what visibleStaffNavItems computes from their
- * own grants — missing permission omits the item, it is never shown
- * disabled. */
+const DOCK_ICONS: Record<string, "payroll" | "employees" | "clients"> = {
+  "/payroll": "payroll",
+  "/workers": "employees",
+  "/clients": "clients",
+};
+
+/** Grant-driven chrome. Root sees every built item; everyone else sees
+ * only what their grants unlock — missing permission omits the item. */
 export function StaffShell({ children }: { children: ReactNode }) {
   const { session, clear } = useSession();
   const router = useRouter();
 
+  const notifQuery = useQuery({
+    queryKey: ["staff-notifications-unread"],
+    queryFn: async () => {
+      try {
+        const data = await api.get<{ count?: number; results?: unknown[] }>(
+          "/api/v1/notifications/portal/me/notifications/?page_size=1",
+        );
+        return data.count ?? data.results?.length ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
   if (!session) return null;
 
-  const navItems = visibleStaffNavItems(session.user);
-  const preferredHrefs = ["/workers", "/jobs"];
-  const pinned = preferredHrefs
-    .map((href) => navItems.find((item) => item.href === href))
-    .filter((item): item is (typeof navItems)[number] => Boolean(item));
-  const leftover = navItems.filter((item) => !preferredHrefs.includes(item.href));
-  const ordered = [...pinned, ...leftover];
-  const dockItems = [
-    { label: "Home", href: "/", tooltip: "Open tasks for this office" },
-    ...ordered.slice(0, 2).map(({ label, href, tooltip }) => ({ label, href, tooltip })),
-  ];
-  const overflow = ordered.slice(2).map(({ label, href, tooltip }) => ({ label, href, tooltip }));
+  const dock = dockStaffNavItems(session.user);
+  const more = moreStaffNavItems(session.user);
+  const overflowGroups = STAFF_NAV_GROUP_ORDER.reduce(
+    (acc, group) => {
+      const items = more.filter((item) => item.group === group);
+      if (items.length) acc[group] = items;
+      return acc;
+    },
+    {} as Partial<Record<StaffNavGroup, StaffNavItem[]>>,
+  );
 
   async function handleLogout() {
     try {
@@ -43,25 +69,29 @@ export function StaffShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <SkipLink />
-      <header className="flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-        <BrandLink href="/" />
-        <p className="hidden max-w-[40%] truncate font-fine text-[11px] text-cadence-ink/45 sm:block">
-          {session.user.login}
-        </p>
-      </header>
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:px-8"
+        className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-8 sm:pt-6"
       >
         {children}
       </main>
       <BottomDock
-        items={dockItems}
-        overflow={overflow}
+        showLogo
+        notificationDot={(notifQuery.data ?? 0) > 0}
+        align="start"
+        items={dock.map(({ label, href, tooltip }) => ({
+          label,
+          href,
+          tooltip,
+          icon: DOCK_ICONS[href] ?? "home",
+        }))}
+        overflowGroups={overflowGroups}
         footer={
           <div>
-            <p className="mb-2 truncate px-2 font-fine text-[11px] text-on-card-muted">{session.user.login}</p>
+            <p className="mb-2 truncate px-2 font-fine text-[11px] text-on-card-muted">
+              {session.user.login}
+            </p>
             <Button
               variant="inverse"
               size="sm"

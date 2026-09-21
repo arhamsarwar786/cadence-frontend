@@ -12,6 +12,7 @@ import { messageFrom } from "@/shared/lib/errors";
 import { matchesQuery } from "@/shared/lib/matches";
 import type { ClientStatus } from "@/shared/lib/status-labels";
 import {
+  Avatar,
   Button,
   ListLayout,
   ListSkeleton,
@@ -58,13 +59,22 @@ export default function ClientsListPage() {
   }
 
   const columns: Column<Client>[] = [
-    { header: "Name", cell: (c) => c.name },
-    { header: "Status", cell: (c) => <ClientStatusBadge status={c.status as ClientStatus} /> },
-    { header: "City", cell: (c) => c.city },
-    { header: "Province", cell: (c) => c.province },
     {
-      header: "Markup %",
-      cell: (c) => ("markup_pct" in c ? `${c.markup_pct}%` : "—"),
+      header: "Client",
+      cell: (c) => (
+        <span className="flex items-center gap-2">
+          <Avatar name={c.name} size="sm" />
+          <span>
+            <span className="block font-medium">{c.name}</span>
+            <ClientStatusBadge status={c.status as ClientStatus} />
+          </span>
+        </span>
+      ),
+    },
+    {
+      header: "Office address",
+      cell: (c) =>
+        [c.address_line_1, c.city, c.province, c.postal_code].filter(Boolean).join(", ") || "—",
     },
   ];
 
@@ -86,6 +96,10 @@ export default function ClientsListPage() {
         placeholder="Find by name"
         label="Find clients"
       />
+      <p className="font-body text-xs text-cadence-ink/50">
+        Manager / alternate contact columns need the list serializer to embed contacts — not fetched
+        per row.
+      </p>
 
       {query.isLoading ? (
         <ListSkeleton />
@@ -96,7 +110,7 @@ export default function ClientsListPage() {
           stats={[
             {
               value: finding ? rows.length : (query.data?.count ?? 0),
-              label: finding ? "matches" : "total",
+              label: finding ? "matches" : "clients",
               tone: "ink",
             },
           ]}

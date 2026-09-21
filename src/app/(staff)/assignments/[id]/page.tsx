@@ -8,6 +8,7 @@ import { useForm, type Resolver } from "react-hook-form";
 import {
   confirmAssignment,
   createShiftForAssignment,
+  notifyClientAssignment,
   refreshAssignmentRate,
   withdrawAssignment,
 } from "@/features/jobs/actions";
@@ -162,6 +163,30 @@ export default function AssignmentDetailPage() {
       </div>
 
       {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+
+      <PermGate anyOf={PERM.JOBS_CLIENT_NOTIFY}>
+        <div className="rounded-2xl border border-cadence-orange/40 bg-cadence-orange/10 px-4 py-3">
+          <p className="font-body text-sm text-cadence-ink">
+            Client notice is held for approval after confirm. Approve &amp; send when ready.
+          </p>
+          <Button
+            className="mt-2"
+            size="sm"
+            onClick={async () => {
+              setActionError(null);
+              try {
+                await notifyClientAssignment(assignmentId);
+                await refetch();
+              } catch (error) {
+                setActionError(messageFrom(error));
+              }
+            }}
+          >
+            Approve &amp; send client notice
+          </Button>
+        </div>
+      </PermGate>
+
       {assignment.warnings && assignment.warnings.length > 0 ? (
         <ul className="rounded-md border border-cadence-yellow bg-cadence-yellow/20 p-3 font-body text-sm text-cadence-ink">
           {assignment.warnings.map((w) => (
@@ -204,6 +229,9 @@ export default function AssignmentDetailPage() {
           </Field>
           <Field label="End" htmlFor="shift-end" error={errors.end_time?.message}>
             <Input id="shift-end" type="time" {...register("end_time")} />
+          </Field>
+          <Field label="Break (minutes)" htmlFor="shift-break" error={errors.break_minutes?.message}>
+            <Input id="shift-break" type="number" min={0} {...register("break_minutes")} />
           </Field>
           <Button type="submit" size="sm" disabled={isSubmitting}>
             {isSubmitting ? "Adding…" : "Add shift"}

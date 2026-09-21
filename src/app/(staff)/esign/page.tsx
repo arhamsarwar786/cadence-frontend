@@ -4,8 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listSignatureRequests, revokeSignatureRequest, signatureRequestKeys } from "@/features/esign/api";
 import type { SignatureRequest } from "@/features/esign/types";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { PERM } from "@/permissions/keys";
 import { Badge, Button, ListSkeleton, Pagination, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
+import { formatDate } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
 import {
   SIGNATURE_REQUEST_PURPOSE_LABELS,
@@ -20,6 +22,7 @@ export default function EsignPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const timeZone = useOrgTimeZone();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const { confirm, dialog: confirmDialog } = useConfirm();
 
@@ -56,7 +59,7 @@ export default function EsignPage() {
         </Badge>
       ),
     },
-    { header: "Expires", cell: (r) => new Date(r.expires_at).toLocaleDateString() },
+    { header: "Expires", cell: (r) => (timeZone ? formatDate(r.expires_at, timeZone) : "—") },
     {
       header: "",
       cell: (r) =>

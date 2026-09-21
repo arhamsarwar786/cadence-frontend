@@ -5,11 +5,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { createPayrollRun } from "@/features/money/actions";
-import { listPayrollRuns, payrollRunKeys } from "@/features/money/api";
+import { createPayrollRun, generatePayrollRun } from "@/features/money/actions";
+import { listPayCycles, listPayrollRuns, payCycleKeys, payrollRunKeys } from "@/features/money/api";
 import { PayrollRunStatusBadge } from "@/features/money/components/StatusBadges";
 import { payrollRunCreateSchema, type PayrollRunCreateFormValues } from "@/features/money/schemas";
-import type { PayrollRun } from "@/features/money/types";
+import type { PayCycle, PayrollRun } from "@/features/money/types";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { PayrollRunStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
@@ -63,6 +64,7 @@ export default function PayrollRunsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const timeZone = useOrgTimeZone();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const [newOpen, setNewOpen] = useState(false);
 
@@ -70,7 +72,14 @@ export default function PayrollRunsPage() {
     queryKey: payrollRunKeys.list({ page }),
     queryFn: () => listPayrollRuns({ page, pageSize: PAGE_SIZE }),
   });
-
+  const cyclesQuery = useQuery({
+    queryKey: payCycleKeys.list(),
+    queryFn: async () => {
+      const data = await listPayCycles();
+      return Array.isArray(data) ? data : data.results;
+    },
+  });
+  const [genError, setGenError] = useState<string | null>(null);
   function goToPage(nextPage: number) {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(nextPage));
@@ -80,20 +89,70 @@ export default function PayrollRunsPage() {
   const columns: Column<PayrollRun>[] = [
     { header: "Period", cell: (r) => `${r.period_start} – ${r.period_end}` },
     { header: "Payday", cell: (r) => r.payday },
-    { header: "Status", cell: (r) => <PayrollRunStatusBadge status={r.status as PayrollRunStatus} /> },
+    {
+      header: "Status",
+      cell: (r) => <PayrollRunStatusBadge status={r.status as PayrollRunStatus} paidAt={r.paid_at} />,
+    },
     { header: "Paid", cell: (r) => (r.paid_at ? "Yes" : "No") },
   ];
+
+  const cycles = (cyclesQuery.data ?? []) as PayCycle[];
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Pay statements"
         actions={
-          <PermGate anyOf={PERM.PAYROLL_RUN}>
-            <Button onClick={() => setNewOpen(true)}>New run</Button>
-          </PermGate>
+          <div className="flex flex-wrap gap-2">
+            <PermGate anyOf={PERM.PAYROLL_RUN}>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  setGenError(null);
+                  try {
+                    const run = await generatePayrollRun();
+                    await queryClient.invalidateQueries({ queryKey: payrollRunKeys.all });
+                    router.push(`/payroll/runs/${run.id}`);
+                  } catch (error) {
+                    setGenError(messageFrom(error));
+                  }
+                }}
+              >
+                Generate next run
+              </Button>
+            </PermGate>
+            <PermGate anyOf={PERM.PAYROLL_RUN}>
+              <Button onClick={() => setNewOpen(true)}>New run</Button>
+            </PermGate>
+          </div>
         }
       />
+      {genError ? <p className="font-body text-sm text-cadence-red">{genError}</p> : null}
+
+      <section className="rounded-2xl border border-border bg-surface p-4">
+        <h2 className="mb-2 font-subheading text-sm uppercase tracking-wide text-cadence-ink/50">
+          Pay cycles
+        </h2>
+        {cyclesQuery.isLoading ? (
+          <p className="text-sm text-cadence-ink/50">Loading…</p>
+        ) : cycles.length === 0 ? (
+          <p className="text-sm text-cadence-ink/50">No pay cycles configured yet.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {cycles.map((c) => (
+              <li key={c.id} className="flex justify-between gap-3">
+                <span>
+                  {c.name} · {c.period_kind}
+                  {c.active ? " · active" : ""}
+                </span>
+                <span className="text-cadence-ink/50">
+                  anchor {c.anchor_date} · payday +{c.payday_offset_days}d
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {query.isLoading ? (
         <ListSkeleton />
@@ -104,7 +163,13 @@ export default function PayrollRunsPage() {
           stats={[
             { value: query.data?.count ?? 0, label: "runs", tone: "ink" },
             {
-              value: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+              value: timeZone
+                ? new Intl.DateTimeFormat("en-CA", {
+                    month: "short",
+                    day: "numeric",
+                    timeZone,
+                  }).format(new Date())
+                : "—",
               label: "today",
               tone: "orange",
             },

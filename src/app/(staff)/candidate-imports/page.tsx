@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { importBatchKeys, listBatches, uploadBatch } from "@/features/candidate-imports/api";
 import type { ImportBatch } from "@/features/candidate-imports/types";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { formatDate } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
 import {
   CANDIDATE_IMPORT_BATCH_STATUS_LABELS,
@@ -28,6 +30,7 @@ export default function CandidateImportsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const timeZone = useOrgTimeZone();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export default function CandidateImportsPage() {
       ),
     },
     { header: "Rows", cell: (b) => `${b.valid_row_count ?? 0} / ${b.row_count ?? 0} valid` },
-    { header: "Uploaded", cell: (b) => new Date(b.created_at).toLocaleDateString() },
+    { header: "Uploaded", cell: (b) => (timeZone ? formatDate(b.created_at, timeZone) : "—") },
   ];
 
   return (

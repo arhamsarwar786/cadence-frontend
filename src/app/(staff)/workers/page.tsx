@@ -12,7 +12,9 @@ import { messageFrom } from "@/shared/lib/errors";
 import { matchesQuery } from "@/shared/lib/matches";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
 import {
+  Avatar,
   Button,
+  Chip,
   ListLayout,
   ListSkeleton,
   PageHeader,
@@ -46,7 +48,10 @@ export default function WorkersListPage() {
     const results = query.data?.results ?? [];
     if (!finding) return results;
     return results.filter((worker) =>
-      matchesQuery(`${worker.first_name} ${worker.last_name}`, q),
+      matchesQuery(
+        `${worker.first_name} ${worker.last_name} ${worker.email ?? ""} ${worker.phone ?? ""}`,
+        q,
+      ),
     );
   }, [finding, q, query.data?.results]);
 
@@ -60,13 +65,36 @@ export default function WorkersListPage() {
   }
 
   const columns: Column<EmployeeList>[] = [
-    { header: "Name", cell: (w) => `${w.first_name} ${w.last_name}` },
     {
-      header: "Lifecycle",
-      cell: (w) => <LifecycleStatusBadge status={w.lifecycle_status as LifecycleStatus} />,
+      header: "Name",
+      cell: (w) => {
+        const name = `${w.first_name} ${w.last_name}`;
+        return (
+          <span className="flex items-center gap-2">
+            <Avatar name={name} size="sm" />
+            <span>
+              <span className="block font-medium">{name}</span>
+              <LifecycleStatusBadge status={w.lifecycle_status as LifecycleStatus} />
+            </span>
+          </span>
+        );
+      },
     },
-    { header: "Work status", cell: (w) => w.work_status ?? "—" },
-    { header: "Rating", cell: (w) => w.rating },
+    { header: "Phone", cell: (w) => w.phone ?? "—" },
+    { header: "Email", cell: (w) => w.email ?? "—" },
+    {
+      header: "Status",
+      cell: (w) =>
+        "work_status" in w && w.work_status ? (
+          <Chip tone="muted">{String(w.work_status).replaceAll("_", " ")}</Chip>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      header: "Rating",
+      cell: (w) => ("rating" in w && w.rating != null ? `★ ${w.rating}` : "—"),
+    },
   ];
 
   return (
@@ -84,7 +112,7 @@ export default function WorkersListPage() {
       <SearchField
         value={q}
         onChange={(next) => setParams({ q: next || null, page: "1" })}
-        placeholder="Find by name"
+        placeholder="Find by name, email, or phone"
         label="Find workers"
       />
 
@@ -97,7 +125,7 @@ export default function WorkersListPage() {
           stats={[
             {
               value: finding ? rows.length : (query.data?.count ?? 0),
-              label: finding ? "matches" : "total",
+              label: finding ? "matches" : "employees",
               tone: "ink",
             },
           ]}

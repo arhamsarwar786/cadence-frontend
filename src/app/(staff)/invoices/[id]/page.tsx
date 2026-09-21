@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useSession } from "@/auth/session-context";
 import {
   approveInvoice,
   autofillInvoice,
@@ -29,6 +30,8 @@ import { Button, Dialog, Field, Input, PermGate, useConfirm } from "@/shared/ui"
 export default function InvoiceDetailPage() {
   const { id: invoiceId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { session } = useSession();
+  const timeZone = session?.organization.timezone;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -92,7 +95,11 @@ export default function InvoiceDetailPage() {
             {invoice.invoice_number ?? "Draft invoice"}
           </h1>
           <div className="mt-1 flex items-center gap-2">
-            <InvoiceStatusBadge status={status} />
+            <InvoiceStatusBadge
+              status={status}
+              voidedAt={invoice.voided_at}
+              paidAt={invoice.paid_at}
+            />
             <span className="font-body text-sm text-cadence-ink/60">{invoice.client_name}</span>
           </div>
         </div>
@@ -199,7 +206,7 @@ export default function InvoiceDetailPage() {
         <div>
           <dt className="text-cadence-ink/60">Paid</dt>
           <dd className="text-cadence-ink">
-            {invoice.paid_at ? formatDate(invoice.paid_at, "UTC") : "Not paid"}
+            {invoice.paid_at && timeZone ? formatDate(invoice.paid_at, timeZone) : invoice.paid_at ? "—" : "Not paid"}
           </dd>
         </div>
       </dl>

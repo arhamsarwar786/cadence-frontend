@@ -1,5 +1,5 @@
 import { api, ApiError } from "@/api/client";
-import type { Payslip, PayslipDetail } from "@/features/money/types";
+import type { PayStatement, PayStatementDetail } from "@/features/money/types";
 import type {
   PortalAvailability,
   PortalCert,
@@ -60,12 +60,12 @@ export function listDocuments(): Promise<PortalDocumentLink[]> {
   return api.get<PortalDocumentLink[]>("/api/v1/portal/me/documents/");
 }
 
-export function listPayslips(): Promise<Payslip[]> {
-  return api.get<Payslip[]>("/api/v1/portal/me/pay-statements/");
+export function listPayslips(): Promise<PayStatement[]> {
+  return api.get<PayStatement[]>("/api/v1/portal/me/pay-statements/");
 }
 
-export function getPayslip(id: string): Promise<PayslipDetail> {
-  return api.get<PayslipDetail>(`/api/v1/portal/me/pay-statements/${id}/`);
+export function getPayslip(id: string): Promise<PayStatementDetail> {
+  return api.get<PayStatementDetail>(`/api/v1/portal/me/pay-statements/${id}/`);
 }
 
 export function getConsentText(): Promise<{ consent_text: string; consent_version: number }> {

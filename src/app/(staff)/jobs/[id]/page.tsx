@@ -167,11 +167,19 @@ export default function JobDetailPage() {
         <dl className="grid max-w-xl grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
           <div>
             <dt className="text-cadence-ink/60">Start</dt>
-            <dd className="text-cadence-ink">{formatDateTime(job.start_datetime, "UTC")}</dd>
+            <dd className="text-cadence-ink">
+              {session?.organization.timezone
+                ? formatDateTime(job.start_datetime, session.organization.timezone)
+                : "—"}
+            </dd>
           </div>
           <div>
             <dt className="text-cadence-ink/60">End</dt>
-            <dd className="text-cadence-ink">{formatDateTime(job.end_datetime, "UTC")}</dd>
+            <dd className="text-cadence-ink">
+              {session?.organization.timezone
+                ? formatDateTime(job.end_datetime, session.organization.timezone)
+                : "—"}
+            </dd>
           </div>
           <div>
             <dt className="text-cadence-ink/60">Bill rate</dt>

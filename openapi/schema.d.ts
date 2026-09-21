@@ -45,6 +45,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assignments/{pk}/notify-client/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Approve and release the client's confirm notice. POST rides
+         *     jobs.client_notify.
+         */
+        post: operations["assignments_notify_client_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assignments/{pk}/refresh-rate/": {
         parameters: {
             query?: never;
@@ -80,6 +100,100 @@ export interface paths {
          *     shifts.edit.
          */
         post: operations["assignments_shifts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/log/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The audit trail — the agency's PIPEDA access record. GET rides
+         *     audit.log.view (filterable by action, entity_type and entity_id, all
+         *     exact-match over the STORED strings — including the frozen historical
+         *     names the log keeps on purpose, USER-RULED 2026-09-03; the selector's
+         *     docstring states the two-named rule). The house pagination envelope
+         *     ({count, next, previous, results}). A read door only: it writes nothing
+         *     and takes no chain lock.
+         */
+        get: operations["audit_log_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/log/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The trail as a JSON download — the production of the access record
+         *     for a complaint or an OPC inquiry. GET rides audit.log.view, the list's
+         *     own gate, over the list's own filters; the body is the list serializer's
+         *     array, unpaginated, as an attachment. JSON, not CSV: `changes` is nested
+         *     JSON and a CSV would force a lossy flattening (the payroll export's CSV
+         *     shape answers a different question — ledger rows, not a record). A read
+         *     door only: it writes nothing and takes no chain lock.
+         */
+        get: operations["audit_log_export_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/log/{pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One trail row. GET rides audit.log.view. A cross-tenant or unknown
+         *     id is NotFound, never 403 — existence never leaks.
+         */
+        get: operations["audit_log_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/invite/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Set the first password with an invitation token. PUBLIC by
+         *     necessity — an invitee has no session yet, so the TOKEN is the
+         *     identity, exactly as the login door's credentials are.
+         *
+         *     The service owns every rule (signature, expiry, org match, INVITED);
+         *     this translates one body into one call.
+         */
+        post: operations["auth_invite_accept_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -140,6 +254,116 @@ export interface paths {
         get: operations["auth_me_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/users/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The user roster. GET rides admin.users.view. Masked PII companions
+         *     only — the raw login never leaves this door.
+         */
+        get: operations["auth_users_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/users/invite/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Invite a staff user. POST rides admin.users.create. The invitee
+         *     starts INVITED with no usable password (the accept half is 10c).
+         */
+        post: operations["auth_users_invite_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/users/{pk}/deactivate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Deactivate one user. POST rides admin.users.deactivate. No request
+         *     body — the refusal names the walkable correction.
+         */
+        post: operations["auth_users_deactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/users/{pk}/permissions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One user's grant set. GET rides admin.permissions.view; PUT rides
+         *     admin.permissions.manage. PUT replaces the whole set: every desired
+         *     grant applies BEFORE any stale grant is revoked, so a handover (grant
+         *     manage elsewhere, then drop the last local manage) never false-refuses
+         *     on its own grant.
+         */
+        get: operations["auth_users_permissions_list"];
+        /**
+         * @description One user's grant set. GET rides admin.permissions.view; PUT rides
+         *     admin.permissions.manage. PUT replaces the whole set: every desired
+         *     grant applies BEFORE any stale grant is revoked, so a handover (grant
+         *     manage elsewhere, then drop the last local manage) never false-refuses
+         *     on its own grant.
+         */
+        put: operations["auth_users_permissions_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/users/{pk}/reset-credentials/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Reset one user's password. POST rides admin.users.reset_credentials.
+         *     The credential is never echoed — the door answers the user row.
+         */
+        post: operations["auth_users_reset_credentials_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -407,6 +631,238 @@ export interface paths {
          *     clients.contacts.manage.
          */
         patch: operations["clients_contacts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/credit-notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Credit notes. GET rides clients.view (filterable by invoice, client,
+         *     status and voided); POST rides clients.invoice.edit.
+         */
+        get: operations["credit_notes_list"];
+        put?: never;
+        /**
+         * @description Credit notes. GET rides clients.view (filterable by invoice, client,
+         *     status and voided); POST rides clients.invoice.edit.
+         */
+        post: operations["credit_notes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One credit note, with its lines. GET rides clients.view; PATCH rides
+         *     clients.invoice.edit.
+         */
+        get: operations["credit_notes_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description One credit note, with its lines. GET rides clients.view; PATCH rides
+         *     clients.invoice.edit.
+         */
+        patch: operations["credit_notes_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description draft → approved. POST rides clients.invoice.approve — the same
+         *     junior-builds/senior-approves separation the invoice uses.
+         */
+        post: operations["credit_notes_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/issue/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description approved → issued, and the CAP: the credited total may never exceed
+         *     the invoice's, summed over every non-void issued note — re-asserted
+         *     under the invoice row lock at the write. POST rides invoices.send.
+         */
+        post: operations["credit_notes_issue_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/lines/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description A credit note's lines. GET rides clients.view; POST rides
+         *     clients.invoice.edit.
+         */
+        get: operations["credit_notes_lines_list"];
+        put?: never;
+        /**
+         * @description A credit note's lines. GET rides clients.view; POST rides
+         *     clients.invoice.edit.
+         */
+        post: operations["credit_notes_lines_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/lines/{line_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description One credit note line. PATCH and DELETE ride clients.invoice.edit. */
+        delete: operations["credit_notes_lines_destroy"];
+        options?: never;
+        head?: never;
+        /** @description One credit note line. PATCH and DELETE ride clients.invoice.edit. */
+        patch: operations["credit_notes_lines_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The credit note's PDF. POST (re)generates it — invoices.send, the
+         *     SEND tier: a credit note is rendered only after it has been ISSUED, and
+         *     issuing already rides that authority, so putting the document in the
+         *     client's hands is the same act. GET downloads it under the credit
+         *     note's own read rule (clients.view). These bytes never pass through the
+         *     documents.* doors (documents.selectors refuses the credit_note type
+         *     there).
+         */
+        get: operations["credit_notes_pdf_retrieve"];
+        put?: never;
+        /**
+         * @description The credit note's PDF. POST (re)generates it — invoices.send, the
+         *     SEND tier: a credit note is rendered only after it has been ISSUED, and
+         *     issuing already rides that authority, so putting the document in the
+         *     client's hands is the same act. GET downloads it under the credit
+         *     note's own read rule (clients.view). These bytes never pass through the
+         *     documents.* doors (documents.selectors refuses the credit_note type
+         *     there).
+         */
+        post: operations["credit_notes_pdf_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/send/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Email the issued credit note's PDF to the client — the same
+         *     notification pipeline the invoice's send uses (producer → on-commit
+         *     enqueue → the beat drain). POST rides invoices.send, the key issuing and
+         *     rendering already ride: putting the correction in the client's hands is
+         *     the same act. It sends only what exists — issued, not void, and already
+         *     generated; the email is not a renderer.
+         */
+        post: operations["credit_notes_send_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/unapprove/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description approved → draft: a mistaken approval caught before issue (a credit
+         *     note that needs fixing must not have to die — a void consumes its
+         *     number forever). POST rides clients.invoice.approve.
+         */
+        post: operations["credit_notes_unapprove_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{pk}/void/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Void — always available (a credit note moved no money). The outer
+         *     shell admits either tier's key; the service tiers on the CREDIT NOTE'S
+         *     own exposure under the row lock: clients.invoice.edit while it is
+         *     draft/approved, invoices.send once issued.
+         */
+        post: operations["credit_notes_void_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/documents/": {
@@ -1274,6 +1730,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/portal/me/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The worker's OWN notification rows (Q19) — GET rides the portal's
+         *     identity gate (recipient_user IS the account, never a grant).
+         *     Unpaginated like every portal collection.
+         */
+        get: operations["notifications_portal_me_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications/templates/": {
         parameters: {
             query?: never;
@@ -1328,6 +1805,64 @@ export interface paths {
         patch: operations["notifications_templates_partial_update"];
         trace?: never;
     };
+    "/api/v1/org/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The organization's OWN settings — the printed address block, the
+         *     agency's clock, the onboarding-approval mode and the retention span.
+         *     GET rides admin.org.view; PATCH rides admin.org.manage. Both are new
+         *     catalog keys: org settings are DELEGABLE (USER-RULED 2026-09-19 — "owner
+         *     and whoever the owner gives perms to"), so the owner holds them by root
+         *     bypass and may grant them to staff like any other authority.
+         *
+         *     THE ORG IS THE CALLER'S OWN, resolved from the authenticated session —
+         *     there is no id in the route or the body, so a cross-tenant read or write
+         *     has nothing to aim at.
+         *
+         *     PATCH is partial. It cannot write the consent pair or the logo (those
+         *     have their own doors), the document number formats or their sequences
+         *     (not editable here — a bad format breaks every later mint), the rating
+         *     scale, or country. A refused field answers 400 naming the reason, never
+         *     a 200 that saved nothing. Lengthening retention_years re-stamps this
+         *     org's existing records in the SAME transaction (m7 slice 16d's own
+         *     plan/apply); a sub-floor value is refused with the floor named and
+         *     nothing moves.
+         */
+        get: operations["org_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description The organization's OWN settings — the printed address block, the
+         *     agency's clock, the onboarding-approval mode and the retention span.
+         *     GET rides admin.org.view; PATCH rides admin.org.manage. Both are new
+         *     catalog keys: org settings are DELEGABLE (USER-RULED 2026-09-19 — "owner
+         *     and whoever the owner gives perms to"), so the owner holds them by root
+         *     bypass and may grant them to staff like any other authority.
+         *
+         *     THE ORG IS THE CALLER'S OWN, resolved from the authenticated session —
+         *     there is no id in the route or the body, so a cross-tenant read or write
+         *     has nothing to aim at.
+         *
+         *     PATCH is partial. It cannot write the consent pair or the logo (those
+         *     have their own doors), the document number formats or their sequences
+         *     (not editable here — a bad format breaks every later mint), the rating
+         *     scale, or country. A refused field answers 400 naming the reason, never
+         *     a 200 that saved nothing. Lengthening retention_years re-stamps this
+         *     org's existing records in the SAME transaction (m7 slice 16d's own
+         *     plan/apply); a sub-floor value is refused with the floor named and
+         *     nothing moves.
+         */
+        patch: operations["org_partial_update"];
+        trace?: never;
+    };
     "/api/v1/org/consent-text/": {
         parameters: {
             query?: never;
@@ -1362,7 +1897,8 @@ export interface paths {
         get?: never;
         /**
          * @description The org's logo link. PUT is root-only — the service holds the gate
-         *     (no catalog toggle covers org settings).
+         *     (no catalog toggle covers the logo; the settings door above does not
+         *     write it).
          */
         put: operations["org_logo_update"];
         post?: never;
@@ -1370,6 +1906,52 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/cycles/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Pay cycles. GET rides payroll.run; POST rides payroll.run. */
+        get: operations["payroll_cycles_list"];
+        put?: never;
+        /** @description Pay cycles. GET rides payroll.run; POST rides payroll.run. */
+        post: operations["payroll_cycles_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/cycles/{pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description One pay cycle. GET rides payroll.run; PATCH rides payroll.run;
+         *     DELETE rides payroll.run.
+         */
+        get: operations["payroll_cycles_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * @description One pay cycle. GET rides payroll.run; PATCH rides payroll.run;
+         *     DELETE rides payroll.run.
+         */
+        delete: operations["payroll_cycles_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description One pay cycle. GET rides payroll.run; PATCH rides payroll.run;
+         *     DELETE rides payroll.run.
+         */
+        patch: operations["payroll_cycles_partial_update"];
         trace?: never;
     };
     "/api/v1/payroll/employees/{employee_id}/ytd/": {
@@ -1382,7 +1964,7 @@ export interface paths {
         /**
          * @description An employee's year-to-date for a year (default: the current year —
          *     the ORG-LOCAL current year; a UTC year flips early on New Year's Eve
-         *     west of Greenwich). Rides payroll.payslips.view.
+         *     west of Greenwich). Rides payroll.pay_statements.view.
          */
         get: operations["payroll_employees_ytd_retrieve"];
         put?: never;
@@ -1393,7 +1975,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/": {
+    "/api/v1/payroll/pay-statements/{pk}/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1401,23 +1983,23 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description One payslip, with its lines and deductions. GET rides
-         *     payroll.payslips.view; DELETE rides payroll.payslips.edit.
+         * @description One pay statement, with its lines and deductions. GET rides
+         *     payroll.pay_statements.view; DELETE rides payroll.pay_statements.edit.
          */
-        get: operations["payroll_payslips_retrieve"];
+        get: operations["payroll_pay_statements_retrieve"];
         put?: never;
         post?: never;
         /**
-         * @description One payslip, with its lines and deductions. GET rides
-         *     payroll.payslips.view; DELETE rides payroll.payslips.edit.
+         * @description One pay statement, with its lines and deductions. GET rides
+         *     payroll.pay_statements.view; DELETE rides payroll.pay_statements.edit.
          */
-        delete: operations["payroll_payslips_destroy"];
+        delete: operations["payroll_pay_statements_destroy"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/attach-flat-coverage/": {
+    "/api/v1/payroll/pay-statements/{pk}/attach-flat-coverage/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1428,18 +2010,18 @@ export interface paths {
         put?: never;
         /**
          * @description Link-only: settle an already-paid flat placement's LATER shifts onto
-         *     this payslip's fee lines. Moves NO money — the pay-side mirror of the
+         *     this pay statement's fee lines. Moves NO money — the pay-side mirror of the
          *     invoice's attach-flat-coverage, and the door the nothing-to-pay refusal
          *     names for the pure tail. POST rides payroll.run.
          */
-        post: operations["payroll_payslips_attach_flat_coverage_create"];
+        post: operations["payroll_pay_statements_attach_flat_coverage_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/deductions/": {
+    "/api/v1/payroll/pay-statements/{pk}/deductions/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1449,17 +2031,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Entered deductions on a draft payslip. is_statutory is derived from
-         *     the code — never typed. POST rides payroll.payslips.edit.
+         * @description Entered deductions on a draft pay statement. is_statutory is derived from
+         *     the code — never typed. POST rides payroll.pay_statements.edit.
          */
-        post: operations["payroll_payslips_deductions_create"];
+        post: operations["payroll_pay_statements_deductions_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/deductions/{deduction_id}/": {
+    "/api/v1/payroll/pay-statements/{pk}/deductions/{deduction_id}/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1469,15 +2051,15 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** @description One deduction. PATCH and DELETE ride payroll.payslips.edit. */
-        delete: operations["payroll_payslips_deductions_destroy"];
+        /** @description One deduction. PATCH and DELETE ride payroll.pay_statements.edit. */
+        delete: operations["payroll_pay_statements_deductions_destroy"];
         options?: never;
         head?: never;
-        /** @description One deduction. PATCH and DELETE ride payroll.payslips.edit. */
-        patch: operations["payroll_payslips_deductions_partial_update"];
+        /** @description One deduction. PATCH and DELETE ride payroll.pay_statements.edit. */
+        patch: operations["payroll_pay_statements_deductions_partial_update"];
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/lines/": {
+    "/api/v1/payroll/pay-statements/{pk}/lines/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1487,18 +2069,18 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Non-shift earnings on a draft payslip (bonus / adjustment / allowance
+         * @description Non-shift earnings on a draft pay statement (bonus / adjustment / allowance
          *     / other). Shift lines are never written here — generation owns them.
-         *     POST rides payroll.payslips.edit.
+         *     POST rides payroll.pay_statements.edit.
          */
-        post: operations["payroll_payslips_lines_create"];
+        post: operations["payroll_pay_statements_lines_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/lines/{line_id}/": {
+    "/api/v1/payroll/pay-statements/{pk}/lines/{line_id}/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1508,15 +2090,15 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** @description One earning line. PATCH and DELETE ride payroll.payslips.edit. */
-        delete: operations["payroll_payslips_lines_destroy"];
+        /** @description One earning line. PATCH and DELETE ride payroll.pay_statements.edit. */
+        delete: operations["payroll_pay_statements_lines_destroy"];
         options?: never;
         head?: never;
-        /** @description One earning line. PATCH and DELETE ride payroll.payslips.edit. */
-        patch: operations["payroll_payslips_lines_partial_update"];
+        /** @description One earning line. PATCH and DELETE ride payroll.pay_statements.edit. */
+        patch: operations["payroll_pay_statements_lines_partial_update"];
         trace?: never;
     };
-    "/api/v1/payroll/payslips/{pk}/pdf/": {
+    "/api/v1/payroll/pay-statements/{pk}/pdf/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1524,20 +2106,20 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description The payslip's PDF for staff. POST (re)generates it
-         *     (payroll.payslips.generate — the catalog's own toggle); GET downloads it
-         *     under payroll.payslips.view — the pay-data rule: documents.* never
+         * @description The pay statement's PDF for staff. POST (re)generates it
+         *     (payroll.pay_statements.generate — the catalog's own toggle); GET downloads it
+         *     under payroll.pay_statements.view — the pay-data rule: documents.* never
          *     subsumes it.
          */
-        get: operations["payroll_payslips_pdf_retrieve"];
+        get: operations["payroll_pay_statements_pdf_retrieve"];
         put?: never;
         /**
-         * @description The payslip's PDF for staff. POST (re)generates it
-         *     (payroll.payslips.generate — the catalog's own toggle); GET downloads it
-         *     under payroll.payslips.view — the pay-data rule: documents.* never
+         * @description The pay statement's PDF for staff. POST (re)generates it
+         *     (payroll.pay_statements.generate — the catalog's own toggle); GET downloads it
+         *     under payroll.pay_statements.view — the pay-data rule: documents.* never
          *     subsumes it.
          */
-        post: operations["payroll_payslips_pdf_create"];
+        post: operations["payroll_pay_statements_pdf_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1568,6 +2150,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll/runs/generate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Generate the next open window's run off the active pay cycle. Empty
+         *     body: the org holds exactly one active cycle, so there is nothing to
+         *     choose. POST rides payroll.run — no new key.
+         */
+        post: operations["payroll_runs_generate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payroll/runs/{pk}/": {
         parameters: {
             query?: never;
@@ -1576,16 +2179,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description One run, with its payslips. GET rides payroll.page.view AND
-         *     payroll.payslips.view (the bundle composes the payslip list — the
+         * @description One run, with its pay statements. GET rides payroll.page.view AND
+         *     payroll.pay_statements.view (the bundle composes the pay statement list — the
          *     AND-set is the contract); DELETE rides payroll.run.
          */
         get: operations["payroll_runs_retrieve"];
         put?: never;
         post?: never;
         /**
-         * @description One run, with its payslips. GET rides payroll.page.view AND
-         *     payroll.payslips.view (the bundle composes the payslip list — the
+         * @description One run, with its pay statements. GET rides payroll.page.view AND
+         *     payroll.pay_statements.view (the bundle composes the pay statement list — the
          *     AND-set is the contract); DELETE rides payroll.run.
          */
         delete: operations["payroll_runs_destroy"];
@@ -1604,10 +2207,36 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description draft → approved: payslips issue and employee_ytd writes, in one
+         * @description draft → approved: pay statements issue and employee_ytd writes, in one
          *     transaction. Idempotent under retry. POST rides payroll.approve.
          */
         post: operations["payroll_runs_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/runs/{pk}/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description An approved run's QuickBooks-shaped CSV attachment (P3, Q15): one row
+         *     per non-contractor pay statement, grouped by pay_method. GET rides
+         *     payroll.export — the key's first enforcement, deliberately not the
+         *     detail door's AND-set (the export shows the same statement grain the
+         *     detail door already shows, to a different authority). The artifact's
+         *     first text/csv door (the privacy export streams JSON): the coverage
+         *     pin carries it as binary. A draft run is a 400 naming the approve
+         *     door; a cross-tenant/out-of-scope run id is NotFound, never 403.
+         */
+        get: operations["payroll_runs_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1629,6 +2258,93 @@ export interface paths {
          *     payroll.release.
          */
         post: operations["payroll_runs_release_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/perm-placements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Placements. GET rides clients.view (filterable by client/status);
+         *     POST rides jobs.assign (the sourcing act).
+         */
+        get: operations["perm_placements_list"];
+        put?: never;
+        /**
+         * @description Placements. GET rides clients.view (filterable by client/status);
+         *     POST rides jobs.assign (the sourcing act).
+         */
+        post: operations["perm_placements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/perm-placements/{pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One placement. GET rides clients.view; PATCH rides jobs.assign. */
+        get: operations["perm_placements_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description One placement. GET rides clients.view; PATCH rides jobs.assign. */
+        patch: operations["perm_placements_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/perm-placements/{pk}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Confirm the placement: freeze the fee, emit the fee line. POST rides
+         *     jobs.assign AND clients.invoice.edit AND clients.invoice.create AND
+         *     clients.view (the AND-set is the contract — the shell declares
+         *     jobs.assign, the service enforces the invoice half, and the
+         *     auto-created draft resolves its client through money's own
+         *     create_invoice under clients.view).
+         */
+        post: operations["perm_placements_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/perm-placements/{pk}/void/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Void the placement. POST rides jobs.assign AND clients.invoice.edit
+         *     (the AND-set is the contract — the shell declares jobs.assign, the
+         *     service enforces the invoice half).
+         */
+        post: operations["perm_placements_void_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1737,6 +2453,33 @@ export interface paths {
         patch: operations["portal_me_certs_partial_update"];
         trace?: never;
     };
+    "/api/v1/portal/me/consent-text/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The org's CURRENT consent text, worker-readable — the pair a
+         *     capture right now would snapshot, so the worker reads exactly what
+         *     they are about to agree to (the commit-4 review's SHOULD-FIX: the
+         *     capture constraint is "the form shows the consent text", and the only
+         *     other door touching the text is root-only). GET is identity-gated
+         *     like every portal read — no catalog key, no grants; the text is org
+         *     configuration, not a worker row. Refused the capture's own way when
+         *     the org has set no text (the shared refusal, so the two doors name
+         *     the same correction).
+         */
+        get: operations["portal_me_consent_text_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portal/me/consent/": {
         parameters: {
             query?: never;
@@ -1752,6 +2495,12 @@ export interface paths {
          *     client-supplied id). POST is the act; the org's current consent text
          *     is snapshotted onto the record. Every capture is its own row — a
          *     re-capture never overwrites.
+         *
+         *     This door is the RE-CONSENT step, not the onboarding step (USER-RULED
+         *     2026-09-01): submitting onboarding IS the consent act for a fresh
+         *     applicant, so the door's remaining job is the agency's chase when the
+         *     org EDITS its text — an already-onboarded worker re-consents here to
+         *     the current version.
          */
         post: operations["portal_me_consent_create"];
         delete?: never;
@@ -1935,7 +2684,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/portal/me/payslips/": {
+    "/api/v1/portal/me/pay-statements/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1943,11 +2692,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description The worker's OWN payslips, issued/paid only — identity is the gate,
+         * @description The worker's OWN pay statements, issued/paid only — identity is the gate,
          *     never a catalog grant (workers hold none). Unpaginated like every portal
          *     collection (bounded by the worker's own history).
          */
-        get: operations["portal_me_payslips_list"];
+        get: operations["portal_me_pay_statements_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1956,7 +2705,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/portal/me/payslips/{pk}/": {
+    "/api/v1/portal/me/pay-statements/{pk}/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1964,11 +2713,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description One of the worker's own issued/paid payslips, with its lines and
+         * @description One of the worker's own issued/paid pay statements, with its lines and
          *     deductions — identity is the gate, never a catalog grant. Another
          *     worker's id is a 404 — existence never leaks.
          */
-        get: operations["portal_me_payslips_retrieve"];
+        get: operations["portal_me_pay_statements_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1977,7 +2726,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/portal/me/payslips/{pk}/pdf/": {
+    "/api/v1/portal/me/pay-statements/{pk}/pdf/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1985,12 +2734,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description The worker's OWN payslip PDF — identity is the gate, issued/paid
+         * @description The worker's OWN pay statement PDF — identity is the gate, issued/paid
          *     only. The worker reads what the office generated: an ungenerated PDF is
          *     a 404, never an on-demand render (generation is a privileged act and
          *     workers hold no grants).
          */
-        get: operations["portal_me_payslips_pdf_retrieve"];
+        get: operations["portal_me_pay_statements_pdf_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2231,8 +2980,11 @@ export interface paths {
         /**
          * @description The self-serve submit — the door the intake paperwork rule lives on
          *     (résumé, SIN document, two photo IDs, a permit when the stored answer
-         *     says one applies). Staff submits are not bound by it. The worker portal's
-         *     identity gate — no grants.
+         *     says one applies). Staff submits are not bound by it. SUBMITTING IS
+         *     THE CONSENT ACT (USER-RULED 2026-09-01): when no consent record is on
+         *     file the body must carry consent_acknowledged=true — express, never
+         *     bundled — and the submit records the capture itself. The worker
+         *     portal's identity gate — no grants.
          */
         post: operations["portal_me_submit_create"];
         delete?: never;
@@ -2281,6 +3033,164 @@ export interface paths {
          *     grants. PATCH edits it; DELETE removes it.
          */
         patch: operations["portal_me_time_off_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/privacy/breaches/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The breach register. GET rides privacy.breaches.view (filterable by
+         *     rrosh); POST rides privacy.breaches.manage — the agency records the
+         *     breach, its assessment, and the two duties' answers, with the dates
+         *     stored org-local.
+         */
+        get: operations["privacy_breaches_list"];
+        put?: never;
+        /**
+         * @description The breach register. GET rides privacy.breaches.view (filterable by
+         *     rrosh); POST rides privacy.breaches.manage — the agency records the
+         *     breach, its assessment, and the two duties' answers, with the dates
+         *     stored org-local.
+         */
+        post: operations["privacy_breaches_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/breaches/{pk}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One breach record. GET rides privacy.breaches.view. */
+        get: operations["privacy_breaches_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/disposal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description THE OVERVIEW (m7 slice 16b-ii) — every personal record on a
+         *     destruction clock, soonest first, with its dates and its hold.
+         *
+         *     GET rides privacy.disposal.view, which sees this page AND NOTHING
+         *     ELSE: the four manage doors below all ride privacy.disposal.manage,
+         *     so reading the overview never implies the authority to move it.
+         */
+        get: operations["privacy_disposal_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/disposal/{pk}/delay/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Delay one record's destruction date. POST rides
+         *     privacy.disposal.manage; the bound is measured from the schedule's own
+         *     anchor, so repeated delays cannot become an indefinite one.
+         */
+        post: operations["privacy_disposal_delay_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/disposal/{pk}/destroy/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description DESTROY NOW — the agency's explicit choice, irreversible. POST rides
+         *     privacy.disposal.manage, is bodiless (the POST is the act — the esign
+         *     sign door's shape), and is refused while a hold stands.
+         */
+        post: operations["privacy_disposal_destroy_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/disposal/{pk}/hold/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Keep until further review. POST rides privacy.disposal.manage and
+         *     REQUIRES a recorded reason (USER-RULED 2026-09-17) — a blank or
+         *     whitespace-only reason is a 400.
+         */
+        post: operations["privacy_disposal_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/disposal/{pk}/release/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Lift a hold — the "further review" having happened. POST rides
+         *     privacy.disposal.manage, is bodiless (the POST is the act), and leaves
+         *     the date exactly where it stands: a record whose date passed while it
+         *     was held becomes destroyable on the next run.
+         *
+         *     A POST rather than a DELETE on the hold door: nothing is deleted here
+         *     — the schedule, the anchor and the date all survive — and every other
+         *     act on this schedule is a POST.
+         */
+        post: operations["privacy_disposal_release_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/privacy/requests/": {
@@ -2375,6 +3285,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/dashboard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The reporting dashboard (build-plan slice 8): fill rate, margin by
+         *     client, unbilled hours, overdue invoices — four reads, no writes. GET
+         *     rides reports.dashboard.view, the catalog's own key (scope: all) — no
+         *     new key, no catalog change.
+         *
+         *     SILENCE IS THE ONE ANSWER THIS APP NEVER GIVES: every number is
+         *     computed over rows the caller's own grants see (jobs.view for fill
+         *     rate, clients.view for margin and overdue, shifts.view for unbilled
+         *     hours) — a caller who sees nothing gets zeros and empty rows, never
+         *     another book's economics. A row whose margin the caller may not see
+         *     through the margin gates carries margin null, never a zero that
+         *     would read as a real number; the count beside the rows says how
+         *     many links were excluded.
+         */
+        get: operations["reports_dashboard_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schema/": {
         parameters: {
             query?: never;
@@ -2452,6 +3393,36 @@ export interface paths {
          *     shifts.edit.
          */
         patch: operations["shifts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/shifts/{pk}/backfill/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description "Who can cover this shift now" — the no-show backfill read
+         *     (build-plan slice 4). A READ ONLY: it proposes candidates, assigns
+         *     nobody and changes no row (AGENTS.md — the system presumes attendance
+         *     and no sweep or read may flip a status).
+         *
+         *     The outer gate is shifts.view (you must be able to see the shift at
+         *     all); the selector adds workers.view (the coarse-shell PII-door
+         *     pattern — a shifts.view holder is not necessarily a workers.view
+         *     holder, and this door hands back worker identities). scope_visible
+         *     carries the same SILENCE rule as workers' candidate search: whether
+         *     the caller's workers.view grant sees any worker at all, independent of
+         *     whether one can cover THIS shift.
+         */
+        get: operations["shifts_backfill_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/shifts/{pk}/clear-mark/": {
@@ -2608,16 +3579,20 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Workers. GET rides workers.view; POST rides workers.create. rating,
-         *     the masked PII companions and the background-check block are omitted
-         *     per row for a caller without the grants.
+         * @description Workers. GET rides workers.view; POST rides workers.create. rating
+         *     AND its derivation stamp (rating_updated_at — USER-RULED 2026-09-02,
+         *     both behind workers.ratings.view), the masked PII companions and the
+         *     background-check block are omitted per row for a caller without the
+         *     grants.
          */
         get: operations["workers_list"];
         put?: never;
         /**
-         * @description Workers. GET rides workers.view; POST rides workers.create. rating,
-         *     the masked PII companions and the background-check block are omitted
-         *     per row for a caller without the grants.
+         * @description Workers. GET rides workers.view; POST rides workers.create. rating
+         *     AND its derivation stamp (rating_updated_at — USER-RULED 2026-09-02,
+         *     both behind workers.ratings.view), the masked PII companions and the
+         *     background-check block are omitted per row for a caller without the
+         *     grants.
          */
         post: operations["workers_create"];
         delete?: never;
@@ -2701,6 +3676,41 @@ export interface paths {
          *     forces partial on PATCH, the door is not).
          */
         patch: operations["workers_incident_weights_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/workers/search/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Candidate search — skill / cert / availability, ranked (build-plan
+         *     slice 4). GET rides workers.view, the obvious rider on a door that
+         *     reads workers: no new catalog key.
+         *
+         *     SILENCE IS THE ONE ANSWER THIS APP NEVER GIVES: the body always
+         *     carries `scope_visible` beside `results` — whether the caller's grant
+         *     sees ANY worker at all, independent of this search's filters. A caller
+         *     scoped to "assigned" with zero assigned candidates gets
+         *     `scope_visible: false` on every search; a bare `results: []` would be
+         *     indistinguishable from "plenty of workers are visible here, none of
+         *     them matched", which is a lie about what the caller may see.
+         *
+         *     Ranked over the WHOLE matched set, then paginated: the ranking is over
+         *     everything the search matched (never a page of it), and the response is
+         *     the standard {count, next, previous, results} envelope with
+         *     `scope_visible` riding beside it — an unfiltered search matches the
+         *     whole roster, which is exactly what pagination bounds.
+         */
+        get: operations["workers_search_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/workers/skills/": {
@@ -3260,6 +4270,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workers/{pk}/phone/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Confirm the relayed code and stamp the number verified. POST rides
+         *     workers.edit.
+         */
+        post: operations["workers_phone_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workers/{pk}/phone/request-code/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Send a verification code to the worker's handset. POST rides
+         *     workers.edit (m7 slice 9a — the staff-mediated handshake: the office
+         *     requests, the worker relays the code off their phone, the office
+         *     confirms on the door below). Empty body.
+         */
+        post: operations["workers_phone_request_code_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workers/{pk}/rehire/": {
         parameters: {
             query?: never;
@@ -3392,6 +4444,15 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * @description The invitee's own submission: the token proves who they are, the
+         *     password is what they are setting. Both write-only — neither is ever
+         *     echoed back.
+         */
+        AcceptInvite: {
+            password: string;
+            token: string;
+        };
+        /**
          * @description The CONTRACT shape of GET /assignments/<pk>/ — the view composes the
          *     placement payload and its warnings from two selector calls, so no
          *     single runtime serializer matches it. This class exists for the
@@ -3403,7 +4464,7 @@ export interface components {
             /** Format: uuid */
             readonly assigned_by_id: string;
             /** Format: decimal */
-            bill_rate_applied: string;
+            bill_rate_applied?: string;
             bill_rate_unit_applied: components["schemas"]["BillRateUnitEnum"];
             /** Format: date-time */
             client_notified_at?: string | null;
@@ -3418,9 +4479,9 @@ export interface components {
             readonly job_id: string;
             readonly job_title: string;
             /** Format: decimal */
-            markup_pct_applied: string;
+            markup_pct_applied?: string;
             /** Format: decimal */
-            pay_rate: string;
+            pay_rate?: string;
             status?: components["schemas"]["AssignmentStatusEnum"];
             /** Format: date-time */
             readonly updated_at: string;
@@ -3436,6 +4497,35 @@ export interface components {
         AssignmentWarning: {
             code: string;
             detail: string;
+        };
+        /**
+         * @description One audit-trail row's read shape — the list, the detail and the
+         *     export share it.
+         *
+         *     The actor rides as `actor_id` ONLY — never joined, never an email: the
+         *     trail answers who did what, and the account's address is not part of
+         *     that answer. `changes` renders exactly what the writer stored (the
+         *     allowlist in core/audit.py already reduced every other key to
+         *     presence-only before the row was chained — rates, amounts and PII never
+         *     entered the values, and this reader adds nothing back). `ip_address`
+         *     and `    user_agent` ride because they ARE the access record PIPEDA asks
+         *     the agency to produce: who, from where, with what, when.
+         */
+        AuditLog: {
+            action: string;
+            /** Format: uuid */
+            readonly actor_id: string | null;
+            changes?: unknown;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: uuid */
+            entity_id?: string | null;
+            entity_type?: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            ip_address?: string | null;
+            readonly sequence_no: number;
+            user_agent?: string;
         };
         /**
          * @description Auto-fill input: everything optional — with no keys at all it fills
@@ -3492,6 +4582,13 @@ export interface components {
         BillingCycleEnum: "weekly" | "biweekly" | "monthly";
         /** @enum {unknown} */
         BlankEnum: "";
+        CandidateSearchResult: {
+            count: number;
+            next: string | null;
+            previous: string | null;
+            results: components["schemas"]["EmployeeList"][];
+            scope_visible: boolean;
+        };
         /**
          * @description * `email` - Email
          *     * `in_app` - In app
@@ -3511,7 +4608,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             /** Format: decimal */
-            markup_pct: string;
+            markup_pct?: string;
             name: string;
             /** Format: uuid */
             readonly owner_user_id: string | null;
@@ -3635,6 +4732,145 @@ export interface components {
          * @enum {string}
          */
         CountryEnum: "CA";
+        /**
+         * @description The credit note read shape, with the lifecycle actor columns and the
+         *     invoice it corrects (number and client name — a reader of the document
+         *     sees WHICH bill this credits without a second request).
+         */
+        CreditNote: {
+            /** Format: date-time */
+            approved_at?: string | null;
+            /** Format: uuid */
+            approved_by?: string | null;
+            /** Format: uuid */
+            readonly client_id: string;
+            readonly client_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            credit_note_number: string;
+            /** Format: uuid */
+            readonly document_id: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly invoice_id: string;
+            readonly invoice_number: string;
+            /** Format: date */
+            issue_date: string;
+            /** Format: date-time */
+            issued_at?: string | null;
+            reason: string;
+            status?: components["schemas"]["CreditNoteStatusEnum"];
+            /** Format: decimal */
+            subtotal?: string;
+            /** Format: decimal */
+            tax_amount?: string;
+            /** Format: decimal */
+            total?: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** Format: date-time */
+            voided_at?: string | null;
+        };
+        /**
+         * @description Detail = the note plus its lines (the view composes them; the list
+         *     stays flat) — declared so the contract carries the shape.
+         */
+        CreditNoteDetail: {
+            /** Format: date-time */
+            approved_at?: string | null;
+            /** Format: uuid */
+            approved_by?: string | null;
+            /** Format: uuid */
+            readonly client_id: string;
+            readonly client_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            credit_note_number: string;
+            /** Format: uuid */
+            readonly document_id: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly invoice_id: string;
+            readonly invoice_number: string;
+            /** Format: date */
+            issue_date: string;
+            /** Format: date-time */
+            issued_at?: string | null;
+            lines: components["schemas"]["CreditNoteLine"][];
+            reason: string;
+            status?: components["schemas"]["CreditNoteStatusEnum"];
+            /** Format: decimal */
+            subtotal?: string;
+            /** Format: decimal */
+            tax_amount?: string;
+            /** Format: decimal */
+            total?: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** Format: date-time */
+            voided_at?: string | null;
+        };
+        /**
+         * @description The read shape, with the tax snapshot rows. There are no shift links
+         *     to render: a credit note never un-bills work (D4).
+         */
+        CreditNoteLine: {
+            /** Format: decimal */
+            amount: string;
+            description: string;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: decimal */
+            quantity: string;
+            /** Format: decimal */
+            rate: string;
+            /** Format: decimal */
+            tax_amount?: string;
+            tax_exempt?: boolean;
+            readonly taxes: components["schemas"]["CreditNoteLineTax"][];
+            unit: components["schemas"]["InvoiceLineUnitEnum"];
+        };
+        CreditNoteLineTax: {
+            /** Format: decimal */
+            amount: string;
+            /** Format: decimal */
+            rate_pct: string;
+            tax_code: components["schemas"]["TaxCodeEnum"];
+        };
+        /**
+         * @description Add input. amount is computed service-side — quantity x rate, never
+         *     typed. No job_id and no shift_ids: a credit note does not un-bill work.
+         */
+        CreditNoteLineWrite: {
+            description: string;
+            /** Format: decimal */
+            quantity: string;
+            /** Format: decimal */
+            rate: string;
+            /** @default false */
+            tax_exempt: boolean;
+            unit: components["schemas"]["InvoiceLineUnitEnum"];
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `approved` - Approved
+         *     * `issued` - Issued
+         * @enum {string}
+         */
+        CreditNoteStatusEnum: "draft" | "approved" | "issued";
+        /**
+         * @description Create input. The invoice resolves service-side (and must be SENT and
+         *     un-voided); issue_date defaults to today, ORG-LOCAL, when omitted.
+         */
+        CreditNoteWrite: {
+            /** Format: uuid */
+            invoice_id: string;
+            /** Format: date */
+            issue_date?: string;
+            reason: string;
+        };
         CurrentSession: {
             organization: components["schemas"]["Organization"];
             user: components["schemas"]["CurrentUser"];
@@ -3659,6 +4895,12 @@ export interface components {
          * @enum {string}
          */
         CurrentUserStatusEnum: "invited" | "active" | "deactivated";
+        Dashboard: {
+            fill_rate: components["schemas"]["FillRate"];
+            margin_by_client: components["schemas"]["MarginByClient"];
+            overdue_invoices: components["schemas"]["OverdueInvoices"];
+            unbilled_hours: components["schemas"]["UnbilledHours"];
+        };
         /**
          * @description * `1` - Monday
          *     * `2` - Tuesday
@@ -3670,6 +4912,51 @@ export interface components {
          * @enum {integer}
          */
         DayOfWeekEnum: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+        /**
+         * @description Delay: the new date. The BOUND is the model validator's, so this
+         *     lets any date through to the service's own named refusal (the
+         *     portal-PATCH convention).
+         */
+        DestructionDelay: {
+            /** Format: date */
+            due_on: string;
+        };
+        /**
+         * @description Hold: the REQUIRED reason. Blank is allowed THROUGH so the service's
+         *     own refusal answers with the rule ("a hold names its reason") rather
+         *     than DRF's generic blank message — and whitespace-only reaches the
+         *     model validator, which is where the 400 for it lives.
+         */
+        DestructionHold: {
+            reason: string;
+        };
+        /**
+         * @description THE OVERVIEW ROW (m7 slice 16b-ii) — "an overview of what's being
+         *     destroyed", and nothing more.
+         *
+         *     Dates, a hold and a pointer. NEVER a ciphertext, never a masked
+         *     companion, never the worker's name: the question this page answers is
+         *     "what is about to be destroyed, and when", and the answer to "whose"
+         *     is an `employee_id` the worker doors will resolve behind their own
+         *     keys. A serializer over `EmployeePersonal` — the model whose other
+         *     twelve columns are the PII itself — is exactly the place a field list
+         *     must be explicit rather than `ModelSerializer`'s convenience.
+         */
+        DestructionSchedule: {
+            /** Format: date */
+            readonly destruction_due_on: string;
+            /** Format: date-time */
+            readonly destruction_held_at: string | null;
+            readonly destruction_hold_reason: string;
+            /** Format: date-time */
+            readonly destruction_notified_at: string | null;
+            /** Format: date */
+            readonly destruction_scheduled_on: string;
+            /** Format: uuid */
+            readonly employee_id: string;
+            /** Format: uuid */
+            readonly id: string;
+        };
         /**
          * @description The read shape: metadata only, never the bytes (downloads are their
          *     own audited endpoint).
@@ -3700,8 +4987,9 @@ export interface components {
          * @description * `gov_id` - Government ID
          *     * `cert` - Certification scan
          *     * `hour_sheet` - Hour sheet
-         *     * `payslip` - Payslip
+         *     * `pay_statement` - Pay statement
          *     * `invoice` - Invoice
+         *     * `credit_note` - Credit note
          *     * `signed_form` - Signed form
          *     * `esign_form` - Signature form
          *     * `org_logo` - Organization logo
@@ -3710,9 +4998,10 @@ export interface components {
          *     * `sin_document` - SIN document
          *     * `work_permit` - Work permit
          *     * `study_permit` - Study permit
+         *     * `payslip` - Payslip (reserved)
          * @enum {string}
          */
-        DocumentTypeEnum: "gov_id" | "cert" | "hour_sheet" | "payslip" | "invoice" | "signed_form" | "esign_form" | "org_logo" | "other" | "resume" | "sin_document" | "work_permit" | "study_permit";
+        DocumentTypeEnum: "gov_id" | "cert" | "hour_sheet" | "pay_statement" | "invoice" | "credit_note" | "signed_form" | "esign_form" | "org_logo" | "other" | "resume" | "sin_document" | "work_permit" | "study_permit" | "payslip";
         /**
          * @description Multipart upload input. The ChoiceField only shapes input — the
          *     writability policy (PII-class files have their own path; generated
@@ -3740,13 +5029,14 @@ export interface components {
             /** Format: date-time */
             background_check_updated_at?: string | null;
             /** Format: uuid */
-            readonly background_check_updated_by_id: string | null;
-            readonly bank_account_last4: string | null;
+            readonly background_check_updated_by_id?: string | null;
+            readonly bank_account_last4?: string | null;
             city?: string | null;
             readonly consent: components["schemas"]["ConsentRecord"] | null;
+            contractor_tag?: boolean;
             /** Format: date-time */
             readonly created_at: string;
-            readonly dob_year: number | null;
+            readonly dob_year?: number | null;
             /** Format: email */
             email?: string;
             emergency_contact_name?: string;
@@ -3776,16 +5066,18 @@ export interface components {
             pronouns?: string;
             province?: (components["schemas"]["ProvinceEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             /** Format: decimal */
-            rating: string;
+            rating?: string;
             /** Format: date-time */
             rating_updated_at?: string | null;
             referral_source?: string;
             /** Format: uuid */
             readonly referred_by_employee_id: string | null;
-            readonly sin_last4: string | null;
+            readonly sin_last4?: string | null;
             /** Format: date-time */
             readonly updated_at: string;
             work_authorization?: (components["schemas"]["WorkAuthorizationEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: date */
+            work_authorization_expiry?: string | null;
             work_status?: (components["schemas"]["WorkStatusEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         EmployeeAvailability: {
@@ -3898,13 +5190,14 @@ export interface components {
             /** Format: date-time */
             background_check_updated_at?: string | null;
             /** Format: uuid */
-            readonly background_check_updated_by_id: string | null;
-            readonly bank_account_last4: string | null;
+            readonly background_check_updated_by_id?: string | null;
+            readonly bank_account_last4?: string | null;
             city?: string | null;
             readonly consent: components["schemas"]["ConsentRecordSummary"] | null;
+            contractor_tag?: boolean;
             /** Format: date-time */
             readonly created_at: string;
-            readonly dob_year: number | null;
+            readonly dob_year?: number | null;
             /** Format: email */
             email?: string;
             emergency_contact_name?: string;
@@ -3934,16 +5227,18 @@ export interface components {
             pronouns?: string;
             province?: (components["schemas"]["ProvinceEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             /** Format: decimal */
-            rating: string;
+            rating?: string;
             /** Format: date-time */
             rating_updated_at?: string | null;
             referral_source?: string;
             /** Format: uuid */
             readonly referred_by_employee_id: string | null;
-            readonly sin_last4: string | null;
+            readonly sin_last4?: string | null;
             /** Format: date-time */
             readonly updated_at: string;
             work_authorization?: (components["schemas"]["WorkAuthorizationEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: date */
+            work_authorization_expiry?: string | null;
             work_status?: (components["schemas"]["WorkStatusEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         EmployeeSkill: {
@@ -3985,17 +5280,21 @@ export interface components {
          * @description Create (full) and update (partial=True) input. rating and
          *     lifecycle_status are absent BY DESIGN — derived / transitioned only —
          *     and so is background_check_status: it has its own toggle pair and its
-         *     own endpoint.
+         *     own endpoint. The verification columns are absent too: the handshake's
+         *     own doors own them, and a stamp that rides the generic edit path
+         *     would let any edit re-verify a number it never proved.
          */
         EmployeeWrite: {
             address_line_1?: string | null;
             address_line_2?: string | null;
             city?: string | null;
+            contractor_tag?: boolean;
             /** Format: email */
             email?: string;
             emergency_contact_name?: string;
             emergency_contact_phone?: string;
             employment_type?: (components["schemas"]["EmploymentTypeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            external_ref?: string | null;
             first_name: string;
             last_name: string;
             notification_channel?: components["schemas"]["NotificationChannelEnum"];
@@ -4010,6 +5309,8 @@ export interface components {
             /** Format: uuid */
             referred_by_employee?: string | null;
             work_authorization?: (components["schemas"]["WorkAuthorizationEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: date */
+            work_authorization_expiry?: string | null;
             work_status?: (components["schemas"]["WorkStatusEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         EmployeeYTD: {
@@ -4067,6 +5368,12 @@ export interface components {
          * @enum {string}
          */
         EmploymentTypeEnum: "full_time" | "part_time" | "either";
+        FillRate: {
+            fill_rate: string | null;
+            headcount_filled: number;
+            headcount_needed: number;
+            jobs_count: number;
+        };
         GovIdDocumentIds: {
             gov_id_document_ids: string[];
         };
@@ -4105,6 +5412,15 @@ export interface components {
         Grant: {
             key: string;
             scopes: components["schemas"]["ScopesEnum"][];
+        };
+        /**
+         * @description One desired grant in the PUT body. Scope applicability is the
+         *     SERVICE's friendly 400 (it owns the catalog row); this only
+         *     translates.
+         */
+        GrantInput: {
+            permission_key: string;
+            scope: components["schemas"]["ScopesEnum"];
         };
         HealthStatus: {
             status: string;
@@ -4422,6 +5738,28 @@ export interface components {
             type: components["schemas"]["IncidentSignEnum"];
         };
         /**
+         * @description One door, one field: the staff email to invite. The service owns
+         *     every rule (gate, blank, duplicate) — this only translates.
+         */
+        Invite: {
+            /** Format: email */
+            email: string;
+        };
+        /**
+         * @description The invite door's response: the created row PLUS the one-time token.
+         *
+         *     A SEPARATE shape from UserSerializer on purpose. The token is a
+         *     CREDENTIAL — whoever holds it can set that account's first password —
+         *     so it is emitted exactly once, at the moment of minting, and appears in
+         *     no read shape anywhere. Putting the field on UserSerializer would leak
+         *     a live token into the user LIST.
+         */
+        InvitedUser: {
+            /** @description Single-use invitation token, valid 7 days. Shown ONCE — it is not retrievable later; re-invite to mint a fresh one. */
+            readonly invite_token: string;
+            user: components["schemas"]["User"];
+        };
+        /**
          * @description The invoice read shape, with the lifecycle actor columns (who
          *     submitted / approved, when it went out, when it was paid) — a reader of
          *     the document sees its state and its provenance. lines ride the detail
@@ -4684,7 +6022,7 @@ export interface components {
          */
         Job: {
             /** Format: decimal */
-            bill_rate: string;
+            bill_rate?: string;
             bill_rate_unit: components["schemas"]["BillRateUnitEnum"];
             /** Format: uuid */
             readonly client_id: string;
@@ -4708,7 +6046,7 @@ export interface components {
              *     BOTH margin toggles cover the row, so this only runs for margin-seeing
              *     users.
              */
-            readonly pay_rate: string | null;
+            readonly pay_rate?: string | null;
             po_number?: string;
             /** Format: date-time */
             start_datetime: string;
@@ -4729,7 +6067,7 @@ export interface components {
             /** Format: uuid */
             readonly assigned_by_id: string;
             /** Format: decimal */
-            bill_rate_applied: string;
+            bill_rate_applied?: string;
             bill_rate_unit_applied: components["schemas"]["BillRateUnitEnum"];
             /** Format: date-time */
             client_notified_at?: string | null;
@@ -4744,9 +6082,9 @@ export interface components {
             readonly job_id: string;
             readonly job_title: string;
             /** Format: decimal */
-            markup_pct_applied: string;
+            markup_pct_applied?: string;
             /** Format: decimal */
-            pay_rate: string;
+            pay_rate?: string;
             status?: components["schemas"]["AssignmentStatusEnum"];
             /** Format: date-time */
             readonly updated_at: string;
@@ -4854,6 +6192,17 @@ export interface components {
             login: string;
             password: string;
         };
+        MarginByClient: {
+            excluded_links_no_margin_grant: number;
+            rows: components["schemas"]["MarginByClientRow"][];
+        };
+        MarginByClientRow: {
+            billed: string;
+            /** Format: uuid */
+            client_id: string;
+            client_name: string;
+            margin: string | null;
+        };
         /**
          * @description * `email` - Email
          *     * `sms` - SMS
@@ -4889,9 +6238,12 @@ export interface components {
          *     * `cert_expiry` - Cert expiry
          *     * `task` - Task
          *     * `invoice` - Invoice
+         *     * `credit_note` - Credit note
+         *     * `assignment` - Worker assignment
+         *     * `data_disposal` - Data disposal
          * @enum {string}
          */
-        NotificationTypeEnum: "shift_offer" | "esign" | "cert_expiry" | "task" | "invoice";
+        NotificationTypeEnum: "shift_offer" | "esign" | "cert_expiry" | "task" | "invoice" | "credit_note" | "assignment" | "data_disposal";
         /** @enum {unknown} */
         NullEnum: null;
         OrgConsentTextResult: {
@@ -4920,12 +6272,78 @@ export interface components {
             /** Format: uuid */
             document_id: string | null;
         };
+        /**
+         * @description The organization's own settings, as the settings screen reads them.
+         *
+         *     The number formats are RENDERED but not writable (see
+         *     `orgs.services.ORG_SETTINGS_REFUSED`): a screen has to be able to show
+         *     an agency what its invoices are numbered like even when changing it is
+         *     an operator's job. The sequence COUNTERS are not here at all — they are
+         *     the mint's internal state, not a setting. `consent_text` is not here
+         *     either: it has its own door, and it is a page of prose.
+         */
+        OrgSettings: {
+            address_line_1: string;
+            address_line_2: string;
+            auto_approve_onboarding: boolean;
+            city: string;
+            readonly country: string;
+            readonly credit_note_number_format: string;
+            /** Format: email */
+            email: string;
+            /** Format: uuid */
+            readonly id: string;
+            readonly invoice_number_format: string;
+            legal_name: string;
+            /** Format: uuid */
+            readonly logo_document_id: string | null;
+            name: string;
+            phone: string;
+            postal_code: string;
+            province: components["schemas"]["ProvinceEnum"];
+            remit_to_details: string;
+            retention_years: number;
+            tax_id: string;
+            timezone: string;
+        };
         Organization: {
             consent_text: string;
             consent_version: number;
             /** Format: uuid */
             id: string;
             name: string;
+            timezone: string;
+        };
+        OverdueInvoiceRow: {
+            /** Format: uuid */
+            client_id: string;
+            client_name: string;
+            /** Format: date */
+            due_date: string;
+            /** Format: uuid */
+            id: string;
+            invoice_number: string;
+            total: string;
+        };
+        OverdueInvoices: {
+            count: number;
+            invoices: components["schemas"]["OverdueInvoiceRow"][];
+            total: string;
+        };
+        PaginatedAuditLogList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["AuditLog"][];
         };
         PaginatedClientList: {
             /** @example 123 */
@@ -4941,6 +6359,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Client"][];
+        };
+        PaginatedCreditNoteList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["CreditNote"][];
+        };
+        PaginatedDestructionScheduleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["DestructionSchedule"][];
         };
         PaginatedDocumentList: {
             /** @example 123 */
@@ -5077,6 +6525,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Job"][];
         };
+        PaginatedPayCycleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["PayCycle"][];
+        };
         PaginatedPayrollRunList: {
             /** @example 123 */
             count: number;
@@ -5091,6 +6554,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["PayrollRun"][];
+        };
+        PaginatedPlacementList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Placement"][];
+        };
+        PaginatedPrivacyBreachList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["PrivacyBreach"][];
         };
         PaginatedPrivacyRequestList: {
             /** @example 123 */
@@ -5152,6 +6645,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Task"][];
         };
+        PaginatedUserList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["User"][];
+        };
         PaginatedWorkerIncidentList: {
             /** @example 123 */
             count: number;
@@ -5195,6 +6703,27 @@ export interface components {
             province?: components["schemas"]["ProvinceEnum"];
             status?: components["schemas"]["ClientStatusEnum"];
         };
+        /** @description Edit input (partial). */
+        PatchedCreditNoteLineUpdate: {
+            description?: string;
+            /** Format: decimal */
+            quantity?: string;
+            /** Format: decimal */
+            rate?: string;
+            tax_exempt?: boolean;
+            unit?: components["schemas"]["InvoiceLineUnitEnum"];
+        };
+        /**
+         * @description Edit input (partial): the draft fields only. The INVOICE is never
+         *     moved — a credit note against the wrong invoice is voided, not
+         *     re-pointed — and the lifecycle is refused by the SERVICE with the
+         *     transition-endpoints message.
+         */
+        PatchedCreditNoteUpdate: {
+            /** Format: date */
+            issue_date?: string;
+            reason?: string;
+        };
         PatchedEmployeeAvailabilityWrite: {
             day_of_week?: components["schemas"]["DayOfWeekEnum"];
             /** Format: time */
@@ -5234,17 +6763,21 @@ export interface components {
          * @description Create (full) and update (partial=True) input. rating and
          *     lifecycle_status are absent BY DESIGN — derived / transitioned only —
          *     and so is background_check_status: it has its own toggle pair and its
-         *     own endpoint.
+         *     own endpoint. The verification columns are absent too: the handshake's
+         *     own doors own them, and a stamp that rides the generic edit path
+         *     would let any edit re-verify a number it never proved.
          */
         PatchedEmployeeWrite: {
             address_line_1?: string | null;
             address_line_2?: string | null;
             city?: string | null;
+            contractor_tag?: boolean;
             /** Format: email */
             email?: string;
             emergency_contact_name?: string;
             emergency_contact_phone?: string;
             employment_type?: (components["schemas"]["EmploymentTypeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            external_ref?: string | null;
             first_name?: string;
             last_name?: string;
             notification_channel?: components["schemas"]["NotificationChannelEnum"];
@@ -5259,6 +6792,8 @@ export interface components {
             /** Format: uuid */
             referred_by_employee?: string | null;
             work_authorization?: (components["schemas"]["WorkAuthorizationEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: date */
+            work_authorization_expiry?: string | null;
             work_status?: (components["schemas"]["WorkStatusEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         PatchedEmploymentHistoryWrite: {
@@ -5398,16 +6933,68 @@ export interface components {
             subject?: string | null;
         };
         /**
+         * @description The settings PATCH body. Partial by construction — only the fields
+         *     named move.
+         *
+         *     Every field is declared `required=False` and the writable set is
+         *     `orgs.services.ORG_SETTINGS_WRITABLE`, pinned equal by a test.
+         *
+         *     A COLUMN THIS DOOR WILL NOT WRITE IS REFUSED BY NAME, not dropped. DRF
+         *     discards undeclared keys before any field runs, so a screen that PATCHed
+         *     `invoice_number_format` would get a 200 and no change — telling an
+         *     agency it saved something it did not. `validate` checks the RAW payload
+         *     against `ORG_SETTINGS_REFUSED` (the money LIFECYCLE_FIELDS convention)
+         *     and answers with the per-field reason, which names the door that DOES
+         *     own the field where there is one.
+         *
+         *     Value validation stays where the rule lives — the model's own
+         *     validators, run by `full_clean` in the service (the timezone's IANA
+         *     check, the retention floor, the postal-code format). A refusal this
+         *     serializer owned would name a different correction than the rule does.
+         */
+        PatchedOrgSettingsWrite: {
+            address_line_1?: string;
+            address_line_2?: string;
+            auto_approve_onboarding?: boolean;
+            city?: string;
+            /** Format: email */
+            email?: string;
+            legal_name?: string;
+            name?: string;
+            phone?: string;
+            postal_code?: string;
+            province?: components["schemas"]["ProvinceEnum"];
+            remit_to_details?: string;
+            retention_years?: number;
+            tax_id?: string;
+            timezone?: string;
+        };
+        /**
+         * @description Edit input (partial): every field optional. The frozen-history and
+         *     single-active refusals live in the SERVICE — declaring them here would
+         *     make the 400 look like a shape error instead of the deliberate refusal
+         *     it is (the InvoiceUpdateSerializer rule).
+         */
+        PatchedPayCycleUpdate: {
+            active?: boolean;
+            /** Format: date */
+            anchor_date?: string;
+            name?: string;
+            payday_offset_days?: number;
+            period_days?: number | null;
+            period_kind?: components["schemas"]["PeriodKindEnum"];
+        };
+        /**
          * @description Draft-only deduction edits (partial): label and amount. The code is
          *     the deduction's identity — change it by delete + create.
          */
-        PatchedPayslipDeductionUpdate: {
+        PatchedPayStatementDeductionUpdate: {
             /** Format: decimal */
             amount?: string;
             label?: string;
         };
-        /** @description Draft-payslip edits on a non-shift line (partial). */
-        PatchedPayslipEarningUpdate: {
+        /** @description Draft pay-statement edits on a non-shift line (partial). */
+        PatchedPayStatementEarningUpdate: {
             /** Format: decimal */
             amount?: string;
             description?: string;
@@ -5415,6 +7002,22 @@ export interface components {
             hours?: string | null;
             /** Format: decimal */
             rate?: string | null;
+        };
+        /**
+         * @description Edit input (partial). Status moves through confirm / void, never
+         *     through an edit.
+         */
+        PatchedPlacementUpdate: {
+            /** Format: decimal */
+            annual_salary?: string;
+            /** Format: uuid */
+            client_id?: string;
+            /** Format: uuid */
+            employee_id?: string;
+            /** Format: decimal */
+            fee_pct?: string;
+            /** Format: uuid */
+            job_id?: string | null;
         };
         /**
          * @description The worker's own intake answers (4b) and contact data (m7s2).
@@ -5439,6 +7042,8 @@ export interface components {
             /** Format: uuid */
             referred_by_employee?: string | null;
             work_authorization?: (components["schemas"]["WorkAuthorizationEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: date */
+            work_authorization_expiry?: string | null;
         };
         /**
          * @description Hand-made shift input (add), and the editable fields on patch. The
@@ -5464,12 +7069,230 @@ export interface components {
             title?: string;
         };
         /**
+         * @description The read shape: the whole config — the engine (P2) and the office
+         *     read the same row. No gated fields: everything here is schedule shape,
+         *     and the door already demands payroll.run.
+         */
+        PayCycle: {
+            active?: boolean;
+            /** Format: date */
+            anchor_date: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            payday_offset_days: number;
+            period_days?: number | null;
+            period_kind?: components["schemas"]["PeriodKindEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description Install input. active defaults True (the first config is usually the
+         *     live one); the offset is required, never defaulted — the office states
+         *     its payday rule explicitly. fixed needs its day-count (1-365, required
+         *     beside the kind); monthly carries none (days must stay empty — the
+         *     clamp IS the definition). Range refusals (overlap, second active,
+         *     negative offset) come from the SERVICE with the model's own words.
+         */
+        PayCycleCreate: {
+            /** @default true */
+            active: boolean;
+            /** Format: date */
+            anchor_date: string;
+            name: string;
+            payday_offset_days: number;
+            period_days?: number | null;
+            period_kind: components["schemas"]["PeriodKindEnum"];
+        };
+        /**
          * @description * `etransfer` - E-Transfer
          *     * `direct_deposit` - Direct deposit
          *     * `cheque` - Cheque
          * @enum {string}
          */
         PayMethodEnum: "etransfer" | "direct_deposit" | "cheque";
+        /**
+         * @description The pay statement read shape; lines and deductions ride the detail (the
+         *     views compose them — prefetched, constant-query).
+         */
+        PayStatement: {
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: decimal */
+            deductions?: string;
+            /** Format: uuid */
+            readonly document_id: string | null;
+            /** Format: uuid */
+            readonly employee_id: string;
+            readonly employee_name: string;
+            /** Format: decimal */
+            gross?: string;
+            /** Format: decimal */
+            hours_total?: string;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: decimal */
+            net_amount?: string;
+            /** Format: uuid */
+            readonly payroll_run_id: string;
+            status?: components["schemas"]["PayStatementStatusEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        PayStatementDeduction: {
+            /** Format: decimal */
+            amount: string;
+            code: components["schemas"]["PayStatementDeductionCodeEnum"];
+            /** Format: uuid */
+            readonly id: string;
+            is_statutory: boolean;
+            label: string;
+        };
+        /**
+         * @description * `cpp` - CPP
+         *     * `ei` - EI
+         *     * `federal_tax` - Federal income tax
+         *     * `provincial_tax` - Provincial income tax
+         *     * `other` - Other
+         * @enum {string}
+         */
+        PayStatementDeductionCodeEnum: "cpp" | "ei" | "federal_tax" | "provincial_tax" | "other";
+        /**
+         * @description An entered deduction. is_statutory is DERIVED from the code —
+         *     offering it here would let a custom deduction corrupt the T4 basis.
+         */
+        PayStatementDeductionWrite: {
+            /** Format: decimal */
+            amount: string;
+            code: components["schemas"]["PayStatementDeductionWriteCodeEnum"];
+            label: string;
+        };
+        /**
+         * @description * `cpp` - cpp
+         *     * `ei` - ei
+         *     * `federal_tax` - federal_tax
+         *     * `provincial_tax` - provincial_tax
+         *     * `other` - other
+         * @enum {string}
+         */
+        PayStatementDeductionWriteCodeEnum: "cpp" | "ei" | "federal_tax" | "provincial_tax" | "other";
+        /**
+         * @description The CONTRACT shape of the pay statement detail doors (staff AND portal —
+         *     both compose the pay statement payload with its lines and deduction lines).
+         *     Same annotation-only status, same live-validation.
+         */
+        PayStatementDetail: {
+            /** Format: date-time */
+            readonly created_at: string;
+            deduction_lines: components["schemas"]["PayStatementDeduction"][];
+            /** Format: decimal */
+            deductions?: string;
+            /** Format: uuid */
+            readonly document_id: string | null;
+            /** Format: uuid */
+            readonly employee_id: string;
+            readonly employee_name: string;
+            /** Format: decimal */
+            gross?: string;
+            /** Format: decimal */
+            hours_total?: string;
+            /** Format: uuid */
+            readonly id: string;
+            lines: components["schemas"]["PayStatementLine"][];
+            /** Format: decimal */
+            net_amount?: string;
+            /** Format: uuid */
+            readonly payroll_run_id: string;
+            status?: components["schemas"]["PayStatementStatusEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description A non-shift earning: amount typed by staff (the adjustment type may
+         *     go negative — a clawback); hours/rate optional metadata. Shift lines
+         *     come from generation, never from this door.
+         */
+        PayStatementEarningWrite: {
+            /** Format: decimal */
+            amount: string;
+            /** @default  */
+            description: string;
+            /** Format: decimal */
+            hours?: string | null;
+            /** Format: decimal */
+            rate?: string | null;
+            type: components["schemas"]["PayStatementEarningWriteTypeEnum"];
+        };
+        /**
+         * @description * `bonus` - bonus
+         *     * `adjustment` - adjustment
+         *     * `allowance` - allowance
+         *     * `other` - other
+         * @enum {string}
+         */
+        PayStatementEarningWriteTypeEnum: "bonus" | "adjustment" | "allowance" | "other";
+        /**
+         * @description The CONTRACT shape of POST /payroll/pay-statements/<pk>/attach-flat-
+         *     coverage/ — the pay-statement payload plus the count of shifts linked.
+         *     Annotation-only, live-validated like PayStatementDetailSerializer.
+         */
+        PayStatementFlatCoverageResult: {
+            attached_shift_count: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: decimal */
+            deductions?: string;
+            /** Format: uuid */
+            readonly document_id: string | null;
+            /** Format: uuid */
+            readonly employee_id: string;
+            readonly employee_name: string;
+            /** Format: decimal */
+            gross?: string;
+            /** Format: decimal */
+            hours_total?: string;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: decimal */
+            net_amount?: string;
+            /** Format: uuid */
+            readonly payroll_run_id: string;
+            status?: components["schemas"]["PayStatementStatusEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        PayStatementLine: {
+            /** Format: decimal */
+            amount: string;
+            description?: string;
+            /** Format: decimal */
+            hours?: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: decimal */
+            rate?: string | null;
+            /** Format: uuid */
+            readonly shift_id: string | null;
+            type: components["schemas"]["PayStatementLineTypeEnum"];
+        };
+        /**
+         * @description * `shift` - Shift
+         *     * `bonus` - Bonus
+         *     * `adjustment` - Adjustment
+         *     * `allowance` - Allowance
+         *     * `other` - Other
+         * @enum {string}
+         */
+        PayStatementLineTypeEnum: "shift" | "bonus" | "adjustment" | "allowance" | "other";
+        /**
+         * @description * `draft` - Draft
+         *     * `issued` - Issued
+         *     * `paid` - Paid
+         * @enum {string}
+         */
+        PayStatementStatusEnum: "draft" | "issued" | "paid";
         /**
          * @description * `due_on_receipt` - Due on receipt
          *     * `net_15` - Net 15
@@ -5513,7 +7336,7 @@ export interface components {
         };
         /**
          * @description The CONTRACT shape of GET /payroll/runs/<pk>/ — the view composes
-         *     the run payload with its payslips. Same annotation-only status as
+         *     the run payload with its pay statements. Same annotation-only status as
          *     InvoiceDetailSerializer, same live-validation.
          */
         PayrollRunDetail: {
@@ -5527,9 +7350,9 @@ export interface components {
             readonly id: string;
             /** Format: date-time */
             paid_at?: string | null;
+            pay_statements: components["schemas"]["PayStatement"][];
             /** Format: date */
             payday: string;
-            payslips: components["schemas"]["Payslip"][];
             /** Format: date */
             period_end: string;
             /** Format: date */
@@ -5545,185 +7368,19 @@ export interface components {
          */
         PayrollRunStatusEnum: "draft" | "approved";
         /**
-         * @description The payslip read shape; lines and deductions ride the detail (the
-         *     views compose them — prefetched, constant-query).
-         */
-        Payslip: {
-            /** Format: date-time */
-            readonly created_at: string;
-            /** Format: decimal */
-            deductions?: string;
-            /** Format: uuid */
-            readonly document_id: string | null;
-            /** Format: uuid */
-            readonly employee_id: string;
-            readonly employee_name: string;
-            /** Format: decimal */
-            gross?: string;
-            /** Format: decimal */
-            hours_total?: string;
-            /** Format: uuid */
-            readonly id: string;
-            /** Format: decimal */
-            net_amount?: string;
-            /** Format: uuid */
-            readonly payroll_run_id: string;
-            status?: components["schemas"]["PayslipStatusEnum"];
-            /** Format: date-time */
-            readonly updated_at: string;
-        };
-        PayslipDeduction: {
-            /** Format: decimal */
-            amount: string;
-            code: components["schemas"]["PayslipDeductionCodeEnum"];
-            /** Format: uuid */
-            readonly id: string;
-            is_statutory: boolean;
-            label: string;
-        };
-        /**
-         * @description * `cpp` - CPP
-         *     * `ei` - EI
-         *     * `federal_tax` - Federal income tax
-         *     * `provincial_tax` - Provincial income tax
-         *     * `other` - Other
+         * @description * `fixed` - Fixed
+         *     * `monthly` - Monthly
          * @enum {string}
          */
-        PayslipDeductionCodeEnum: "cpp" | "ei" | "federal_tax" | "provincial_tax" | "other";
+        PeriodKindEnum: "fixed" | "monthly";
         /**
-         * @description An entered deduction. is_statutory is DERIVED from the code —
-         *     offering it here would let a custom deduction corrupt the T4 basis.
+         * @description The PUT body: the user's FULL desired grant set. The door grants
+         *     every entry first, then revokes whatever the user still holds beyond
+         *     it — grants before revokes, so a handover never false-refuses.
          */
-        PayslipDeductionWrite: {
-            /** Format: decimal */
-            amount: string;
-            code: components["schemas"]["PayslipDeductionWriteCodeEnum"];
-            label: string;
+        PermissionsSet: {
+            grants: components["schemas"]["GrantInput"][];
         };
-        /**
-         * @description * `cpp` - cpp
-         *     * `ei` - ei
-         *     * `federal_tax` - federal_tax
-         *     * `provincial_tax` - provincial_tax
-         *     * `other` - other
-         * @enum {string}
-         */
-        PayslipDeductionWriteCodeEnum: "cpp" | "ei" | "federal_tax" | "provincial_tax" | "other";
-        /**
-         * @description The CONTRACT shape of the payslip detail doors (staff AND portal —
-         *     both compose the payslip payload with its lines and deduction lines).
-         *     Same annotation-only status, same live-validation.
-         */
-        PayslipDetail: {
-            /** Format: date-time */
-            readonly created_at: string;
-            deduction_lines: components["schemas"]["PayslipDeduction"][];
-            /** Format: decimal */
-            deductions?: string;
-            /** Format: uuid */
-            readonly document_id: string | null;
-            /** Format: uuid */
-            readonly employee_id: string;
-            readonly employee_name: string;
-            /** Format: decimal */
-            gross?: string;
-            /** Format: decimal */
-            hours_total?: string;
-            /** Format: uuid */
-            readonly id: string;
-            lines: components["schemas"]["PayslipLine"][];
-            /** Format: decimal */
-            net_amount?: string;
-            /** Format: uuid */
-            readonly payroll_run_id: string;
-            status?: components["schemas"]["PayslipStatusEnum"];
-            /** Format: date-time */
-            readonly updated_at: string;
-        };
-        /**
-         * @description A non-shift earning: amount typed by staff (the adjustment type may
-         *     go negative — a clawback); hours/rate optional metadata. Shift lines
-         *     come from generation, never from this door.
-         */
-        PayslipEarningWrite: {
-            /** Format: decimal */
-            amount: string;
-            /** @default  */
-            description: string;
-            /** Format: decimal */
-            hours?: string | null;
-            /** Format: decimal */
-            rate?: string | null;
-            type: components["schemas"]["PayslipEarningWriteTypeEnum"];
-        };
-        /**
-         * @description * `bonus` - bonus
-         *     * `adjustment` - adjustment
-         *     * `allowance` - allowance
-         *     * `other` - other
-         * @enum {string}
-         */
-        PayslipEarningWriteTypeEnum: "bonus" | "adjustment" | "allowance" | "other";
-        /**
-         * @description The CONTRACT shape of POST /payroll/payslips/<pk>/attach-flat-
-         *     coverage/ — the payslip payload plus the count of shifts linked.
-         *     Annotation-only, live-validated like PayslipDetailSerializer.
-         */
-        PayslipFlatCoverageResult: {
-            attached_shift_count: number;
-            /** Format: date-time */
-            readonly created_at: string;
-            /** Format: decimal */
-            deductions?: string;
-            /** Format: uuid */
-            readonly document_id: string | null;
-            /** Format: uuid */
-            readonly employee_id: string;
-            readonly employee_name: string;
-            /** Format: decimal */
-            gross?: string;
-            /** Format: decimal */
-            hours_total?: string;
-            /** Format: uuid */
-            readonly id: string;
-            /** Format: decimal */
-            net_amount?: string;
-            /** Format: uuid */
-            readonly payroll_run_id: string;
-            status?: components["schemas"]["PayslipStatusEnum"];
-            /** Format: date-time */
-            readonly updated_at: string;
-        };
-        PayslipLine: {
-            /** Format: decimal */
-            amount: string;
-            description?: string;
-            /** Format: decimal */
-            hours?: string | null;
-            /** Format: uuid */
-            readonly id: string;
-            /** Format: decimal */
-            rate?: string | null;
-            /** Format: uuid */
-            readonly shift_id: string | null;
-            type: components["schemas"]["PayslipLineTypeEnum"];
-        };
-        /**
-         * @description * `shift` - Shift
-         *     * `bonus` - Bonus
-         *     * `adjustment` - Adjustment
-         *     * `allowance` - Allowance
-         *     * `other` - Other
-         * @enum {string}
-         */
-        PayslipLineTypeEnum: "shift" | "bonus" | "adjustment" | "allowance" | "other";
-        /**
-         * @description * `draft` - Draft
-         *     * `issued` - Issued
-         *     * `paid` - Paid
-         * @enum {string}
-         */
-        PayslipStatusEnum: "draft" | "issued" | "paid";
         PersonalReveal: {
             field: string;
             value: string;
@@ -5738,6 +7395,79 @@ export interface components {
             bank_transit?: string;
             dob?: string;
             sin?: string;
+        };
+        /**
+         * @description The confirm door's body: the code the worker relayed off their
+         *     handset. A bare string — length-capped so a megabyte body is a 400,
+         *     not a hashing exercise; the service owns the match, the expiry and
+         *     the attempt cap.
+         */
+        PhoneCodeConfirm: {
+            code: string;
+        };
+        /**
+         * @description The read shape. The fee triple gates per row behind BOTH margin
+         *     toggles — a coordinator who may see the placement does not necessarily
+         *     see what the agency charges for it. Omitted, not nulled.
+         */
+        Placement: {
+            /** Format: decimal */
+            annual_salary?: string;
+            /** Format: uuid */
+            readonly client_id: string;
+            readonly client_name: string;
+            /** Format: date-time */
+            confirmed_at?: string | null;
+            /** Format: uuid */
+            readonly confirmed_by_id: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: uuid */
+            readonly employee_id: string;
+            readonly employee_name: string;
+            /** Format: decimal */
+            fee_amount?: string | null;
+            /** Format: decimal */
+            fee_pct?: string;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly job_id: string | null;
+            status?: components["schemas"]["PlacementStatusEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** Format: date-time */
+            voided_at?: string | null;
+            /** Format: uuid */
+            readonly voided_by_id: string | null;
+        };
+        /**
+         * @description * `offered` - Offered
+         *     * `confirmed` - Confirmed
+         *     * `voided` - Voided
+         * @enum {string}
+         */
+        PlacementStatusEnum: "offered" | "confirmed" | "voided";
+        /**
+         * @description Offer input. The client/employee/job ids resolve entirely
+         *     service-side, through the scope-narrowed selectors — existence and
+         *     scope are the same 404.
+         */
+        PlacementWrite: {
+            /** Format: decimal */
+            annual_salary: string;
+            /** Format: uuid */
+            client_id: string;
+            /** Format: uuid */
+            employee_id: string;
+            /** Format: decimal */
+            fee_pct: string;
+            /** Format: uuid */
+            job_id?: string | null;
+        };
+        PortalConsentTextResult: {
+            consent_text: string;
+            consent_version: number;
         };
         /**
          * @description The portal upload input (multipart). The ChoiceField shapes input;
@@ -5781,8 +7511,49 @@ export interface components {
             /** Format: uuid */
             readonly referred_by_employee_id: string | null;
             work_authorization?: (components["schemas"]["WorkAuthorizationEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: date */
+            work_authorization_expiry?: string | null;
             work_status?: (components["schemas"]["WorkStatusEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
         };
+        /**
+         * @description The self-serve submit's body (m7s3, USER-RULED 2026-09-01):
+         *     submitting onboarding IS the consent act, so when no consent record
+         *     is on file the body must carry the EXPRESS acknowledgement — the form
+         *     shows the organization's current consent text beside it. Optional in
+         *     the schema because a worker with a consent record already on file
+         *     submits without it (the submit is not a re-consent); the SERVICE owns
+         *     the refusal when it is required and absent, so the door answers with
+         *     the named reason, never a bare field error.
+         */
+        PortalMeSubmit: {
+            /** @default false */
+            consent_acknowledged: boolean;
+        };
+        /**
+         * @description The worker's own rows (Q19): what it is, where it stands, and the
+         *     facts — the payload (request_id deep-links the portal act) is the
+         *     worker's own record, served to themselves.
+         */
+        PortalNotification: {
+            channel?: components["schemas"]["ChannelEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: uuid */
+            readonly id: string;
+            payload?: unknown;
+            /** Format: date-time */
+            sent_at?: string | null;
+            status?: components["schemas"]["PortalNotificationStatusEnum"];
+            type: components["schemas"]["NotificationTypeEnum"];
+        };
+        /**
+         * @description * `pending_approval` - Pending approval
+         *     * `queued` - Queued
+         *     * `sent` - Sent
+         *     * `read` - Read
+         * @enum {string}
+         */
+        PortalNotificationStatusEnum: "pending_approval" | "queued" | "sent" | "read";
         /**
          * @description The accept door's receipt: the placement the worker just confirmed,
          *     worker-shaped (no rates, no margin — the snapshot columns stay off the
@@ -5810,7 +7581,7 @@ export interface components {
          * @description The worker-facing shift row (m7 slice 2 commit 2): the occurrence
          *     plus the OFFER STATE it is acted on through (offer_status = the
          *     placement's offered/confirmed). No money anywhere — the portal's pay
-         *     surface is the payslip. The job/client labels are joined in the
+         *     surface is the pay statement. The job/client labels are joined in the
          *     selector — no per-row query.
          */
         PortalShift: {
@@ -5885,6 +7656,48 @@ export interface components {
         PortalSignatureUpload: {
             /** Format: binary */
             file: string;
+        };
+        /**
+         * @description The breach register row's read shape — list and detail share it
+         *     (the row is small: two texts, two dates, an enum, two flags).
+         */
+        PrivacyBreach: {
+            /** Format: date-time */
+            readonly created_at: string;
+            description: string;
+            /** Format: date */
+            discovered_on: string;
+            /** Format: uuid */
+            readonly id: string;
+            individuals_notified?: boolean;
+            /** Format: date */
+            occurred_on?: string | null;
+            personal_information: string;
+            reported_to_commissioner?: boolean;
+            /** Format: date */
+            retention_until: string;
+            rrosh: components["schemas"]["RroshEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description Record a breach. occurred_on is optional (when-it-happened is often
+         *     unknown); discovered_on is optional — absent means the org-local today.
+         *     Blank texts are allowed THROUGH so the service's own named refusal
+         *     answers (the portal-PATCH convention).
+         */
+        PrivacyBreachCreate: {
+            description: string;
+            /** Format: date */
+            discovered_on?: string;
+            /** @default false */
+            individuals_notified: boolean;
+            /** Format: date */
+            occurred_on?: string | null;
+            personal_information: string;
+            /** @default false */
+            reported_to_commissioner: boolean;
+            rrosh: components["schemas"]["RroshEnum"];
         };
         /**
          * @description The register row's read shape — list and detail share it (the row
@@ -5982,15 +7795,30 @@ export interface components {
          *     * `employee_cert` - Employee cert
          *     * `invoice` - Invoice
          *     * `privacy_request` - Privacy request
+         *     * `job_assignment` - Job assignment
          * @enum {string}
          */
-        RelatedEntityTypeEnum: "job" | "client" | "employee" | "employee_cert" | "invoice" | "privacy_request";
+        RelatedEntityTypeEnum: "job" | "client" | "employee" | "employee_cert" | "invoice" | "privacy_request" | "job_assignment";
         /**
          * @description * `skill` - Skill
          *     * `cert` - Certification
          * @enum {string}
          */
         RequirementTypeEnum: "skill" | "cert";
+        /**
+         * @description The replacement credential. Write-only and never echoed: no read
+         *     shape carries it, and the door answers with the user row, not the
+         *     secret.
+         */
+        ResetCredentials: {
+            password: string;
+        };
+        /**
+         * @description * `real_risk` - Real risk of significant harm
+         *     * `no_real_risk` - No real risk of significant harm
+         * @enum {string}
+         */
+        RroshEnum: "real_risk" | "no_real_risk";
         /**
          * @description * `own` - Own
          *     * `assigned` - Assigned
@@ -6035,6 +7863,12 @@ export interface components {
             status?: components["schemas"]["ShiftStatusEnum"];
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        ShiftBackfillCandidates: {
+            results: components["schemas"]["EmployeeList"][];
+            scope_visible: boolean;
+            /** Format: uuid */
+            shift_id: string;
         };
         /**
          * @description The mark input: just the reason. The rules (past, unsettled,
@@ -6158,9 +7992,11 @@ export interface components {
          *     * `cert_renewal` - Cert renewal
          *     * `invoice_approval` - Invoice approval
          *     * `privacy_request` - Privacy request
+         *     * `permit_renewal` - Permit renewal
+         *     * `client_notice_approval` - Client notice approval
          * @enum {string}
          */
-        TaskTypeEnum: "custom" | "job" | "client_followup" | "employee_followup" | "cert_renewal" | "invoice_approval" | "privacy_request";
+        TaskTypeEnum: "custom" | "job" | "client_followup" | "employee_followup" | "cert_renewal" | "invoice_approval" | "privacy_request" | "permit_renewal" | "client_notice_approval";
         /**
          * @description Create input. The manual door creates type=custom only, so type is
          *     not accepted here at all. assignee resolves against the current org's
@@ -6192,6 +8028,35 @@ export interface components {
          * @enum {string}
          */
         TimeOffTypeEnum: "vacation" | "sick" | "personal" | "other";
+        UnbilledHours: {
+            billed_hours: string;
+            unbilled_hours: string;
+            worked_hours: string;
+        };
+        /**
+         * @description One roster row. Masked PII companions ONLY — the raw login (a staff
+         *     email) never reaches a response; the full value leaves only through
+         *     the login/session doors' own shape, for the caller themselves.
+         */
+        User: {
+            /** Format: uuid */
+            readonly employee_id: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            readonly is_root: boolean;
+            readonly login_masked: string | null;
+            readonly status: components["schemas"]["CurrentUserStatusEnum"];
+            readonly user_type: components["schemas"]["UserTypeEnum"];
+        };
+        /**
+         * @description One held grant of one user (the permissions door's read shape) —
+         *     distinct from GrantSerializer above, which is the session payload's
+         *     `{key, scopes}` display form, never consulted for gating.
+         */
+        UserGrant: {
+            readonly permission_key: string;
+            readonly scope: components["schemas"]["ScopesEnum"];
+        };
         /**
          * @description * `staff` - Staff
          *     * `worker` - Worker
@@ -6307,6 +8172,27 @@ export interface operations {
             };
         };
     };
+    assignments_notify_client_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentDetail"];
+                };
+            };
+        };
+    };
     assignments_refresh_rate_create: {
         parameters: {
             query?: never;
@@ -6349,6 +8235,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Shift"];
+                };
+            };
+        };
+    };
+    audit_log_list: {
+        parameters: {
+            query?: {
+                action?: string;
+                entity_id?: string;
+                entity_type?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAuditLogList"];
+                };
+            };
+        };
+    };
+    audit_log_export_list: {
+        parameters: {
+            query?: {
+                action?: string;
+                entity_id?: string;
+                entity_type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLog"][];
+                };
+            };
+        };
+    };
+    audit_log_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLog"];
+                };
+            };
+        };
+    };
+    auth_invite_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvite"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
                 };
             };
         };
@@ -6409,6 +8389,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentSession"];
+                };
+            };
+        };
+    };
+    auth_users_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedUserList"];
+                };
+            };
+        };
+    };
+    auth_users_invite_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Invite"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitedUser"];
+                };
+            };
+        };
+    };
+    auth_users_deactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    auth_users_permissions_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserGrant"][];
+                };
+            };
+        };
+    };
+    auth_users_permissions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PermissionsSet"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserGrant"][];
+                };
+            };
+        };
+    };
+    auth_users_reset_credentials_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetCredentials"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
                 };
             };
         };
@@ -6852,6 +8971,347 @@ export interface operations {
             };
         };
     };
+    credit_notes_list: {
+        parameters: {
+            query?: {
+                /** @description One client's credit notes. */
+                client?: string;
+                /** @description One invoice's credit notes. */
+                invoice?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description One lifecycle status. */
+                status?: "approved" | "draft" | "issued";
+                /** @description 'true': voided only; 'false': live only; absent: both. */
+                voided?: "false" | "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCreditNoteList"];
+                };
+            };
+        };
+    };
+    credit_notes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditNoteWrite"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
+    credit_notes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteDetail"];
+                };
+            };
+        };
+    };
+    credit_notes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCreditNoteUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
+    credit_notes_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
+    credit_notes_issue_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
+    credit_notes_lines_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteLine"][];
+                };
+            };
+        };
+    };
+    credit_notes_lines_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditNoteLineWrite"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteLine"];
+                };
+            };
+        };
+    };
+    credit_notes_lines_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The credit note line is deleted; no response body. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_notes_lines_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCreditNoteLineUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteLine"];
+                };
+            };
+        };
+    };
+    credit_notes_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
+    credit_notes_pdf_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+        };
+    };
+    credit_notes_send_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
+    credit_notes_unapprove_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
+    credit_notes_void_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+        };
+    };
     documents_list: {
         parameters: {
             query?: {
@@ -6860,7 +9320,7 @@ export interface operations {
                 /** @description Number of results to return per page. */
                 page_size?: number;
                 /** @description Keep one document type; anything else is a 400. */
-                type?: "cert" | "esign_form" | "gov_id" | "hour_sheet" | "invoice" | "org_logo" | "other" | "payslip" | "resume" | "signed_form" | "sin_document" | "study_permit" | "work_permit";
+                type?: "cert" | "credit_note" | "esign_form" | "gov_id" | "hour_sheet" | "invoice" | "org_logo" | "other" | "pay_statement" | "payslip" | "resume" | "signed_form" | "sin_document" | "study_permit" | "work_permit";
             };
             header?: never;
             path?: never;
@@ -8204,6 +10664,25 @@ export interface operations {
             };
         };
     };
+    notifications_portal_me_notifications_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalNotification"][];
+                };
+            };
+        };
+    };
     notifications_templates_list: {
         parameters: {
             query?: never;
@@ -8312,6 +10791,48 @@ export interface operations {
             };
         };
     };
+    org_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgSettings"];
+                };
+            };
+        };
+    };
+    org_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOrgSettingsWrite"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgSettings"];
+                };
+            };
+        };
+    };
     org_consent_text_update: {
         parameters: {
             query?: never;
@@ -8358,6 +10879,119 @@ export interface operations {
             };
         };
     };
+    payroll_cycles_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPayCycleList"];
+                };
+            };
+        };
+    };
+    payroll_cycles_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayCycleCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayCycle"];
+                };
+            };
+        };
+    };
+    payroll_cycles_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayCycle"];
+                };
+            };
+        };
+    };
+    payroll_cycles_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pay cycle is deleted; no response body. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payroll_cycles_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPayCycleUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayCycle"];
+                };
+            };
+        };
+    };
     payroll_employees_ytd_retrieve: {
         parameters: {
             query?: {
@@ -8382,7 +11016,7 @@ export interface operations {
             };
         };
     };
-    payroll_payslips_retrieve: {
+    payroll_pay_statements_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -8398,12 +11032,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipDetail"];
+                    "application/json": components["schemas"]["PayStatementDetail"];
                 };
             };
         };
     };
-    payroll_payslips_destroy: {
+    payroll_pay_statements_destroy: {
         parameters: {
             query?: never;
             header?: never;
@@ -8414,7 +11048,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The payslip is deleted; no response body. */
+            /** @description The pay statement is deleted; no response body. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -8423,7 +11057,7 @@ export interface operations {
             };
         };
     };
-    payroll_payslips_attach_flat_coverage_create: {
+    payroll_pay_statements_attach_flat_coverage_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -8439,12 +11073,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipFlatCoverageResult"];
+                    "application/json": components["schemas"]["PayStatementFlatCoverageResult"];
                 };
             };
         };
     };
-    payroll_payslips_deductions_create: {
+    payroll_pay_statements_deductions_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -8455,7 +11089,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PayslipDeductionWrite"];
+                "application/json": components["schemas"]["PayStatementDeductionWrite"];
             };
         };
         responses: {
@@ -8464,12 +11098,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipDeduction"];
+                    "application/json": components["schemas"]["PayStatementDeduction"];
                 };
             };
         };
     };
-    payroll_payslips_deductions_destroy: {
+    payroll_pay_statements_deductions_destroy: {
         parameters: {
             query?: never;
             header?: never;
@@ -8481,7 +11115,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The deduction is removed from the payslip; no response body. */
+            /** @description The deduction is removed from the pay statement; no response body. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -8490,7 +11124,7 @@ export interface operations {
             };
         };
     };
-    payroll_payslips_deductions_partial_update: {
+    payroll_pay_statements_deductions_partial_update: {
         parameters: {
             query?: never;
             header?: never;
@@ -8502,7 +11136,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedPayslipDeductionUpdate"];
+                "application/json": components["schemas"]["PatchedPayStatementDeductionUpdate"];
             };
         };
         responses: {
@@ -8511,12 +11145,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipDeduction"];
+                    "application/json": components["schemas"]["PayStatementDeduction"];
                 };
             };
         };
     };
-    payroll_payslips_lines_create: {
+    payroll_pay_statements_lines_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -8527,7 +11161,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PayslipEarningWrite"];
+                "application/json": components["schemas"]["PayStatementEarningWrite"];
             };
         };
         responses: {
@@ -8536,12 +11170,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipLine"];
+                    "application/json": components["schemas"]["PayStatementLine"];
                 };
             };
         };
     };
-    payroll_payslips_lines_destroy: {
+    payroll_pay_statements_lines_destroy: {
         parameters: {
             query?: never;
             header?: never;
@@ -8553,7 +11187,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The payslip line is deleted; no response body. */
+            /** @description The pay statement line is deleted; no response body. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -8562,7 +11196,7 @@ export interface operations {
             };
         };
     };
-    payroll_payslips_lines_partial_update: {
+    payroll_pay_statements_lines_partial_update: {
         parameters: {
             query?: never;
             header?: never;
@@ -8574,7 +11208,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedPayslipEarningUpdate"];
+                "application/json": components["schemas"]["PatchedPayStatementEarningUpdate"];
             };
         };
         responses: {
@@ -8583,12 +11217,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipLine"];
+                    "application/json": components["schemas"]["PayStatementLine"];
                 };
             };
         };
     };
-    payroll_payslips_pdf_retrieve: {
+    payroll_pay_statements_pdf_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -8609,7 +11243,7 @@ export interface operations {
             };
         };
     };
-    payroll_payslips_pdf_create: {
+    payroll_pay_statements_pdf_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -8666,6 +11300,25 @@ export interface operations {
                 "application/json": components["schemas"]["PayrollRunCreate"];
             };
         };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollRun"];
+                };
+            };
+        };
+    };
+    payroll_runs_generate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             201: {
                 headers: {
@@ -8739,6 +11392,27 @@ export interface operations {
             };
         };
     };
+    payroll_runs_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
     payroll_runs_release_create: {
         parameters: {
             query?: never;
@@ -8756,6 +11430,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PayrollRun"];
+                };
+            };
+        };
+    };
+    perm_placements_list: {
+        parameters: {
+            query?: {
+                /** @description One client's placements. */
+                client?: string;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description One placement status. */
+                status?: "confirmed" | "offered" | "voided";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPlacementList"];
+                };
+            };
+        };
+    };
+    perm_placements_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacementWrite"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Placement"];
+                };
+            };
+        };
+    };
+    perm_placements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Placement"];
+                };
+            };
+        };
+    };
+    perm_placements_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPlacementUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Placement"];
+                };
+            };
+        };
+    };
+    perm_placements_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Placement"];
+                };
+            };
+        };
+    };
+    perm_placements_void_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Placement"];
                 };
             };
         };
@@ -8972,6 +11785,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmployeeCert"];
+                };
+            };
+        };
+    };
+    portal_me_consent_text_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalConsentTextResult"];
                 };
             };
         };
@@ -9272,7 +12104,7 @@ export interface operations {
             };
         };
     };
-    portal_me_payslips_list: {
+    portal_me_pay_statements_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -9286,12 +12118,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Payslip"][];
+                    "application/json": components["schemas"]["PayStatement"][];
                 };
             };
         };
     };
-    portal_me_payslips_retrieve: {
+    portal_me_pay_statements_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -9307,12 +12139,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayslipDetail"];
+                    "application/json": components["schemas"]["PayStatementDetail"];
                 };
             };
         };
     };
-    portal_me_payslips_pdf_retrieve: {
+    portal_me_pay_statements_pdf_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -9612,7 +12444,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PortalMeSubmit"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -9707,6 +12543,196 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmployeeTimeOff"];
+                };
+            };
+        };
+    };
+    privacy_breaches_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /**
+                 * @description * `real_risk` - Real risk of significant harm
+                 *     * `no_real_risk` - No real risk of significant harm
+                 */
+                rrosh?: "real_risk" | "no_real_risk";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPrivacyBreachList"];
+                };
+            };
+        };
+    };
+    privacy_breaches_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivacyBreachCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyBreach"];
+                };
+            };
+        };
+    };
+    privacy_breaches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyBreach"];
+                };
+            };
+        };
+    };
+    privacy_disposal_list: {
+        parameters: {
+            query?: {
+                held?: boolean | null;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDestructionScheduleList"];
+                };
+            };
+        };
+    };
+    privacy_disposal_delay_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DestructionDelay"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestructionSchedule"];
+                };
+            };
+        };
+    };
+    privacy_disposal_destroy_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestructionSchedule"];
+                };
+            };
+        };
+    };
+    privacy_disposal_hold_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DestructionHold"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestructionSchedule"];
+                };
+            };
+        };
+    };
+    privacy_disposal_release_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestructionSchedule"];
                 };
             };
         };
@@ -9837,6 +12863,25 @@ export interface operations {
             };
         };
     };
+    reports_dashboard_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+        };
+    };
     schema_retrieve: {
         parameters: {
             query?: never;
@@ -9956,6 +13001,27 @@ export interface operations {
             };
         };
     };
+    shifts_backfill_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftBackfillCandidates"];
+                };
+            };
+        };
+    };
     shifts_clear_mark_create: {
         parameters: {
             query?: never;
@@ -10022,8 +13088,10 @@ export interface operations {
                  *     * `cert_renewal` - Cert renewal
                  *     * `invoice_approval` - Invoice approval
                  *     * `privacy_request` - Privacy request
+                 *     * `permit_renewal` - Permit renewal
+                 *     * `client_notice_approval` - Client notice approval
                  */
-                type?: "custom" | "job" | "client_followup" | "employee_followup" | "cert_renewal" | "invoice_approval" | "privacy_request";
+                type?: "custom" | "job" | "client_followup" | "employee_followup" | "cert_renewal" | "invoice_approval" | "privacy_request" | "permit_renewal" | "client_notice_approval";
             };
             header?: never;
             path?: never;
@@ -10353,6 +13421,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncidentWeight"];
+                };
+            };
+        };
+    };
+    workers_search_retrieve: {
+        parameters: {
+            query?: {
+                /** @description ISO time (HH:MM[:SS]) — paired with available_on. */
+                available_at?: string;
+                /** @description ISO date — with available_at, an availability check. */
+                available_on?: string;
+                /** @description A cert name, matched case-insensitively. */
+                cert?: string;
+                /** @description Minimum years of experience (requires skill). */
+                min_years?: number;
+                /** @description A skill id from the org's catalog. */
+                skill?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateSearchResult"];
                 };
             };
         };
@@ -11227,6 +14325,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalReveal"];
+                };
+            };
+        };
+    };
+    workers_phone_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneCodeConfirm"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Employee"];
+                };
+            };
+        };
+    };
+    workers_phone_request_code_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Employee"];
                 };
             };
         };

@@ -68,7 +68,13 @@ export default function InvoicesListPage() {
   const columns: Column<Invoice>[] = [
     { header: "Invoice #", cell: (i) => i.invoice_number ?? "—" },
     { header: "Client", cell: (i) => i.client_name },
-    { header: "Status", cell: (i) => <InvoiceStatusBadge status={i.status as InvoiceStatus} /> },
+    { header: "Status", cell: (i) => (
+      <InvoiceStatusBadge
+        status={i.status as InvoiceStatus}
+        voidedAt={i.voided_at}
+        paidAt={i.paid_at}
+      />
+    ) },
     { header: "Total", cell: (i) => ("total" in i ? formatMoney(i.total) : "—") },
     { header: "Due", cell: (i) => i.due_date },
   ];

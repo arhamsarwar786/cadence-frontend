@@ -13,6 +13,8 @@ import {
   type IncidentVoidFormValues,
 } from "@/features/workers/schemas";
 import type { WorkerIncident } from "@/features/workers/types";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { formatDateTime } from "@/shared/lib/datetime";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { Badge, Button, Dialog, Field, Input, Select } from "@/shared/ui";
 
@@ -75,6 +77,7 @@ function VoidIncidentForm({
   incident: WorkerIncident;
   onDone: () => void;
 }) {
+  const timeZone = useOrgTimeZone();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -97,7 +100,8 @@ function VoidIncidentForm({
   return (
     <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">
       <p className="font-body text-sm text-cadence-ink">
-        Void the {incident.category} incident from {new Date(incident.occurred_at).toLocaleString()}?
+        Void the {incident.category} incident from{" "}
+        {timeZone ? formatDateTime(incident.occurred_at, timeZone) : "—"}?
         Incidents are never deleted — this keeps the row, marked void.
       </p>
       <Field label="Reason" htmlFor="void-reason" error={errors.reason?.message}>
@@ -113,6 +117,7 @@ function VoidIncidentForm({
 
 export function IncidentsPanel({ workerId }: { workerId: string }) {
   const queryClient = useQueryClient();
+  const timeZone = useOrgTimeZone();
   const queryKey = ["workers", workerId, "incidents"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerIncidents(workerId) });
   const [logOpen, setLogOpen] = useState(false);
@@ -150,7 +155,8 @@ export function IncidentsPanel({ workerId }: { workerId: string }) {
                   ) : null}
                 </p>
                 <p className="font-body text-xs text-cadence-ink/60">
-                  {new Date(incident.occurred_at).toLocaleString()} · weight {incident.weight}
+                  {timeZone ? formatDateTime(incident.occurred_at, timeZone) : "—"} · weight{" "}
+                  {incident.weight}
                   {incident.note ? ` · ${incident.note}` : ""}
                 </p>
               </div>

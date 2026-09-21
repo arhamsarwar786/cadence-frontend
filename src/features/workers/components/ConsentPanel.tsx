@@ -1,9 +1,14 @@
+"use client";
+
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { formatDateTime } from "@/shared/lib/datetime";
 import type { Employee } from "@/features/workers/types";
 import { CONSENT_SOURCE_LABELS, type ConsentSource } from "@/shared/lib/status-labels";
 
 /** Read-only for staff — consent capture is a worker-portal act only
  * (ARCHITECTURE.md §3: "Consent capture" lives under Portal, not staff). */
 export function ConsentPanel({ worker }: { worker: Employee }) {
+  const timeZone = useOrgTimeZone();
   const consent = worker.consent;
 
   return (
@@ -21,7 +26,9 @@ export function ConsentPanel({ worker }: { worker: Employee }) {
           </div>
           <div>
             <dt className="text-cadence-ink/60">Captured</dt>
-            <dd className="text-cadence-ink">{new Date(consent.created_at).toLocaleString()}</dd>
+            <dd className="text-cadence-ink">
+              {timeZone ? formatDateTime(consent.created_at, timeZone) : "—"}
+            </dd>
           </div>
           <div className="col-span-2">
             <dt className="text-cadence-ink/60">Text agreed to</dt>
@@ -29,9 +36,7 @@ export function ConsentPanel({ worker }: { worker: Employee }) {
           </div>
         </dl>
       ) : (
-        <p className="font-body text-sm text-cadence-ink/60">
-          This worker has not consented yet.
-        </p>
+        <p className="font-body text-sm text-cadence-ink/60">No consent captured yet.</p>
       )}
     </section>
   );

@@ -1,11 +1,22 @@
 "use client";
 
-import { type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, forwardRef } from "react";
+import {
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+  forwardRef,
+} from "react";
 import { cn } from "@/shared/lib/cn";
 import { Tooltip } from "@/shared/ui/Tooltip";
 
 const CONTROL_CLASSES =
   "h-10 w-full rounded-full border border-cadence-ink/10 bg-surface px-4 text-sm font-body text-cadence-ink " +
+  "placeholder:text-cadence-ink/35 focus:border-cadence-orange focus:outline-none focus:ring-2 focus:ring-cadence-yellow/50 " +
+  "disabled:cursor-not-allowed disabled:opacity-50";
+
+const TEXTAREA_CLASSES =
+  "min-h-24 w-full rounded-2xl border border-cadence-ink/10 bg-surface px-4 py-3 text-sm font-body text-cadence-ink " +
   "placeholder:text-cadence-ink/35 focus:border-cadence-orange focus:outline-none focus:ring-2 focus:ring-cadence-yellow/50 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -60,5 +71,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
         {children}
       </select>
     );
+  },
+);
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ className, ...props }, ref) {
+    return <textarea ref={ref} className={cn(TEXTAREA_CLASSES, className)} {...props} />;
   },
 );

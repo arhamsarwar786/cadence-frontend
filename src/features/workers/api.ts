@@ -32,6 +32,29 @@ export function listWorkers(params: ListWorkersParams = {}): Promise<Paginated<E
   return api.get<Paginated<EmployeeList>>(`/api/v1/workers/${qs ? `?${qs}` : ""}`);
 }
 
+export function searchWorkers(params: {
+  skill?: string;
+  cert?: string;
+  minYears?: number;
+  availableOn?: string;
+  availableAt?: string;
+  page?: number;
+  pageSize?: number;
+  q?: string;
+}): Promise<Paginated<EmployeeList>> {
+  const search = new URLSearchParams();
+  if (params.skill) search.set("skill", params.skill);
+  if (params.cert) search.set("cert", params.cert);
+  if (params.minYears != null) search.set("min_years", String(params.minYears));
+  if (params.availableOn) search.set("available_on", params.availableOn);
+  if (params.availableAt) search.set("available_at", params.availableAt);
+  if (params.page) search.set("page", String(params.page));
+  if (params.pageSize) search.set("page_size", String(params.pageSize));
+  const qs = search.toString();
+  return api.get(`/api/v1/workers/search/${qs ? `?${qs}` : ""}`);
+}
+
+
 export function getWorker(id: string): Promise<Employee> {
   return api.get<Employee>(`/api/v1/workers/${id}/`);
 }

@@ -6,20 +6,22 @@ import { useSession } from "@/auth/session-context";
 import { logout as logoutAction } from "@/features/accounts/actions";
 import { BottomDock, BrandLink, Button, SkipLink } from "@/shared/ui";
 
-/** Fixed portal chrome (ARCHITECTURE.md §2.4) — workers hold no catalog
- * grants, so this nav is identity-only, not permission-computed. */
-const PORTAL_NAV_ITEMS = [
-  { label: "Home", href: "/portal", tooltip: "Your portal home" },
-  { label: "My profile", href: "/portal/me", tooltip: "Your contact details and history" },
-  { label: "Onboarding", href: "/portal/onboarding", tooltip: "Submit intake to the office" },
-  { label: "Offers", href: "/portal/offers", tooltip: "Accept or decline a placement" },
+/** Fixed 5-tab portal chrome (A18) — workers hold no catalog grants. */
+const PORTAL_DOCK = [
+  { label: "Home", href: "/portal", tooltip: "Your portal home", icon: "home" as const },
+  { label: "Offers", href: "/portal/offers", tooltip: "Accept or decline a placement", icon: "offers" as const },
+  { label: "Pay", href: "/portal/pay-statements", tooltip: "Pay statements", icon: "pay" as const },
+  { label: "Profile", href: "/portal/me", tooltip: "Your profile", icon: "profile" as const },
+  { label: "Documents", href: "/portal/documents", tooltip: "Your uploads", icon: "docs" as const },
+];
+
+const PORTAL_MORE = [
   { label: "My shifts", href: "/portal/shifts", tooltip: "Shifts on placements you confirmed" },
-  { label: "Pay statements", href: "/portal/payslips", tooltip: "Issued and paid statements" },
   { label: "Signatures", href: "/portal/signatures", tooltip: "Forms waiting for your signature" },
   { label: "Availability", href: "/portal/availability", tooltip: "When you can work" },
-  { label: "Documents", href: "/portal/documents", tooltip: "Files you uploaded" },
+  { label: "Onboarding", href: "/portal/onboarding", tooltip: "Submit intake to the office" },
   { label: "Consent", href: "/portal/consent", tooltip: "Privacy notice and re-consent" },
-] as const;
+];
 
 export function PortalShell({ children }: { children: ReactNode }) {
   const { session, clear } = useSession();
@@ -54,12 +56,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <BottomDock
-        items={PORTAL_NAV_ITEMS.filter((item) =>
-          ["/portal", "/portal/shifts", "/portal/payslips"].includes(item.href),
-        ).map(({ label, href, tooltip }) => ({ label, href, tooltip }))}
-        overflow={PORTAL_NAV_ITEMS.filter(
-          (item) => !["/portal", "/portal/shifts", "/portal/payslips"].includes(item.href),
-        ).map(({ label, href, tooltip }) => ({ label, href, tooltip }))}
+        items={PORTAL_DOCK}
+        overflow={PORTAL_MORE}
         footer={
           <div>
             <p className="mb-2 truncate px-2 font-fine text-[11px] text-on-card-muted">
