@@ -17,7 +17,7 @@ import {
 } from "@/features/orgs/api";
 import { hasAnyPerm } from "@/permissions/has-perm";
 import { PERM } from "@/permissions/keys";
-import { applyFieldErrors, fieldErrorsFrom, messageFrom } from "@/shared/lib/errors";
+import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { Button, Field, Input, Select, Textarea } from "@/shared/ui";
 
 const PROVINCES = [
@@ -197,12 +197,8 @@ export default function SettingsPage() {
       await refresh();
       setSaved(true);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) {
-        const fields = fieldErrorsFrom(error);
-        const first = Object.values(fields).flat()[0];
-        setSaveError(first ?? messageFrom(error));
-      }
+      const banner = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (banner) setSaveError(banner);
       // Never imply success when retention/timezone/etc. were refused.
     }
   }

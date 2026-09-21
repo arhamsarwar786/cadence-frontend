@@ -13,17 +13,40 @@ export class ApiError extends Error {
   readonly body: unknown;
 
   constructor(status: number, body: unknown) {
-    super(
-      status === 0
-        ? typeof body === "string"
-          ? body
-          : "Can't reach the API. Is the backend running?"
-        : `Request failed with status ${status}`,
-    );
+    super(defaultMessage(status, body));
     this.name = "ApiError";
     this.status = status;
     this.body = body;
   }
+}
+
+function defaultMessage(status: number, body: unknown): string {
+  if (status === 0) {
+    return typeof body === "string" && body.trim()
+      ? body.trim()
+      : "Can't reach the API. Is the backend running?";
+  }
+  const fromBody = extractDetail(body);
+  if (fromBody) return fromBody;
+  return `Request failed with status ${status}`;
+}
+
+function extractDetail(body: unknown): string | null {
+  if (typeof body === "string" && body.trim() && !/^\s*</.test(body)) {
+    return body.trim().slice(0, 500);
+  }
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const record = body as Record<string, unknown>;
+    for (const key of ["detail", "non_field_errors", "__all__", "error", "message"] as const) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+        const joined = value.join(" ").trim();
+        if (joined) return joined;
+      }
+    }
+  }
+  return null;
 }
 
 function readCookie(name: string): string | null {

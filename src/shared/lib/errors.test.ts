@@ -38,6 +38,24 @@ describe("messageFrom", () => {
     ).toBe("payday cannot precede the period end");
   });
 
+  it("surfaces detail on 404 and 409", () => {
+    expect(messageFrom(new ApiError(404, { detail: "that field is not on file" }))).toBe(
+      "that field is not on file",
+    );
+    expect(
+      messageFrom(
+        new ApiError(409, {
+          detail: "The request conflicts with the current state — retry against fresh data.",
+        }),
+      ),
+    ).toContain("conflicts");
+  });
+
+  it("surfaces error/message keys when detail is absent", () => {
+    expect(messageFrom(new ApiError(400, { error: "Agency not found." }))).toBe("Agency not found.");
+    expect(messageFrom(new ApiError(400, { message: "Invalid invite." }))).toBe("Invalid invite.");
+  });
+
   it("falls back to field messages when detail is absent", () => {
     expect(messageFrom(new ApiError(400, { payday: ["This field is required."] }))).toBe(
       "payday: This field is required.",
@@ -116,5 +134,16 @@ describe("applyFieldErrors", () => {
     );
     expect(setError).not.toHaveBeenCalled();
     expect(residual).toBe("referred_by_employee: Unknown worker.");
+  });
+
+  it("returns detail for the banner — callers must use if (banner), not if (!banner)", () => {
+    const setError = vi.fn();
+    const banner = applyFieldErrors(
+      setError,
+      new ApiError(400, { detail: ["no active pay cycle — create and activate one first"] }),
+      ["period_start", "period_end", "payday"],
+    );
+    expect(setError).not.toHaveBeenCalled();
+    expect(banner).toBe("no active pay cycle — create and activate one first");
   });
 });

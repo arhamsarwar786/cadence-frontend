@@ -5,9 +5,13 @@ import { ApiError } from "@/api/client";
  * HTTP -> UI mapping (ARCHITECTURE.md §10). A cross-tenant or out-of-scope
  * id is 404, never a 403 that would confirm the row exists — this module
  * never invents a friendlier story for that distinction.
+ *
+ * Prefer the API's own words (`detail`, `non_field_errors`, field errors)
+ * over generic copy. Forms should use `applyFieldErrors` and set the
+ * returned residual on the banner — never `if (!residual)`.
  */
 
-const META_KEYS = new Set(["detail", "non_field_errors"]);
+const META_KEYS = new Set(["detail", "non_field_errors", "__all__", "error", "message"]);
 
 export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
@@ -30,7 +34,7 @@ export type FieldErrors = Record<string, string[]>;
 function collectMessages(value: unknown, path = ""): string[] {
   if (value == null) return [];
   if (typeof value === "string") {
-    const text = value.trim();
+    const text = stripHtmlNoise(value.trim());
     return text ? [path ? `${path}: ${text}` : text] : [];
   }
   if (typeof value === "number" || typeof value === "boolean") {
@@ -38,7 +42,7 @@ function collectMessages(value: unknown, path = ""): string[] {
   }
   if (Array.isArray(value)) {
     if (value.length === 0) return [];
-    if (value.every((item) => typeof item === "string")) {
+    if (value.every((item) => typeof item === "string" || typeof item === "number")) {
       const joined = value.map(String).join(" ").trim();
       return joined ? [path ? `${path}: ${joined}` : joined] : [];
     }
@@ -54,15 +58,27 @@ function collectMessages(value: unknown, path = ""): string[] {
   return [];
 }
 
+/** Drop accidental HTML error pages / huge blobs from non-JSON 4xx/5xx. */
+function stripHtmlNoise(text: string): string {
+  if (!text) return text;
+  if (/^\s*</.test(text) || text.includes("<!DOCTYPE") || text.includes("<html")) {
+    return "";
+  }
+  if (text.length > 500) return `${text.slice(0, 500).trim()}…`;
+  return text;
+}
+
 function stringListMessage(value: unknown): string | null {
   const messages = collectMessages(value);
   return messages.length ? messages.join(" ") : null;
 }
 
-/** A 400's field errors for React Hook Form. Meta keys (`detail`,
- * `non_field_errors`) are excluded — those belong on the form banner. */
+/** A 400's field errors for React Hook Form. Meta keys are excluded —
+ * those belong on the form banner. */
 export function fieldErrorsFrom(error: unknown): FieldErrors {
-  if (!(error instanceof ApiError) || error.status !== 400) return {};
+  if (!(error instanceof ApiError)) return {};
+  // Validation-shaped bodies also appear on 409/422 in some doors.
+  if (error.status !== 400 && error.status !== 409 && error.status !== 422) return {};
   const body = error.body;
   if (body === null || typeof body !== "object" || Array.isArray(body)) return {};
 
@@ -81,13 +97,27 @@ export function fieldErrorsFrom(error: unknown): FieldErrors {
 }
 
 function detailMessage(body: unknown): string | null {
-  if (body === null || typeof body !== "object" || Array.isArray(body)) {
-    return typeof body === "string" && body.trim() ? body.trim() : null;
+  if (body == null) return null;
+  if (typeof body === "string") {
+    const text = stripHtmlNoise(body.trim());
+    return text || null;
   }
+  if (Array.isArray(body)) {
+    return stringListMessage(body);
+  }
+  if (typeof body !== "object") return null;
+
   const record = body as Record<string, unknown>;
   // Django ValidationError → {"detail": ["…"]}
-  // DRF serializer cross-field → {"non_field_errors": ["…"]}
-  return stringListMessage(record.detail) ?? stringListMessage(record.non_field_errors);
+  // DRF serializer cross-field → {"non_field_errors": ["…"]} / {"__all__": ["…"]}
+  // Occasional doors → {"error": "…"} / {"message": "…"}
+  return (
+    stringListMessage(record.detail) ??
+    stringListMessage(record.non_field_errors) ??
+    stringListMessage(record.__all__) ??
+    stringListMessage(record.error) ??
+    stringListMessage(record.message)
+  );
 }
 
 function fieldMessagesSummary(error: unknown, excludeKeys: readonly string[] = []): string | null {
@@ -101,10 +131,14 @@ function fieldMessagesSummary(error: unknown, excludeKeys: readonly string[] = [
 }
 
 /**
- * Maps a 400's field errors onto a React Hook Form instance.
- * Returns a form-level message for anything not pinned to a known field
- * (`non_field_errors`, `detail`, unknown keys, nested leftovers). Null when
- * every API error landed on a rendered field.
+ * Maps field errors onto a React Hook Form instance.
+ * Returns a form-level banner message for anything not pinned to a known
+ * field (`detail`, `non_field_errors`, unknown keys). Null only when every
+ * API error landed on a rendered field.
+ *
+ * Usage:
+ *   const banner = applyFieldErrors(setError, error, FIELD_NAMES);
+ *   if (banner) setFormError(banner);
  */
 export function applyFieldErrors<T extends FieldValues>(
   setError: UseFormSetError<T>,
@@ -125,8 +159,7 @@ export function applyFieldErrors<T extends FieldValues>(
     }
   }
 
-  const meta =
-    error instanceof ApiError ? detailMessage(error.body) : null;
+  const meta = error instanceof ApiError ? detailMessage(error.body) : null;
   const residual = [meta, ...unmatched].filter(Boolean) as string[];
   if (residual.length) return residual.join(" ");
   if (applied.length) return null;
@@ -143,31 +176,35 @@ export function isUnreachable(error: unknown): boolean {
   return error instanceof TypeError || error instanceof DOMException;
 }
 
+function statusFallback(status: number): string {
+  if (status === 401) return "Please sign in again.";
+  if (status === 403) return "You don't have permission to do that.";
+  if (status === 404) return "Not found.";
+  if (status === 409) return "That conflicts with the current state. Refresh and try again.";
+  if (status === 413) return "The uploaded file is too large.";
+  if (status === 429) return "Too many requests. Wait a moment and try again.";
+  return "Something went wrong. Please try again.";
+}
+
 /** A single human-readable line for a banner / form-level error. Prefer
  * pinning field errors via `applyFieldErrors` in forms; this is the
  * fallback that must still speak the API's words. */
 export function messageFrom(error: unknown): string {
   if (isUnreachable(error)) {
-    if (error instanceof ApiError && typeof error.body === "string") return error.body;
+    if (error instanceof ApiError) {
+      return detailMessage(error.body) ?? "Can't reach the API. Is the backend running?";
+    }
     return "Can't reach the API. Is the backend running?";
   }
   if (error instanceof ApiError) {
-    if (error.status === 403) {
-      return detailMessage(error.body) ?? "You don't have permission to do that.";
-    }
-    if (error.status === 404) return "Not found.";
-    if (error.status === 401) {
-      return detailMessage(error.body) ?? "Please sign in again.";
-    }
-    if (error.status === 400) {
-      return (
-        detailMessage(error.body) ??
-        fieldMessagesSummary(error) ??
-        "Something went wrong. Please try again."
-      );
-    }
-    return detailMessage(error.body) ?? "Something went wrong. Please try again.";
+    const fromBody =
+      detailMessage(error.body) ??
+      (error.status === 400 || error.status === 409 || error.status === 422
+        ? fieldMessagesSummary(error)
+        : null);
+    if (fromBody) return fromBody;
+    return statusFallback(error.status);
   }
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error && error.message.trim()) return error.message;
   return "Something went wrong. Please try again.";
 }

@@ -37,8 +37,8 @@ function LogIncidentForm({ workerId, onDone }: { workerId: string; onDone: () =>
       await logIncident(workerId, { ...values, note: values.note ?? "" });
       onDone();
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, LOG_FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const banner = applyFieldErrors(setError, error, LOG_FIELD_NAMES);
+      if (banner) setFormError(banner);
     }
   }
 
@@ -92,8 +92,8 @@ function VoidIncidentForm({
       await voidIncident(workerId, incident.id, values);
       onDone();
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, VOID_FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const banner = applyFieldErrors(setError, error, VOID_FIELD_NAMES);
+      if (banner) setFormError(banner);
     }
   }
 

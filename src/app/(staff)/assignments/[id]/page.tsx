@@ -115,8 +115,8 @@ export default function AssignmentDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["assignments", assignmentId, "shifts"] });
       reset();
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const banner = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (banner) setFormError(banner);
     }
   }
 

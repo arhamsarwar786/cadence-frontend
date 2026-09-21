@@ -102,8 +102,8 @@ export default function NewInvoicePage() {
       setInvoiceId(created.id);
       setStep(2);
     } catch (error) {
-      const matched = applyFieldErrors(setError, error, FIELD_NAMES);
-      if (!matched) setFormError(messageFrom(error));
+      const banner = applyFieldErrors(setError, error, FIELD_NAMES);
+      if (banner) setFormError(banner);
     }
   }
 
