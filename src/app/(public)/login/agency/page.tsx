@@ -100,7 +100,7 @@ export default function AgencyLoginPage() {
                     <span className="block font-body text-sm font-medium">{agency.name}</span>
                     <span className="block font-body text-xs text-cadence-ink/50">{agency.subtitle}</span>
                   </span>
-                  <span className="text-cadence-ink/40">›</span>
+                  <span className="text-cadence-ink/60">›</span>
                 </button>
               </li>
             ))}

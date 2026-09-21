@@ -189,7 +189,7 @@ export default function OnboardingPage() {
               Permit expiry
               <input
                 type="date"
-                className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2"
+                className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-cadence-ink"
                 value={permitExpiry || me?.work_authorization_expiry || ""}
                 onChange={(e) => handlePermitExpiry(e.target.value)}
               />
@@ -239,7 +239,7 @@ export default function OnboardingPage() {
               <div className="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-2xl bg-surface-muted p-4 font-body text-sm text-cadence-ink">
                 {consentQuery.data.consent_text}
               </div>
-              <p className="mt-2 font-fine text-[11px] text-cadence-ink/45">
+              <p className="mt-2 font-fine text-[11px] text-cadence-ink/60">
                 Version {consentQuery.data.consent_version}
               </p>
               <label className="mt-4 flex items-start gap-2 font-body text-sm text-cadence-ink">
@@ -269,7 +269,7 @@ export default function OnboardingPage() {
           <h2 className="font-subheading text-xl text-cadence-ink">Ready to submit</h2>
           <ul className="mt-3 flex flex-col gap-1.5 font-body text-sm">
             {checks.map((item) => (
-              <li key={item.label} className={item.ok ? "text-cadence-ink" : "text-cadence-ink/45"}>
+              <li key={item.label} className={item.ok ? "text-cadence-ink" : "text-cadence-ink/60"}>
                 {item.ok ? "●" : "○"} {item.label}
               </li>
             ))}

@@ -145,15 +145,15 @@ export default function NewInvoicePage() {
               {billing ? (
                 <dl className="grid gap-2 rounded-2xl border border-border p-3 text-sm">
                   <div>
-                    <dt className="text-cadence-ink/45">Company</dt>
+                    <dt className="text-cadence-ink/60">Company</dt>
                     <dd>{billing.company_name || selectedClient?.name}</dd>
                   </div>
                   <div>
-                    <dt className="text-cadence-ink/45">Billing email</dt>
+                    <dt className="text-cadence-ink/60">Billing email</dt>
                     <dd>{billing.billing_email || "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-cadence-ink/45">Office address</dt>
+                    <dt className="text-cadence-ink/60">Office address</dt>
                     <dd>
                       {[
                         clientQuery.data?.address_line_1,
@@ -166,7 +166,7 @@ export default function NewInvoicePage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-cadence-ink/45">Tax ID</dt>
+                    <dt className="text-cadence-ink/60">Tax ID</dt>
                     <dd>{billing.tax_id || "—"}</dd>
                   </div>
                 </dl>

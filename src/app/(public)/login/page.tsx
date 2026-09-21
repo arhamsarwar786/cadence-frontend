@@ -59,7 +59,7 @@ function ChoiceRow({
         <span className="block font-body text-base font-medium text-cadence-ink">{title}</span>
         <span className="mt-0.5 block font-body text-sm text-cadence-ink/55">{description}</span>
       </span>
-      <span className="font-heading text-xl text-cadence-ink/40 transition group-hover:text-cadence-ink">
+      <span className="font-heading text-xl text-cadence-ink/60 transition group-hover:text-cadence-ink">
         ›
       </span>
     </Link>

@@ -5,50 +5,50 @@ import { Tooltip } from "@/shared/ui/Tooltip";
 export interface StatItem {
   value: string | number;
   label?: string;
+  /** Accent is a colored mark only — numbers stay ink for contrast on cream. */
   tone?: "ink" | "orange" | "lime" | "muted";
 }
 
-const TONE_CLASS: Record<NonNullable<StatItem["tone"]>, string> = {
+const TONE_MARK: Record<NonNullable<StatItem["tone"]>, string> = {
+  ink: "bg-cadence-ink",
+  orange: "bg-cadence-orange",
+  lime: "bg-cadence-lime",
+  muted: "bg-cadence-ink/35",
+};
+
+const TONE_VALUE: Record<NonNullable<StatItem["tone"]>, string> = {
   ink: "text-cadence-ink",
-  orange: "text-cadence-orange",
-  lime: "text-cadence-lime",
-  muted: "text-cadence-ink/55",
+  orange: "text-cadence-ink",
+  lime: "text-cadence-ink",
+  muted: "text-cadence-ink/70",
 };
 
 export function StatRail({ stats }: { stats: StatItem[] }) {
   if (stats.length === 0) return null;
   return (
     <aside className="hidden w-24 shrink-0 flex-col gap-6 pt-2 sm:flex">
-      {stats.map((stat, index) => (
-        <div key={`${stat.value}-${index}`}>
-          {stat.label ? (
-            <Tooltip content={stat.label}>
-              <p
-                className={cn(
-                  "font-heading text-4xl leading-none",
-                  TONE_CLASS[stat.tone ?? (index === 0 ? "ink" : "muted")],
-                )}
-              >
-                {stat.value}
+      {stats.map((stat, index) => {
+        const tone = stat.tone ?? (index === 0 ? "ink" : "muted");
+        const value = (
+          <p className={cn("font-heading text-4xl leading-none", TONE_VALUE[tone])}>
+            <span
+              aria-hidden
+              className={cn("mb-1.5 block h-1 w-6 rounded-full", TONE_MARK[tone])}
+            />
+            {stat.value}
+          </p>
+        );
+        return (
+          <div key={`${stat.value}-${index}`}>
+            {stat.label ? <Tooltip content={stat.label}>{value}</Tooltip> : value}
+            {stat.label ? (
+              <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                {stat.label}
               </p>
-            </Tooltip>
-          ) : (
-            <p
-              className={cn(
-                "font-heading text-4xl leading-none",
-                TONE_CLASS[stat.tone ?? (index === 0 ? "ink" : "muted")],
-              )}
-            >
-              {stat.value}
-            </p>
-          )}
-          {stat.label ? (
-            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
-              {stat.label}
-            </p>
-          ) : null}
-        </div>
-      ))}
+            ) : null}
+          </div>
+        );
+      })}
     </aside>
   );
 }

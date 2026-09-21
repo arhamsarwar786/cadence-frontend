@@ -63,12 +63,12 @@ export default function PortalMeHubPage() {
                 <span className="block font-body font-medium text-cadence-ink">{item.title}</span>
                 <span className="block text-sm text-cadence-ink/55">{item.subtitle}</span>
               </span>
-              <span className="text-cadence-ink/40">›</span>
+              <span className="text-cadence-ink/60">›</span>
             </Link>
           </li>
         ))}
       </ul>
-      <p className="mt-6 text-center text-xs text-cadence-ink/45">
+      <p className="mt-6 text-center text-xs text-cadence-ink/60">
         <Link href="/portal/me/legacy" className="underline">
           Open classic tabs view
         </Link>

@@ -215,7 +215,7 @@ export default function InvoiceDetailPage() {
 
       <Dialog open={autofillOpen} onClose={() => setAutofillOpen(false)} title="Autofill from unbilled shifts">
         <form onSubmit={handleSubmit(submitAutofill)} noValidate className="flex flex-col gap-4">
-          <p className="font-body text-sm text-cadence-ink/70">
+          <p className="font-body text-sm text-on-card-muted">
             With no filters, this fills the draft from every unbilled worked shift of this
             client.
           </p>

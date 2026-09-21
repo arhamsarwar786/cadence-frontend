@@ -186,7 +186,7 @@ export default function ShiftsListPage() {
         title="Who can cover this shift"
       >
         {backfillQuery.isLoading ? (
-          <p className="text-sm text-cadence-ink/60">Loading…</p>
+          <p className="text-sm text-on-card-muted">Loading…</p>
         ) : backfillQuery.isError ? (
           <p className="text-sm text-cadence-red">{messageFrom(backfillQuery.error)}</p>
         ) : (
@@ -199,14 +199,14 @@ export default function ShiftsListPage() {
               return (
                 <li
                   key={c.id}
-                  className="rounded-xl border border-border px-3 py-2 font-body text-sm"
+                  className="rounded-xl border border-white/10 bg-card-muted px-3 py-2 font-body text-sm text-on-card"
                 >
                   {name}
                 </li>
               );
             })}
             {(backfillQuery.data?.results ?? []).length === 0 ? (
-              <li className="text-sm text-cadence-ink/50">No candidates available.</li>
+              <li className="text-sm text-on-card-muted">No candidates available.</li>
             ) : null}
           </ul>
         )}

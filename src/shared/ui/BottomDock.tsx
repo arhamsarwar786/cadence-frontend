@@ -225,7 +225,7 @@ export function BottomDock({
           align === "start" ? "justify-start sm:px-6" : "justify-center",
         )}
       >
-        <ul className="pointer-events-auto flex items-center gap-1 overflow-visible rounded-full bg-card p-1.5 shadow-card">
+        <ul className="pointer-events-auto flex items-center gap-1 overflow-visible rounded-full bg-card p-1.5 text-on-card shadow-card">
           {showLogo ? (
             <li>
               <Tooltip content="Dashboard">

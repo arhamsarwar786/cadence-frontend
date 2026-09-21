@@ -73,7 +73,7 @@ export function CertsPanel() {
                 {cert.is_verified ? <span className="ml-2 text-xs text-emerald-700">Verified</span> : null}
               </p>
               {cert.is_verified ? (
-                <span className="font-body text-xs text-cadence-ink/45">Office verified</span>
+                <span className="font-body text-xs text-cadence-ink/60">Office verified</span>
               ) : (
                 <Button size="sm" variant="ghost" onClick={() => handleDelete(cert.id)}>
                   Remove

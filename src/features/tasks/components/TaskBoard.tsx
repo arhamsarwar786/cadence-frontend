@@ -173,39 +173,42 @@ export function TaskBoard() {
       <section className="shrink-0 pt-1 sm:pt-2">
         <p className="font-heading text-[2.75rem] leading-none text-cadence-ink sm:text-5xl lg:text-6xl">
           {hour12}:{minutes}
-          <span className="ml-1 align-top font-fine text-xs text-cadence-ink/45 sm:text-sm">
+          <span className="ml-1 align-top font-fine text-xs text-cadence-ink/60 sm:text-sm">
             {meridiem}
           </span>
         </p>
-        <p className="mt-1.5 font-body text-sm text-cadence-ink/50">{dateLabel}</p>
+        <p className="mt-1.5 font-body text-sm text-cadence-ink/65">{dateLabel}</p>
 
         {fill ? (
           <div className="mt-8">
-            <p className="font-subheading text-[10px] uppercase tracking-[0.18em] text-cadence-ink/40">
+            <p className="font-subheading text-[10px] uppercase tracking-[0.18em] text-cadence-ink/60">
               Overview
             </p>
             <div className="mt-3 flex flex-wrap gap-6">
               <div>
-                <p className="font-heading text-4xl text-cadence-orange sm:text-5xl">
+                <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-orange" />
+                <p className="font-heading text-4xl text-cadence-ink sm:text-5xl">
                   {pad(Math.min(99, clientsQuery.data?.count ?? 0))}
                 </p>
-                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                   Clients
                 </p>
               </div>
               <div>
-                <p className="font-heading text-4xl text-cadence-lime sm:text-5xl">
+                <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-lime" />
+                <p className="font-heading text-4xl text-cadence-ink sm:text-5xl">
                   {pad(Math.min(99, workersQuery.data?.count ?? 0))}
                 </p>
-                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                   Employees
                 </p>
               </div>
               <div>
-                <p className="font-heading text-4xl text-cadence-ink/70 sm:text-5xl">
+                <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-ink/35" />
+                <p className="font-heading text-4xl text-cadence-ink sm:text-5xl">
                   {fill.headcount_filled ?? "—"}
                 </p>
-                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+                <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                   Jobs filled
                 </p>
               </div>
@@ -214,18 +217,20 @@ export function TaskBoard() {
         ) : (
           <div className="mt-8 flex flex-wrap gap-8">
             <div>
-              <p className="font-heading text-4xl text-cadence-orange sm:text-5xl">
+              <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-orange" />
+              <p className="font-heading text-4xl text-cadence-ink sm:text-5xl">
                 {pad(Math.min(99, clientsQuery.data?.count ?? 0))}
               </p>
-              <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+              <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                 Clients
               </p>
             </div>
             <div>
-              <p className="font-heading text-4xl text-cadence-lime sm:text-5xl">
+              <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-lime" />
+              <p className="font-heading text-4xl text-cadence-ink sm:text-5xl">
                 {pad(Math.min(99, workersQuery.data?.count ?? 0))}
               </p>
-              <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+              <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                 Employees
               </p>
             </div>
@@ -301,7 +306,7 @@ export function TaskBoard() {
       </section>
 
       <Dialog open={open} onClose={() => setOpen(false)} title="New task">
-        <p className="mb-4 font-body text-sm text-cadence-ink/60">
+        <p className="mb-4 font-body text-sm text-on-card-muted">
           Add an item to your to-do list. New tasks are created as custom follow-ups.
         </p>
         <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">

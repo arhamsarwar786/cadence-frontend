@@ -73,7 +73,7 @@ function NewHourSheetForm({ onDone }: { onDone: (id: string) => void }) {
           <input
             id="hs-start"
             type="date"
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm font-body"
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm font-body text-cadence-ink"
             {...register("period_start")}
           />
         </Field>
@@ -81,7 +81,7 @@ function NewHourSheetForm({ onDone }: { onDone: (id: string) => void }) {
           <input
             id="hs-end"
             type="date"
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm font-body"
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm font-body text-cadence-ink"
             {...register("period_end")}
           />
         </Field>

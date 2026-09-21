@@ -27,40 +27,43 @@ export default function PortalHomePage() {
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <section className="pt-2">
-        <p className="font-fine text-[10px] uppercase tracking-[0.18em] text-cadence-ink/40">
+        <p className="font-fine text-[10px] uppercase tracking-[0.18em] text-cadence-ink/60">
           Worker portal
         </p>
         <h1 className="mt-2 font-heading text-4xl text-cadence-ink sm:text-5xl">
           Welcome{me ? `, ${me.first_name}` : session ? `, ${session.user.login}` : ""}
         </h1>
         {lifecycle ? (
-          <p className="mt-2 font-body text-sm text-cadence-ink/60">
+          <p className="mt-2 font-body text-sm text-cadence-ink/65">
             Status: {LIFECYCLE_STATUS_LABELS[lifecycle]}
             {me?.work_status ? ` · ${me.work_status.replace("_", " ")}` : ""}
           </p>
         ) : null}
         <div className="mt-10 flex flex-wrap items-end gap-8">
           <div>
-            <p className="font-heading text-6xl leading-none text-cadence-orange">
+            <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-orange" />
+            <p className="font-heading text-6xl leading-none text-cadence-ink">
               {String(offerCount).padStart(2, "0")}
             </p>
-            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
               Offers
             </p>
           </div>
           <div>
-            <p className="font-heading text-6xl leading-none text-cadence-lime">
+            <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-lime" />
+            <p className="font-heading text-6xl leading-none text-cadence-ink">
               {String(upcoming).padStart(2, "0")}
             </p>
-            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
               Shifts
             </p>
           </div>
           <div>
+            <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-ink/35" />
             <p className="font-heading text-6xl leading-none text-cadence-ink">
               {String(pendingSigns).padStart(2, "0")}
             </p>
-            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+            <p className="mt-1 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
               To sign
             </p>
           </div>

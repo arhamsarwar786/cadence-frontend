@@ -48,31 +48,31 @@ export default function BreachDetailPage() {
       <p className="text-sm text-cadence-ink/55">Write-once — no edit.</p>
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-cadence-ink/45">Discovered</dt>
+          <dt className="text-cadence-ink/60">Discovered</dt>
           <dd>{b.discovered_on}</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Occurred</dt>
+          <dt className="text-cadence-ink/60">Occurred</dt>
           <dd>{b.occurred_on ?? "—"}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-cadence-ink/45">Description</dt>
+          <dt className="text-cadence-ink/60">Description</dt>
           <dd className="whitespace-pre-wrap">{b.description}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-cadence-ink/45">Personal information</dt>
+          <dt className="text-cadence-ink/60">Personal information</dt>
           <dd className="whitespace-pre-wrap">{b.personal_information}</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Individuals notified</dt>
+          <dt className="text-cadence-ink/60">Individuals notified</dt>
           <dd>{b.individuals_notified ? "Yes" : "No"}</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Reported to commissioner</dt>
+          <dt className="text-cadence-ink/60">Reported to commissioner</dt>
           <dd>{b.reported_to_commissioner ? "Yes" : "No"}</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Retain until</dt>
+          <dt className="text-cadence-ink/60">Retain until</dt>
           <dd>{b.retention_until}</dd>
         </div>
       </dl>

@@ -42,7 +42,7 @@ export default function ReportsPage() {
         <h2 className="font-subheading text-sm uppercase tracking-wide text-cadence-ink/50">
           Unbilled hours
         </h2>
-        <p className="mt-2 font-heading text-4xl text-cadence-orange">
+        <p className="mt-2 font-heading text-4xl text-cadence-ink">
           {unbilled?.unbilled_hours ?? "—"}
         </p>
         <p className="mt-1 text-sm text-cadence-ink/55">

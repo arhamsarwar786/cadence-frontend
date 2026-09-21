@@ -100,7 +100,7 @@ export default function DocumentsPage() {
             href={`/api/v1/documents/${d.id}/download/`}
             target="_blank"
             rel="noreferrer"
-            className="font-body text-sm text-cadence-yellow underline"
+            className="font-body text-sm text-cadence-ink underline decoration-cadence-yellow decoration-2 underline-offset-2"
           >
             Download
           </a>

@@ -28,7 +28,7 @@ export function Table<T>({
 }: TableProps<T>) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-[2rem] bg-card px-6 py-16 text-center shadow-card">
+      <div className="rounded-[2rem] bg-card px-6 py-16 text-center text-on-card shadow-card">
         <p className="font-body text-sm text-on-card-muted">{emptyMessage}</p>
       </div>
     );

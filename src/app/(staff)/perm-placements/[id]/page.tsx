@@ -31,19 +31,19 @@ export default function PlacementDetailPage() {
       />
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-cadence-ink/45">Client</dt>
+          <dt className="text-cadence-ink/60">Client</dt>
           <dd>{p.client_name}</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Fee</dt>
+          <dt className="text-cadence-ink/60">Fee</dt>
           <dd>{"fee_amount" in p && p.fee_amount != null ? formatMoney(p.fee_amount) : "—"} ({p.fee_pct}%)</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Annual salary</dt>
+          <dt className="text-cadence-ink/60">Annual salary</dt>
           <dd>{formatMoney(p.annual_salary)}</dd>
         </div>
         <div>
-          <dt className="text-cadence-ink/45">Confirmed</dt>
+          <dt className="text-cadence-ink/60">Confirmed</dt>
           <dd>{p.confirmed_at ?? "—"}</dd>
         </div>
       </dl>

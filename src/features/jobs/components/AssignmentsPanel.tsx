@@ -207,9 +207,9 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
             </div>
           ) : null}
 
-          <div className="max-h-[28rem] overflow-auto rounded-xl border border-border">
+          <div className="max-h-[28rem] overflow-auto rounded-xl border border-border bg-surface text-cadence-ink">
             <table className="w-full min-w-[48rem] text-left text-sm">
-              <thead className="sticky top-0 bg-surface font-fine text-[10px] uppercase tracking-wide text-cadence-ink/45">
+              <thead className="sticky top-0 bg-surface font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                 <tr>
                   <th className="px-3 py-2">Candidate</th>
                   <th className="px-3 py-2">Experience</th>
@@ -235,9 +235,9 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
               </tbody>
             </table>
             {workersQuery.isLoading ? (
-              <p className="px-3 py-6 text-center text-sm text-cadence-ink/50">Searching…</p>
+              <p className="px-3 py-6 text-center text-sm text-cadence-ink/60">Searching…</p>
             ) : rows.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-cadence-ink/50">No candidates match.</p>
+              <p className="px-3 py-6 text-center text-sm text-cadence-ink/60">No candidates match.</p>
             ) : null}
           </div>
           {formError ? <p className="font-body text-sm text-cadence-red">{formError}</p> : null}
@@ -325,7 +325,7 @@ function WorkerPickRow({
 }
 
 function ChipStack({ items }: { items: string[] }) {
-  if (items.length === 0) return <span className="text-cadence-ink/40">—</span>;
+  if (items.length === 0) return <span className="text-cadence-ink/55">—</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {items.map((item) => (

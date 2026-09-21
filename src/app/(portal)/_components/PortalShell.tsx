@@ -44,7 +44,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <SkipLink />
       <header className="flex items-center justify-between px-6 py-5">
         <BrandLink href="/portal" />
-        <p className="hidden max-w-[40%] truncate font-fine text-[11px] text-cadence-ink/45 sm:block">
+        <p className="hidden max-w-[40%] truncate font-fine text-[11px] text-cadence-ink/65 sm:block">
           Worker portal · {session.user.login}
         </p>
       </header>

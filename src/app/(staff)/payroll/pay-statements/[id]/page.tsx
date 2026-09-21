@@ -65,17 +65,17 @@ export default function PayStatementDetailPage() {
       </p>
       <div className="flex flex-wrap gap-6 font-body text-sm">
         <div>
-          <p className="font-fine text-[10px] uppercase text-cadence-ink/40">Gross</p>
+          <p className="font-fine text-[10px] uppercase text-cadence-ink/60">Gross</p>
           <p className="font-heading text-2xl">{"gross" in stmt ? formatMoney(stmt.gross) : "—"}</p>
         </div>
         <div>
-          <p className="font-fine text-[10px] uppercase text-cadence-ink/40">Net</p>
+          <p className="font-fine text-[10px] uppercase text-cadence-ink/60">Net</p>
           <p className="font-heading text-2xl">
             {"net_amount" in stmt ? formatMoney(stmt.net_amount) : "—"}
           </p>
         </div>
         <div>
-          <p className="font-fine text-[10px] uppercase text-cadence-ink/40">Hours</p>
+          <p className="font-fine text-[10px] uppercase text-cadence-ink/60">Hours</p>
           <p className="font-heading text-2xl">{stmt.hours_total ?? "—"}</p>
         </div>
         <a

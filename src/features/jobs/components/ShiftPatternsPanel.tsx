@@ -112,7 +112,7 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
           <Field label="Days" htmlFor="pattern-days" error={errors.days_of_week?.message}>
             <div className="flex flex-wrap gap-3">
               {DAYS_OF_WEEK.map((d) => (
-                <label key={d.value} className="flex items-center gap-1 font-body text-sm text-cadence-ink">
+                <label key={d.value} className="flex items-center gap-1 font-body text-sm text-on-card">
                   <input type="checkbox" value={d.value} {...register("days_of_week")} />
                   {d.label.slice(0, 3)}
                 </label>

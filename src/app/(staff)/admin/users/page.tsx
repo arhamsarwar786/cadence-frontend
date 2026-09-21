@@ -127,7 +127,7 @@ export default function AdminUsersPage() {
             <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
                 <p className="font-body text-sm font-medium">{u.login_masked}</p>
-                <p className="font-fine text-[10px] uppercase text-cadence-ink/45">
+                <p className="font-fine text-[10px] uppercase text-cadence-ink/60">
                   {u.status}
                   {u.is_root ? " · root" : ""}
                 </p>
@@ -194,7 +194,7 @@ export default function AdminUsersPage() {
           <Input id="invite-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         {inviteToken ? (
-          <p className="mt-3 break-all rounded-xl bg-cadence-yellow/40 p-3 font-fine text-xs">
+          <p className="mt-3 break-all rounded-xl bg-cadence-yellow/40 p-3 font-fine text-xs text-cadence-ink">
             Invite token (shown once): {inviteToken}
           </p>
         ) : null}
@@ -247,7 +247,7 @@ export default function AdminUsersPage() {
                     />
                     {key}
                     {NOOP_KEYS.has(key) ? (
-                      <span className="ml-2 font-fine text-[10px] text-cadence-orange">
+                      <span className="ml-2 font-fine text-[10px] text-cadence-red">
                         not yet in effect
                       </span>
                     ) : null}

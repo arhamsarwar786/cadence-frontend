@@ -161,7 +161,9 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
                 <p className="font-body text-sm font-medium text-cadence-ink">
                   {contact.name}
                   {contact.is_primary ? (
-                    <span className="ml-2 text-xs text-cadence-orange">Primary</span>
+                    <span className="ml-2 rounded-full bg-cadence-orange/25 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cadence-ink">
+                      Primary
+                    </span>
                   ) : null}
                 </p>
                 <p className="font-body text-xs text-cadence-ink/60">

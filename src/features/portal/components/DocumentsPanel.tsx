@@ -94,7 +94,7 @@ export function DocumentsPanel() {
                 </p>
               </div>
               {doc.is_verified ? (
-                <span className="font-body text-xs text-cadence-ink/45">Office verified</span>
+                <span className="font-body text-xs text-cadence-ink/60">Office verified</span>
               ) : (
                 <Button size="sm" variant="ghost" onClick={() => handleRemove(doc.id)}>
                   Remove

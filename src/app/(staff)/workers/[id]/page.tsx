@@ -132,7 +132,7 @@ export default function WorkerDetailPage() {
           <h1 className="font-heading text-4xl text-cadence-ink sm:text-5xl">
             {worker.first_name} {worker.last_name}
             {worker.pronouns ? (
-              <span className="ml-2 font-body text-lg text-cadence-ink/45">| {worker.pronouns}</span>
+              <span className="ml-2 font-body text-lg text-cadence-ink/60">| {worker.pronouns}</span>
             ) : null}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -150,7 +150,7 @@ export default function WorkerDetailPage() {
                 }}
               >
                 {"★".repeat(Math.max(0, Math.min(5, Math.round(Number(worker.rating) || 0))))}
-                <span className="ml-1 text-cadence-ink/40">
+                <span className="ml-1 text-cadence-ink/60">
                   {Number(worker.rating).toFixed(1)}
                 </span>
               </button>
@@ -163,7 +163,7 @@ export default function WorkerDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="rounded-[1.5rem] bg-surface p-4">
-          <p className="mb-2 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/40">
+          <p className="mb-2 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
             Skills
           </p>
           <div className="mb-4 flex flex-wrap gap-1.5">
@@ -176,19 +176,19 @@ export default function WorkerDetailPage() {
           </div>
           <dl className="space-y-3 font-body text-sm">
             <div>
-              <dt className="text-cadence-ink/45">Email</dt>
+              <dt className="text-cadence-ink/60">Email</dt>
               <dd>{worker.email || "—"}</dd>
             </div>
             <div>
-              <dt className="text-cadence-ink/45">Phone</dt>
+              <dt className="text-cadence-ink/60">Phone</dt>
               <dd>{worker.phone || "—"}</dd>
             </div>
             <div>
-              <dt className="text-cadence-ink/45">Joined</dt>
+              <dt className="text-cadence-ink/60">Joined</dt>
               <dd>{worker.join_date || "—"}</dd>
             </div>
             <div>
-              <dt className="text-cadence-ink/45">Education</dt>
+              <dt className="text-cadence-ink/60">Education</dt>
               <dd>
                 {(educationQuery.data ?? [])
                   .slice(0, 2)
@@ -198,7 +198,7 @@ export default function WorkerDetailPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-cadence-ink/45">Licences / certs</dt>
+              <dt className="text-cadence-ink/60">Licences / certs</dt>
               <dd>
                 {(certsQuery.data ?? [])
                   .slice(0, 3)
@@ -207,7 +207,7 @@ export default function WorkerDetailPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-cadence-ink/45">Availability</dt>
+              <dt className="text-cadence-ink/60">Availability</dt>
               <dd>
                 {(availabilityQuery.data ?? [])
                   .slice(0, 3)
@@ -216,7 +216,7 @@ export default function WorkerDetailPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-cadence-ink/45">Address</dt>
+              <dt className="text-cadence-ink/60">Address</dt>
               <dd>
                 {[worker.address_line_1, worker.city, worker.province, worker.postal_code]
                   .filter(Boolean)

@@ -75,6 +75,12 @@ body {
   font-family: var(--font-body);
 }
 
+/* Charcoal dialogs: remap danger so errors stay readable (ink red ~2.4:1).
+ * Do NOT remap cadence-ink here — yellow CTAs need dark ink on yellow fill. */
+.dark-card {
+  --color-cadence-red: #e87890;
+}
+
 .dark-card input,
 .dark-card select,
 .dark-card textarea {

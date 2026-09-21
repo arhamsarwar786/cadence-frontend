@@ -45,7 +45,7 @@ export default function ConsentPage() {
       ) : (
         <PortalCard>
           <div className="whitespace-pre-wrap font-body text-sm text-cadence-ink">{consentText}</div>
-          <p className="mt-3 font-fine text-[11px] text-cadence-ink/45">Version {consentVersion}</p>
+          <p className="mt-3 font-fine text-[11px] text-cadence-ink/60">Version {consentVersion}</p>
           <Button onClick={handleAgree} disabled={submitting || captured} className="mt-4">
             {captured ? "Consent recorded" : submitting ? "Recording…" : "I agree"}
           </Button>
