@@ -14,10 +14,12 @@ type GrantHolder = Pick<CurrentUser, "is_root" | "grants" | "user_type">;
 export function hasPerm(user: GrantHolder, key: PermissionKey, scope?: Scope): boolean {
   if (user.user_type === "worker") return false;
   if (user.is_root) return true;
-  const grant = user.grants.find((g) => g.key === key);
+  const grants = user.grants ?? [];
+  const grant = grants.find((g) => g.key === key);
   if (!grant) return false;
   if (!scope) return true;
-  return grant.scopes.some((held) => SCOPE_RANK[held] >= SCOPE_RANK[scope]);
+  const scopes = grant.scopes ?? [];
+  return scopes.some((held) => SCOPE_RANK[held] >= SCOPE_RANK[scope]);
 }
 
 /** Any one of the keys is held (at any scope) — for nav items gated by
@@ -29,5 +31,5 @@ export function hasAnyPerm(user: GrantHolder, keys: readonly PermissionKey[]): b
 export function grantScopesFor(user: GrantHolder, key: PermissionKey): Scope[] {
   if (user.user_type === "worker") return [];
   if (user.is_root) return ["all"];
-  return user.grants.find((g) => g.key === key)?.scopes ?? [];
+  return (user.grants ?? []).find((g) => g.key === key)?.scopes ?? [];
 }

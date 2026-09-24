@@ -19,7 +19,10 @@ import {
   Dialog,
   Field,
   Input,
+  ListLayout,
   ListSkeleton,
+  PageBody,
+  PageFrame,
   Pagination,
   PermGate,
   Select,
@@ -152,7 +155,7 @@ export default function ShiftsListPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <h1 className="mb-0 font-heading text-3xl text-cadence-ink">Shifts</h1>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="From" htmlFor="shifts-from">
@@ -201,27 +204,32 @@ export default function ShiftsListPage() {
         </Field>
       </div>
 
-      {query.isLoading ? (
+      <PageBody>
+
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (
-        <>
-          <Table
-            columns={shiftColumns}
-            rows={query.data?.results ?? []}
-            rowKey={(s) => s.id}
-            emptyMessage="No shifts."
-          />
-          {query.data ? (
-            <Pagination
-              page={page}
-              pageSize={PAGE_SIZE}
-              count={query.data.count}
-              onPageChange={goToPage}
+        <ListLayout>
+          <div className="flex flex-col gap-4">
+            <Table
+              columns={shiftColumns}
+              rows={query.data?.results ?? []}
+              rowKey={(s) => s.id}
+              emptyMessage="No shifts."
             />
-          ) : null}
-        </>
+            {query.data ? (
+              <Pagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                count={query.data.count}
+                onPageChange={goToPage}
+              />
+            ) : null}
+          </div>
+        </ListLayout>
       )}
 
       <Dialog open={markTarget !== null} onClose={() => setMarkTarget(null)} title="Mark not worked">
@@ -255,7 +263,7 @@ export default function ShiftsListPage() {
         ) : backfillQuery.isError ? (
           <p className="text-sm text-cadence-red">{messageFrom(backfillQuery.error)}</p>
         ) : (
-          <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+          <ul className="scroll-area-y flex max-h-[min(18rem,50dvh)] flex-col gap-2">
             {(backfillQuery.data?.results ?? []).map((c) => {
               const name =
                 c.employee_name ??
@@ -276,6 +284,7 @@ export default function ShiftsListPage() {
           </ul>
         )}
       </Dialog>
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

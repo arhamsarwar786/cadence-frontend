@@ -13,7 +13,7 @@ import {
 import { creditNoteKeys, getCreditNote } from "@/features/money/api";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Button, Chip, PageHeader } from "@/shared/ui";
+import { Button, Chip, PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 export default function CreditNoteDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +42,8 @@ export default function CreditNoteDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title={note.credit_note_number}
         actions={
@@ -90,6 +91,7 @@ export default function CreditNoteDetailPage() {
           </li>
         ))}
       </ul>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

@@ -59,7 +59,7 @@ export default function ConsentPage() {
         </PortalCard>
       ) : (
         <PortalCard className="flex flex-col gap-4">
-          <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl bg-surface p-4 font-body text-sm text-cadence-ink/80">
+          <div className="scroll-area-y max-h-[min(16rem,45dvh)] whitespace-pre-wrap rounded-xl bg-surface p-4 font-body text-sm text-cadence-ink/80">
             {consentText || "Loading…"}
           </div>
           {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}

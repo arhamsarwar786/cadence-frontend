@@ -15,6 +15,7 @@ import type { EmployeeList } from "@/features/workers/types";
 import { PERM } from "@/permissions/keys";
 import { messageFrom } from "@/shared/lib/errors";
 import { matchesQuery } from "@/shared/lib/matches";
+import { isActiveEmployee } from "@/features/workers/lifecycle";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
 import {
   Avatar,
@@ -24,6 +25,8 @@ import {
   Input,
   ListLayout,
   ListSkeleton,
+  PageBody,
+  PageFrame,
   PageHeader,
   Pagination,
   PermGate,
@@ -124,7 +127,9 @@ export default function WorkersListPage() {
         header: "Status",
         className: "hidden sm:table-cell",
         cell: (w) =>
-          "work_status" in w && w.work_status ? (
+          isActiveEmployee(w.lifecycle_status) &&
+          "work_status" in w &&
+          w.work_status ? (
             <Chip tone="muted">{String(w.work_status).replaceAll("_", " ")}</Chip>
           ) : (
             "—"
@@ -144,7 +149,7 @@ export default function WorkersListPage() {
   const showPagination = filtersActive || !finding;
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Workers"
         actions={
@@ -207,6 +212,9 @@ export default function WorkersListPage() {
               placeholder="e.g. Forklift"
             />
           </Field>
+          <p className="col-span-full font-body text-xs text-cadence-ink/55">
+            Date/time availability filters apply to active employees the office can book.
+          </p>
           <Field label="Available on" htmlFor="workers-on">
             <Input
               id="workers-on"
@@ -226,12 +234,13 @@ export default function WorkersListPage() {
         </div>
       ) : null}
 
-      {query.isLoading ? (
-        <ListSkeleton />
-      ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
-      ) : (
-        <ListLayout
+      <PageBody>
+        {query.isLoading ? (
+          <ListSkeleton />
+        ) : query.isError ? (
+          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        ) : (
+          <ListLayout
           stats={[
             {
               value: finding && !filtersActive ? rows.length : (query.data?.count ?? 0),
@@ -266,8 +275,9 @@ export default function WorkersListPage() {
               />
             ) : null}
           </div>
-        </ListLayout>
-      )}
-    </div>
+          </ListLayout>
+        )}
+      </PageBody>
+    </PageFrame>
   );
 }

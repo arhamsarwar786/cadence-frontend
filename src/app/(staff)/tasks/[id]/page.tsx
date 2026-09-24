@@ -8,7 +8,7 @@ import { getTask, taskKeys } from "@/features/tasks/api";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { TASK_TYPE_LABELS, type TaskType } from "@/shared/lib/status-labels";
-import { PageHeader } from "@/shared/ui";
+import { PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +25,8 @@ export default function TaskDetailPage() {
   if (!task) return null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-4">
       <PageHeader title={task.title} />
       <p className="text-sm text-cadence-ink/60">
         {task.status} · {TASK_TYPE_LABELS[task.type as TaskType] ?? task.type}
@@ -52,6 +53,7 @@ export default function TaskDetailPage() {
           </dd>
         </div>
       </dl>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

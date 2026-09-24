@@ -72,6 +72,14 @@ export interface Paginated<T> {
   results: T[];
 }
 
+/** DRF list doors return a pagination envelope; a few catalogs return a bare array. */
+export function normalizeList<T>(data: Paginated<T> | T[] | null | undefined): T[] {
+  if (data == null) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === "object" && Array.isArray(data.results)) return data.results;
+  return [];
+}
+
 async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = "GET", body, headers, ...rest } = options;
   const finalHeaders = new Headers(headers);

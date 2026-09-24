@@ -16,20 +16,7 @@ import {
 } from "@/features/privacy/disposal-api";
 import { PERM } from "@/permissions/keys";
 import { messageFrom } from "@/shared/lib/errors";
-import {
-  Button,
-  Chip,
-  Dialog,
-  Field,
-  Input,
-  ListSkeleton,
-  PageHeader,
-  Pagination,
-  PermGate,
-  Table,
-  Textarea,
-  type Column,
-} from "@/shared/ui";
+import { Button, Chip, Dialog, Field, Input, ListSkeleton, PageHeader, Pagination, PermGate, Table, Textarea, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const DESTROY_CONFIRM = "DESTROY";
@@ -211,7 +198,8 @@ export default function DisposalSchedulePage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-4">
       <PageHeader title="Disposal schedule" />
       <p className="font-body text-sm text-cadence-ink/60">
         Scheduled destruction of departed worker personal records. Rows show identifiers and dates
@@ -359,6 +347,7 @@ export default function DisposalSchedulePage() {
           </div>
         </div>
       </Dialog>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

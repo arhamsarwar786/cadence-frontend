@@ -21,7 +21,7 @@ import {
   type HourSheetStatus,
   type MatchStatus,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Dialog, Field, Input, Select, useConfirm, type BadgeTone } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, Select, useConfirm, type BadgeTone, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const LINE_FIELD_NAMES = Object.keys(hourSheetLineSchema.shape);
 
@@ -156,7 +156,8 @@ export default function HourSheetDetailPage() {
   if (!sheet) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-heading text-3xl text-cadence-ink">
@@ -239,6 +240,7 @@ export default function HourSheetDetailPage() {
         />
       </Dialog>
       {confirmDialog}
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

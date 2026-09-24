@@ -6,13 +6,13 @@ import { Tooltip } from "@/shared/ui/Tooltip";
 
 const VARIANT_CLASSES = {
   primary:
-    "bg-cadence-yellow text-cadence-ink hover:bg-cadence-yellow/90 focus-visible:outline-cadence-yellow",
+    "bg-cadence-yellow text-on-accent hover:bg-cadence-yellow/90 focus-visible:outline-cadence-yellow",
   secondary:
     "bg-transparent text-inherit border border-current/20 hover:bg-current/5 focus-visible:outline-current",
   ghost: "bg-transparent text-inherit hover:bg-current/5 focus-visible:outline-current",
   danger: "bg-cadence-red text-white hover:bg-cadence-red/90 focus-visible:outline-cadence-red",
   inverse:
-    "bg-cadence-yellow text-cadence-ink hover:bg-cadence-yellow/90 focus-visible:outline-cadence-yellow",
+    "bg-cadence-yellow text-on-accent hover:bg-cadence-yellow/90 focus-visible:outline-cadence-yellow",
 } as const;
 
 const SIZE_CLASSES = {

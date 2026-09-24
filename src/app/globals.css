@@ -23,12 +23,15 @@
   --card-muted: #3c3933;
   --on-card: #f6efd4;
   --on-card-muted: #ddd6bc;
+  /** Text on yellow CTAs — never remapped inside dark surfaces. */
+  --on-accent: #242320;
 
   --accent: var(--color-cadence-yellow);
   --accent-strong: var(--color-cadence-red);
 
   --shadow-card: 0 22px 50px rgba(36, 35, 32, 0.18);
   --radius-card: 2rem;
+  --dock-clearance: calc(5.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 @theme inline {
@@ -42,6 +45,7 @@
   --color-card-muted: var(--card-muted);
   --color-on-card: var(--on-card);
   --color-on-card-muted: var(--on-card-muted);
+  --color-on-accent: var(--on-accent);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-cadence-yellow: var(--color-cadence-yellow);
@@ -62,11 +66,12 @@
 html {
   background: var(--background);
   height: 100%;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
   background:
     radial-gradient(120% 80% at 0% 0%, #fbf6e4 0%, transparent 55%),
     linear-gradient(180deg, #f7f1d8 0%, var(--background) 42%, var(--background-deep) 100%);
@@ -75,17 +80,34 @@ body {
   font-family: var(--font-body);
 }
 
-/* Charcoal dialogs: remap danger so errors stay readable (ink red ~2.4:1).
- * Do NOT remap cadence-ink here — yellow CTAs need dark ink on yellow fill. */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  body {
+    background-attachment: scroll;
+  }
+}
+
+@layer utilities {
+  .scroll-area-y {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Charcoal dialogs: light copy on dark fill. Ink-toned Tailwind classes remap here;
+ * yellow CTAs use text-on-accent so they keep dark type on yellow fill. */
 .dark-card {
   --color-cadence-red: #e87890;
+  --color-cadence-ink: var(--on-card);
+  --color-border: rgb(246 239 212 / 0.22);
+  color: var(--on-card);
 }
 
 .dark-card input,
 .dark-card select,
 .dark-card textarea {
   background: var(--card-muted) !important;
-  border-color: transparent !important;
+  border-color: rgb(255 255 255 / 0.12) !important;
   color: var(--on-card) !important;
 }
 
@@ -96,6 +118,19 @@ body {
 
 .dark-card label {
   color: var(--on-card-muted);
+}
+
+.dark-card code {
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 0.08);
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+/* Nested cream panels inside a dialog keep dark ink for contrast. */
+.dark-card :where(.bg-surface, .bg-surface-muted, .bg-\[\#faf7f0\]) {
+  --color-cadence-ink: #242320;
+  color: #242320;
 }
 
 @media (prefers-reduced-motion: reduce) {

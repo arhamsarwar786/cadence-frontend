@@ -18,7 +18,7 @@ import { formatDateTime } from "@/shared/lib/datetime";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { JobStatus, ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
+import { Button, PermGate, Table, useConfirm, useHasPerm, type Column } from "@/shared/ui";
 
 export default function JobDetailPage() {
   const { id: jobId } = useParams<{ id: string }>();
@@ -27,6 +27,8 @@ export default function JobDetailPage() {
   const { session } = useSession();
   const [editing, setEditing] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const canEditBillRate = useHasPerm(PERM.JOBS_BILL_RATE_EDIT);
+  const canEditMarkup = useHasPerm(PERM.CLIENTS_MARKUP_EDIT);
 
   const query = useQuery({
     queryKey: jobKeys.detail(jobId),
@@ -47,9 +49,13 @@ export default function JobDetailPage() {
   async function handleUpdate(values: JobFormValues) {
     await updateJob(jobId, {
       title: values.title,
-      bill_rate: values.bill_rate,
-      bill_rate_unit: values.bill_rate_unit,
-      markup_pct: values.markup_pct || undefined,
+      ...(canEditBillRate
+        ? {
+            bill_rate: values.bill_rate,
+            bill_rate_unit: values.bill_rate_unit,
+          }
+        : {}),
+      ...(canEditMarkup ? { markup_pct: values.markup_pct || undefined } : {}),
       headcount_needed: values.headcount_needed,
       start_datetime: values.start_datetime,
       end_datetime: values.end_datetime,
@@ -147,6 +153,7 @@ export default function JobDetailPage() {
 
       {editing ? (
         <JobForm
+          mode="edit"
           defaultValues={{
             title: job.title,
             client: job.client_id,
@@ -181,12 +188,14 @@ export default function JobDetailPage() {
                 : "—"}
             </dd>
           </div>
-          <div>
-            <dt className="text-cadence-ink/60">Bill rate</dt>
-            <dd className="text-cadence-ink">
-              {"bill_rate" in job ? `${formatMoney(job.bill_rate)} / ${job.bill_rate_unit}` : "—"}
-            </dd>
-          </div>
+          <PermGate anyOf={PERM.JOBS_BILL_RATE_VIEW}>
+            <div>
+              <dt className="text-cadence-ink/60">Bill rate</dt>
+              <dd className="text-cadence-ink">
+                {"bill_rate" in job ? `${formatMoney(job.bill_rate)} / ${job.bill_rate_unit}` : "—"}
+              </dd>
+            </div>
+          </PermGate>
           <div>
             <dt className="text-cadence-ink/60">Headcount needed</dt>
             <dd className="text-cadence-ink">{job.headcount_needed ?? "—"}</dd>

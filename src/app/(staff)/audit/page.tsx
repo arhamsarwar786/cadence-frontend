@@ -8,18 +8,7 @@ import { resourceKeys } from "@/api/query-keys";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
-import {
-  Button,
-  Field,
-  Input,
-  ListLayout,
-  ListSkeleton,
-  PageHeader,
-  Pagination,
-  Select,
-  Table,
-  type Column,
-} from "@/shared/ui";
+import { Button, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, Select, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const auditKeys = resourceKeys("audit");
@@ -89,7 +78,7 @@ export default function AuditLogPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Audit log"
         actions={
@@ -122,7 +111,10 @@ export default function AuditLogPage() {
         </Field>
       </div>
 
-      {query.isLoading ? (
+      <PageBody>
+
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -157,6 +149,7 @@ export default function AuditLogPage() {
           <pre className="overflow-auto font-fine text-xs">{JSON.stringify(selected, null, 2)}</pre>
         </div>
       ) : null}
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

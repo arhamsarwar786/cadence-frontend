@@ -1,8 +1,11 @@
-import { api } from "@/api/client";
+import { api, normalizeList, type Paginated } from "@/api/client";
 import type { NotificationTemplate, NotificationTemplateWrite } from "@/features/notifications/types";
 
-export function listTemplates(): Promise<NotificationTemplate[]> {
-  return api.get<NotificationTemplate[]>("/api/v1/notifications/templates/");
+export async function listTemplates(): Promise<NotificationTemplate[]> {
+  const data = await api.get<NotificationTemplate[] | Paginated<NotificationTemplate>>(
+    "/api/v1/notifications/templates/",
+  );
+  return normalizeList(data);
 }
 
 export function createTemplate(body: NotificationTemplateWrite): Promise<NotificationTemplate> {

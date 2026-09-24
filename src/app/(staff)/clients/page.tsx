@@ -16,6 +16,8 @@ import {
   Button,
   ListLayout,
   ListSkeleton,
+  PageBody,
+  PageFrame,
   PageHeader,
   Pagination,
   PermGate,
@@ -80,7 +82,7 @@ export default function ClientsListPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Clients"
         actions={
@@ -102,12 +104,13 @@ export default function ClientsListPage() {
         per row.
       </p>
 
-      {query.isLoading ? (
-        <ListSkeleton />
-      ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
-      ) : (
-        <ListLayout
+      <PageBody>
+        {query.isLoading ? (
+          <ListSkeleton />
+        ) : query.isError ? (
+          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        ) : (
+          <ListLayout
           stats={[
             {
               value: finding ? rows.length : (query.data?.count ?? 0),
@@ -138,8 +141,9 @@ export default function ClientsListPage() {
               />
             ) : null}
           </div>
-        </ListLayout>
-      )}
-    </div>
+          </ListLayout>
+        )}
+      </PageBody>
+    </PageFrame>
   );
 }

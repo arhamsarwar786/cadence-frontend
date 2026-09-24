@@ -14,7 +14,7 @@ import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { PayrollRunStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(payrollRunCreateSchema.shape);
@@ -99,7 +99,7 @@ export default function PayrollRunsPage() {
   const cycles = (cyclesQuery.data ?? []) as PayCycle[];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Pay statements"
         actions={
@@ -154,7 +154,10 @@ export default function PayrollRunsPage() {
         )}
       </section>
 
-      {query.isLoading ? (
+      <PageBody>
+
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -199,6 +202,7 @@ export default function PayrollRunsPage() {
           }}
         />
       </Dialog>
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

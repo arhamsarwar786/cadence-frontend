@@ -7,7 +7,7 @@ import { captureConsent, saveSignature, submitOnboarding, updateMe } from "@/fea
 import { getConsentText, getMe, listDocuments, portalConsentKey } from "@/features/portal/api";
 import { CertsPanel } from "@/features/portal/components/CertsPanel";
 import { DocumentsPanel } from "@/features/portal/components/DocumentsPanel";
-import { AvailabilityPanel } from "@/features/portal/components/SimplePanels";
+import { AVAILABILITY_ACTIVE_ONLY_MESSAGE } from "@/features/workers/lifecycle";
 import type { ConsentRecord } from "@/features/workers/types";
 import { messageFrom } from "@/shared/lib/errors";
 import { Button, Select, SignaturePad, type SignaturePadHandle } from "@/shared/ui";
@@ -315,10 +315,11 @@ export default function OnboardingPage() {
       {step === 4 ? (
         <PortalCard>
           <h2 className="font-subheading text-xl text-cadence-ink">Availability</h2>
-          <p className="mt-1 mb-4 text-sm text-cadence-ink/60">
-            Day + time windows. Preferred-shift checkboxes are not in the API.
+          <p className="mt-1 mb-4 text-sm text-cadence-ink/60">{AVAILABILITY_ACTIVE_ONLY_MESSAGE}</p>
+          <p className="font-body text-sm text-cadence-ink/70">
+            After the office activates you, set weekly windows under{" "}
+            <strong>Profile → Availability</strong> in the dock.
           </p>
-          <AvailabilityPanel />
           <StepNav onBack={() => setStep(3)} onNext={() => setStep(5)} />
         </PortalCard>
       ) : null}
@@ -334,7 +335,7 @@ export default function OnboardingPage() {
           ) : null}
           {consentTextQuery.data?.consent_version ? (
             <>
-              <div className="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-2xl bg-surface-muted p-4 font-body text-sm text-cadence-ink">
+              <div className="scroll-area-y mt-3 max-h-[min(12rem,35dvh)] whitespace-pre-wrap rounded-2xl bg-surface-muted p-4 font-body text-sm text-cadence-ink">
                 {consentTextQuery.data.consent_text}
               </div>
               <p className="mt-2 font-fine text-[11px] text-cadence-ink/60">

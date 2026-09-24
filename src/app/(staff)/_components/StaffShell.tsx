@@ -49,12 +49,15 @@ export function StaffShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div
+      className="flex h-dvh max-h-dvh flex-col overflow-hidden"
+      style={{ ["--toast-offset" as string]: "calc(var(--dock-clearance) + 0.5rem)" }}
+    >
       <SkipLink />
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-8 sm:pt-6"
+        className="mx-auto flex w-full min-w-0 max-w-6xl min-h-0 flex-1 flex-col overflow-hidden px-4 pb-[var(--dock-clearance)] pt-5 sm:px-8 sm:pt-6"
       >
         {children}
       </main>

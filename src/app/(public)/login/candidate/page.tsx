@@ -146,8 +146,8 @@ export default function CandidateLoginPage() {
         <div>
           <h2 className="font-heading text-2xl text-cadence-ink">Enter your candidate account details.</h2>
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 flex flex-col gap-4">
-            <Field label="Email" htmlFor="login" error={errors.login?.message}>
-              <Input id="login" type="email" autoComplete="username" {...register("login")} />
+            <Field label="Username" htmlFor="login" error={errors.login?.message}>
+              <Input id="login" type="text" autoComplete="username" {...register("login")} />
             </Field>
             <Field label="Password" htmlFor="password" error={errors.password?.message}>
               <Input id="password" type="password" autoComplete="current-password" {...register("password")} />

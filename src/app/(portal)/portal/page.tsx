@@ -6,6 +6,7 @@ import { useSession } from "@/auth/session-context";
 import { getMe, listSignatureRequests, listShifts } from "@/features/portal/api";
 import { LIFECYCLE_STATUS_LABELS, type LifecycleStatus } from "@/shared/lib/status-labels";
 import { PortalCard } from "../_components/PortalFrame";
+import { PageFrame, PageScrollRegion } from "@/shared/ui";
 
 export default function PortalHomePage() {
   const { session } = useSession();
@@ -25,7 +26,9 @@ export default function PortalHomePage() {
   const lifecycle = me?.lifecycle_status as LifecycleStatus | undefined;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <PageFrame className="gap-0">
+      <PageScrollRegion>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <section className="pt-2">
         <p className="font-fine text-[10px] uppercase tracking-[0.18em] text-cadence-ink/60">
           Worker portal
@@ -128,6 +131,8 @@ export default function PortalHomePage() {
           </p>
         )}
       </PortalCard>
-    </div>
+        </div>
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

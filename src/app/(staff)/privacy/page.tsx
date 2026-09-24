@@ -17,7 +17,7 @@ import {
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const createSchema = z.object({
@@ -89,7 +89,8 @@ export default function PrivacyRequestsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Privacy requests</h1>
         <PermGate anyOf={PERM.PRIVACY_REQUESTS_MANAGE}>
@@ -148,6 +149,7 @@ export default function PrivacyRequestsPage() {
           </div>
         </form>
       </Dialog>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

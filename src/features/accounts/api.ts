@@ -1,4 +1,4 @@
-import { api, ApiError, type Paginated } from "@/api/client";
+import { api, ApiError, normalizeList, type Paginated } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
 import type { CurrentSession, StaffUser } from "@/features/accounts/types";
 
@@ -25,7 +25,12 @@ export function listUsers(params: { page?: number; pageSize?: number } = {}): Pr
   if (params.page) search.set("page", String(params.page));
   if (params.pageSize) search.set("page_size", String(params.pageSize));
   const qs = search.toString();
-  return api.get<Paginated<StaffUser> | StaffUser[]>(
-    `/api/v1/auth/users/${qs ? `?${qs}` : ""}`,
-  );
+  const path = qs ? `/api/v1/auth/users/?${qs}` : "/api/v1/auth/users/";
+  return api.get<Paginated<StaffUser> | StaffUser[]>(path);
+}
+
+export async function listUsersNormalized(
+  params: { page?: number; pageSize?: number } = {},
+): Promise<StaffUser[]> {
+  return normalizeList(await listUsers(params));
 }

@@ -7,11 +7,20 @@ const decimalStr = (maxIntDigits: number) =>
     .min(1, "Required.")
     .regex(new RegExp(`^-?\\d{0,${maxIntDigits}}(?:\\.\\d{0,2})?$`), "Enter a valid number.");
 
-export const jobSchema = z.object({
+const optionalDecimalStr = (maxIntDigits: number) =>
+  z
+    .string()
+    .regex(new RegExp(`^-?\\d{0,${maxIntDigits}}(?:\\.\\d{0,2})?$`), "Enter a valid number.")
+    .optional()
+    .or(z.literal(""));
+
+/** Bill rate is required on create only when the caller has jobs.bill_rate.edit. */
+export function jobFormSchema(requireBillRate: boolean) {
+  return z.object({
   title: z.string().min(1, "Title is required.").max(200),
   client: z.string().min(1, "Pick a client."),
   status: z.enum(["open", "filled", "cancelled", "completed"]).optional(),
-  bill_rate: decimalStr(8),
+  bill_rate: requireBillRate ? decimalStr(8) : optionalDecimalStr(8),
   bill_rate_unit: z.enum(["hr", "day", "flat"]),
   markup_pct: z
     .string()
@@ -23,9 +32,12 @@ export const jobSchema = z.object({
   end_datetime: z.string().min(1, "End is required."),
   po_number: z.string().max(64).optional().or(z.literal("")),
   invoice_date: z.string().optional().or(z.literal("")),
-});
+  });
+}
 
-export type JobFormValues = z.infer<typeof jobSchema>;
+export const jobSchema = jobFormSchema(true);
+
+export type JobFormValues = z.infer<ReturnType<typeof jobFormSchema>>;
 
 export const requirementSchema = z.object({
   requirement_type: z.enum(["skill", "cert"]),

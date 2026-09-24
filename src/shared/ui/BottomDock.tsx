@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { useBodyScrollLock } from "@/shared/lib/use-body-scroll-lock";
 import { BrandMark } from "@/shared/ui/Brand";
 import { Tooltip } from "@/shared/ui/Tooltip";
 import {
@@ -132,6 +133,7 @@ export function BottomDock({
 
   const flatOverflow = overflow ?? [];
   const hasOverflow = groupedEntries.length > 0 || flatOverflow.length > 0;
+  useBodyScrollLock(open && hasOverflow);
   const overflowActive =
     groupedEntries.some((entry) => entry.items.some((item) => pathActive(pathname, item.href))) ||
     flatOverflow.some((item) => pathActive(pathname, item.href));
@@ -148,7 +150,10 @@ export function BottomDock({
   return (
     <>
       {open && hasOverflow ? (
-        <div className="fixed inset-0 z-40 bg-cadence-ink/25" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 z-40 touch-none bg-cadence-ink/25"
+          onClick={() => setOpen(false)}
+        >
           <div
             className={cn(
               "absolute bottom-24 w-[min(22rem,calc(100vw-2rem))] rounded-[1.75rem] bg-card p-4 text-on-card shadow-card",
@@ -161,7 +166,7 @@ export function BottomDock({
             aria-label="More modules"
           >
             {groupedEntries.length > 0 ? (
-              <div className="flex max-h-[min(28rem,70vh)] flex-col gap-4 overflow-y-auto">
+              <div className="scroll-area-y flex max-h-[min(28rem,70dvh)] flex-col gap-4">
                 {groupedEntries.map(({ group, items: groupItems }) => (
                   <div key={group}>
                     <p className="mb-1.5 px-2 font-subheading text-[10px] uppercase tracking-[0.18em] text-on-card-muted">
@@ -194,7 +199,7 @@ export function BottomDock({
                 ))}
               </div>
             ) : (
-              <ul className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+              <ul className="scroll-area-y flex max-h-[min(18rem,50dvh)] flex-col gap-0.5">
                 {flatOverflow.map((item) => {
                   const active = pathActive(pathname, item.href);
                   return (

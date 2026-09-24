@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { describeImportBatchError } from "@/features/candidate-imports/batch-errors";
 import { commitBatch, getBatch, importBatchKeys, listBatchDocuments, listBatchRows } from "@/features/candidate-imports/api";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { CANDIDATE_IMPORT_BATCH_STATUS_LABELS, type CandidateImportBatchStatus } from "@/shared/lib/status-labels";
@@ -25,6 +26,13 @@ export default function CandidateImportBatchDetailPage() {
     queryKey: importBatchKeys.detail(batchId),
     queryFn: () => getBatch(batchId),
     retry: false,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "uploaded" || status === "validating" || status === "committing") {
+        return 2000;
+      }
+      return false;
+    },
   });
   const rowsQuery = useQuery({
     queryKey: ["candidate-imports", batchId, "rows", rowsPage],
@@ -72,14 +80,25 @@ export default function CandidateImportBatchDetailPage() {
             {CANDIDATE_IMPORT_BATCH_STATUS_LABELS[batch.status as CandidateImportBatchStatus]}
           </Badge>
         </div>
-        {batch.status === "validated" ? (
-          <Button onClick={handleCommit} disabled={committing}>
-            {committing ? "Committing…" : "Commit"}
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {batch.status === "failed" ? (
+            <Button variant="secondary" size="sm" onClick={() => router.push("/candidate-imports")}>
+              Back — create a new package
+            </Button>
+          ) : null}
+          {batch.status === "validated" ? (
+            <Button onClick={handleCommit} disabled={committing}>
+              {committing ? "Committing…" : "Commit"}
+            </Button>
+          ) : null}
+        </div>
       </div>
       {commitError ? <p className="font-body text-sm text-cadence-red">{commitError}</p> : null}
-      {batch.error ? <p className="font-body text-sm text-cadence-red">{batch.error}</p> : null}
+      {batch.error ? (
+        <p className="font-body text-sm text-cadence-red">
+          {describeImportBatchError(batch.error) ?? batch.error}
+        </p>
+      ) : null}
 
       <dl className="grid max-w-md grid-cols-1 gap-x-8 gap-y-3 font-body text-sm sm:grid-cols-2">
         <div>

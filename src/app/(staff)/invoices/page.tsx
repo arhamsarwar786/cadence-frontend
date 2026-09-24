@@ -17,6 +17,8 @@ import {
   FilterChip,
   ListLayout,
   ListSkeleton,
+  PageBody,
+  PageFrame,
   PageHeader,
   Pagination,
   PermGate,
@@ -80,7 +82,7 @@ export default function InvoicesListPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Invoices"
         actions={
@@ -112,12 +114,13 @@ export default function InvoicesListPage() {
         </div>
       </div>
 
-      {query.isLoading ? (
-        <ListSkeleton />
-      ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
-      ) : (
-        <ListLayout
+      <PageBody>
+        {query.isLoading ? (
+          <ListSkeleton />
+        ) : query.isError ? (
+          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        ) : (
+          <ListLayout
           stats={[
             {
               value: finding ? rows.length : (query.data?.count ?? 0),
@@ -148,8 +151,9 @@ export default function InvoicesListPage() {
               />
             ) : null}
           </div>
-        </ListLayout>
-      )}
-    </div>
+          </ListLayout>
+        )}
+      </PageBody>
+    </PageFrame>
   );
 }

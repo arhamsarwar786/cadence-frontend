@@ -6,7 +6,7 @@ import { PlacementActions } from "@/app/(staff)/perm-placements/page";
 import { getPlacement, placementKeys } from "@/features/money/api";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Chip, PageHeader } from "@/shared/ui";
+import { Chip, PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 export default function PlacementDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +22,8 @@ export default function PlacementDetailPage() {
   if (!p) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title={p.employee_name}
         actions={
@@ -48,6 +49,7 @@ export default function PlacementDetailPage() {
         </div>
       </dl>
       <PlacementActions id={id} />
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

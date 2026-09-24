@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useBodyScrollLock } from "@/shared/lib/use-body-scroll-lock";
 
 export interface DialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ export interface DialogProps {
 export function Dialog({ open, onClose, title, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  useBodyScrollLock(open);
 
   useEffect(() => {
     const node = ref.current;
@@ -32,14 +34,16 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
       onClick={(event) => {
         if (event.target === ref.current) onClose();
       }}
-      className="dark-card m-auto w-[calc(100vw-2rem)] max-w-md rounded-[1.5rem] border-0 bg-card p-5 font-body text-on-card shadow-card backdrop:bg-cadence-ink/45 sm:rounded-[2rem] sm:p-6"
+      className="dark-card scroll-area-y m-auto max-h-[min(90dvh,calc(100%-2rem))] w-[calc(100vw-2rem)] max-w-md rounded-[1.5rem] border-0 bg-card p-5 font-body text-on-card shadow-card backdrop:bg-cadence-ink/45 sm:rounded-[2rem] sm:p-6"
     >
       {title ? (
         <h2 id={titleId} className="mb-4 font-heading text-2xl text-on-card">
           {title}
         </h2>
       ) : null}
-      {children}
+      <div className="text-inherit [&_a:not([class])]:text-cadence-yellow [&_a:not([class])]:underline">
+        {children}
+      </div>
     </dialog>
   );
 }

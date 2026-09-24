@@ -7,12 +7,18 @@ import { jobKeys } from "@/features/jobs/api";
 import { JobForm } from "@/features/jobs/components/JobForm";
 import type { JobFormValues } from "@/features/jobs/schemas";
 import type { JobWrite } from "@/features/jobs/types";
+import { PERM } from "@/permissions/keys";
+import { PageFrame, PageScrollRegion, useHasPerm } from "@/shared/ui";
 
 export default function NewJobPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const canEditBillRate = useHasPerm(PERM.JOBS_BILL_RATE_EDIT);
 
   async function handleSubmit(values: JobFormValues) {
+    if (!canEditBillRate || !values.bill_rate?.trim()) {
+      throw new Error("setting the bill rate requires jobs.bill_rate.edit");
+    }
     const job = await createJob({
       title: values.title,
       client: values.client,
@@ -30,9 +36,11 @@ export default function NewJobPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-3xl text-cadence-ink">New job</h1>
-      <JobForm onSubmit={handleSubmit} submitLabel="Create job" />
-    </div>
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-4">
+        <h1 className="font-heading text-3xl text-cadence-ink">New job</h1>
+        <JobForm mode="create" onSubmit={handleSubmit} submitLabel="Create job" />
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

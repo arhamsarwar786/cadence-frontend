@@ -14,7 +14,7 @@ import type { HourSheet } from "@/features/jobs/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { HourSheetStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(hourSheetSchema.shape);
@@ -125,7 +125,7 @@ export default function HourSheetsListPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Hour sheets</h1>
         <PermGate anyOf={PERM.HOURSHEETS_EDIT}>
@@ -138,7 +138,10 @@ export default function HourSheetsListPage() {
         </PermGate>
       </div>
 
-      {query.isLoading ? (
+      <PageBody>
+
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -180,7 +183,8 @@ export default function HourSheetsListPage() {
           }}
         />
       </Dialog>
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }
 

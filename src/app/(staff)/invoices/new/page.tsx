@@ -13,7 +13,7 @@ import { invoiceCreateSchema, type InvoiceCreateFormValues } from "@/features/mo
 import { getOrgSettings, orgKeys } from "@/features/orgs/api";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Button, Field, Input, Select } from "@/shared/ui";
+import { Button, Field, Input, Select, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(invoiceCreateSchema.shape);
 
@@ -131,7 +131,8 @@ export default function NewInvoicePage() {
   }, [step, invoiceId]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl text-cadence-ink">Invoice Creator</h1>
@@ -375,6 +376,7 @@ export default function NewInvoicePage() {
           <p className="mt-6 font-fine text-[10px] text-on-card-muted">Powered by Cadence</p>
         </aside>
       </div>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

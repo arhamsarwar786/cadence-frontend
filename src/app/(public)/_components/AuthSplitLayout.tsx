@@ -12,8 +12,8 @@ export function AuthSplitLayout({
   strapline?: string;
 }) {
   return (
-    <main className="flex min-h-dvh items-stretch justify-center">
-      <div className="grid w-full max-w-5xl overflow-hidden bg-surface shadow-card md:min-h-[36rem] md:grid-cols-2 md:rounded-[2rem] md:my-8">
+    <main className="flex min-h-dvh items-stretch justify-center px-0 py-4 sm:px-4 sm:py-6">
+      <div className="grid w-full max-w-5xl bg-surface shadow-card max-md:overflow-visible md:min-h-[36rem] md:grid-cols-2 md:overflow-hidden md:rounded-[2rem]">
         <aside className="relative flex flex-col justify-between bg-cadence-yellow px-8 py-10 text-cadence-ink sm:px-10">
           <BrandWordmark className="h-9" />
           <div className="my-10 md:my-0">

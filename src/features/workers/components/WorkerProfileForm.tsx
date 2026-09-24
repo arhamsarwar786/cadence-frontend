@@ -3,7 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { isActiveEmployee } from "@/features/workers/lifecycle";
 import { workerProfileSchema, type WorkerProfileFormValues } from "@/features/workers/schemas";
+import type { LifecycleStatus } from "@/shared/lib/status-labels";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { PROVINCE_LABELS, PROVINCES } from "@/features/clients/schemas";
 import { Button, Field, Input, Select } from "@/shared/ui";
@@ -12,15 +14,19 @@ const FIELD_NAMES = Object.keys(workerProfileSchema.shape);
 
 export interface WorkerProfileFormProps {
   defaultValues?: Partial<WorkerProfileFormValues>;
+  /** Work status (booking availability) is only editable while active. */
+  lifecycleStatus?: LifecycleStatus | string | null;
   onSubmit: (values: WorkerProfileFormValues) => Promise<void>;
   submitLabel?: string;
 }
 
 export function WorkerProfileForm({
   defaultValues,
+  lifecycleStatus,
   onSubmit,
   submitLabel = "Save",
 }: WorkerProfileFormProps) {
+  const showWorkStatus = isActiveEmployee(lifecycleStatus);
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -124,15 +130,21 @@ export function WorkerProfileForm({
           </Select>
         </Field>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Work status" htmlFor="work_status" error={errors.work_status?.message}>
-          <Select id="work_status" {...register("work_status")}>
-            <option value="">—</option>
-            <option value="available">Available</option>
-            <option value="on_shift">On shift</option>
-            <option value="on_leave">On leave</option>
-          </Select>
-        </Field>
+      <div className={showWorkStatus ? "grid grid-cols-2 gap-4" : ""}>
+        {showWorkStatus ? (
+          <Field label="Work status" htmlFor="work_status" error={errors.work_status?.message}>
+            <Select id="work_status" {...register("work_status")}>
+              <option value="">—</option>
+              <option value="available">Available</option>
+              <option value="on_shift">On shift</option>
+              <option value="on_leave">On leave</option>
+            </Select>
+          </Field>
+        ) : (
+          <p className="font-body text-xs text-cadence-ink/55">
+            Work status (available / on shift / on leave) can be set after the worker is active.
+          </p>
+        )}
         <Field label="Pay method" htmlFor="pay_method" error={errors.pay_method?.message}>
           <Select id="pay_method" {...register("pay_method")}>
             <option value="">—</option>

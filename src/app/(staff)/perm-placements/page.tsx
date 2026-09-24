@@ -13,20 +13,7 @@ import type { Placement } from "@/features/money/types";
 import { messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import { PERM } from "@/permissions/keys";
-import {
-  Button,
-  Chip,
-  Dialog,
-  Field,
-  Input,
-  ListLayout,
-  ListSkeleton,
-  PageHeader,
-  Pagination,
-  PermGate,
-  Table,
-  type Column,
-} from "@/shared/ui";
+import { Button, Chip, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 
@@ -87,7 +74,7 @@ export default function PermPlacementsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Permanent placements"
         actions={
@@ -96,7 +83,9 @@ export default function PermPlacementsPage() {
           </PermGate>
         }
       />
-      {query.isLoading ? (
+      <PageBody>
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -141,7 +130,8 @@ export default function PermPlacementsPage() {
           <Button onClick={submitCreate}>Create</Button>
         </div>
       </Dialog>
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }
 

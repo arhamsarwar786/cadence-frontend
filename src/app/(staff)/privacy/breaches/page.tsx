@@ -7,22 +7,7 @@ import { api, type Paginated } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
 import { PERM } from "@/permissions/keys";
 import { messageFrom } from "@/shared/lib/errors";
-import {
-  Button,
-  Chip,
-  Dialog,
-  Field,
-  Input,
-  ListLayout,
-  ListSkeleton,
-  PageHeader,
-  Pagination,
-  PermGate,
-  Select,
-  Table,
-  Textarea,
-  type Column,
-} from "@/shared/ui";
+import { Button, Chip, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Select, Table, Textarea, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const breachKeys = resourceKeys("privacy-breaches");
@@ -82,7 +67,7 @@ export default function BreachRegisterPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Breach register"
         actions={
@@ -94,7 +79,9 @@ export default function BreachRegisterPage() {
       <p className="font-body text-sm text-cadence-ink/60">
         Breach records are write-once — there is no edit or close door.
       </p>
-      {query.isLoading ? (
+      <PageBody>
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -177,6 +164,7 @@ export default function BreachRegisterPage() {
           </Button>
         </div>
       </Dialog>
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

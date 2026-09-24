@@ -14,7 +14,7 @@ import {
   type PrivacyRequestStatus,
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Field } from "@/shared/ui";
+import { Badge, Button, Field, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const answerSchema = z.object({ response_note: z.string().min(1, "A response note is required.") });
 type AnswerFormValues = z.infer<typeof answerSchema>;
@@ -57,7 +57,8 @@ export default function PrivacyRequestDetailPage() {
   if (!request) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <div>
         <h1 className="font-heading text-3xl text-cadence-ink">
           {PRIVACY_REQUEST_TYPE_LABELS[request.type as PrivacyRequestType]} request
@@ -108,6 +109,7 @@ export default function PrivacyRequestDetailPage() {
           </Button>
         </form>
       )}
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

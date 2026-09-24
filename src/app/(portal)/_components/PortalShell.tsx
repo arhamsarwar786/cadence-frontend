@@ -39,9 +39,12 @@ export function PortalShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div
+      className="flex h-dvh max-h-dvh flex-col overflow-hidden"
+      style={{ ["--toast-offset" as string]: "calc(var(--dock-clearance) + 0.5rem)" }}
+    >
       <SkipLink />
-      <header className="flex items-center justify-between px-6 py-5">
+      <header className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
         <BrandLink href="/portal" />
         <p className="hidden max-w-[40%] truncate font-fine text-[11px] text-cadence-ink/65 sm:block">
           Worker portal · {session.user.login}
@@ -50,7 +53,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden px-3 pb-28 sm:px-8"
+        className="mx-auto flex w-full min-w-0 max-w-6xl min-h-0 flex-1 flex-col overflow-hidden px-3 pb-[var(--dock-clearance)] pt-1 sm:px-8"
       >
         {children}
       </main>

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { addAvailability, deleteAvailability } from "@/features/workers/actions";
+import { AVAILABILITY_ACTIVE_ONLY_MESSAGE, isActiveEmployee } from "@/features/workers/lifecycle";
 import { listWorkerAvailability } from "@/features/workers/api";
 import {
   availabilitySchema,
@@ -12,15 +13,27 @@ import {
   type AvailabilityFormValues,
 } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
+import type { LifecycleStatus } from "@/shared/lib/status-labels";
+import { Button, Dialog, EmptyState, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(availabilitySchema.shape);
 const DAY_LABEL = new Map(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
 
-export function AvailabilityPanel({ workerId }: { workerId: string }) {
+export function AvailabilityPanel({
+  workerId,
+  lifecycleStatus,
+}: {
+  workerId: string;
+  lifecycleStatus: LifecycleStatus | string;
+}) {
+  const canEdit = isActiveEmployee(lifecycleStatus);
   const queryClient = useQueryClient();
   const queryKey = ["workers", workerId, "availability"] as const;
-  const query = useQuery({ queryKey, queryFn: () => listWorkerAvailability(workerId) });
+  const query = useQuery({
+    queryKey,
+    queryFn: () => listWorkerAvailability(workerId),
+    enabled: canEdit,
+  });
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -68,6 +81,16 @@ export function AvailabilityPanel({ workerId }: { workerId: string }) {
     if (!ok) return;
     await deleteAvailability(workerId, rowId);
     await invalidate();
+  }
+
+  if (!canEdit) {
+    return (
+      <EmptyState
+        title="Not active yet"
+        description={AVAILABILITY_ACTIVE_ONLY_MESSAGE}
+        className="items-start py-6 text-left"
+      />
+    );
   }
 
   return (

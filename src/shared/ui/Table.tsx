@@ -44,9 +44,9 @@ export function Table<T>({
 
   return (
     <div className="overflow-hidden rounded-[2rem] bg-card text-on-card shadow-card">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
         <table className="min-w-full font-body text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-card">
             <tr className="text-on-card-muted">
               {columns.map((col) => (
                 <th

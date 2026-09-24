@@ -6,7 +6,7 @@ import { listSignatureRequests, revokeSignatureRequest, signatureRequestKeys } f
 import type { SignatureRequest } from "@/features/esign/types";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { PERM } from "@/permissions/keys";
-import { Badge, Button, ListSkeleton, Pagination, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
+import { Badge, Button, ListSkeleton, Pagination, PermGate, Table, useConfirm, type Column, PageFrame, PageBody } from "@/shared/ui";
 import { formatDate } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
 import {
@@ -74,9 +74,11 @@ export default function EsignPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <h1 className="font-heading text-3xl text-cadence-ink">E-sign</h1>
-      {query.isLoading ? (
+      <PageBody>
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -89,6 +91,7 @@ export default function EsignPage() {
         </>
       )}
       {confirmDialog}
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

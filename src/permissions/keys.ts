@@ -89,12 +89,6 @@ export const PERM = {
   PAYROLL_RELEASE: "payroll.release",
   PAYROLL_PAY_STATEMENTS_GENERATE: "payroll.pay_statements.generate",
   PAYROLL_EXPORT: "payroll.export",
-  /** @deprecated Alias — catalog renamed to pay_statements. */
-  PAYROLL_PAYSLIPS_VIEW: "payroll.pay_statements.view",
-  /** @deprecated Alias — catalog renamed to pay_statements. */
-  PAYROLL_PAYSLIPS_EDIT: "payroll.pay_statements.edit",
-  /** @deprecated Alias — catalog renamed to pay_statements. */
-  PAYROLL_PAYSLIPS_GENERATE: "payroll.pay_statements.generate",
 
   // 8. Invoicing
   CLIENTS_INVOICE_CREATE: "clients.invoice.create",
@@ -150,3 +144,6 @@ export const PERM = {
 } as const;
 
 export type PermissionKey = (typeof PERM)[keyof typeof PERM];
+
+/** Unique keys for permission pickers (deduped; PERM must not repeat values). */
+export const PERMISSION_CATALOG: PermissionKey[] = [...new Set(Object.values(PERM))];

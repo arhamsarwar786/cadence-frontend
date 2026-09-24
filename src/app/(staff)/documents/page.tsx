@@ -9,7 +9,20 @@ import { formatDate } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, NON_GENERIC_DOCUMENT_TYPES, type DocumentType } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, PageHeader, Pagination, PermGate, Select, Table, ListSkeleton, useConfirm, type Column } from "@/shared/ui";
+import {
+  Button,
+  ListLayout,
+  ListSkeleton,
+  PageBody,
+  PageFrame,
+  PageHeader,
+  Pagination,
+  PermGate,
+  Select,
+  Table,
+  useConfirm,
+  type Column,
+} from "@/shared/ui";
 import type { Document } from "@/features/documents/types";
 
 const PAGE_SIZE = 50;
@@ -115,7 +128,7 @@ export default function DocumentsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader
         title="Documents"
         actions={
@@ -166,19 +179,25 @@ export default function DocumentsPage() {
         </Select>
       </div>
 
-      {query.isLoading ? (
+      <PageBody>
+
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : (
-        <>
-          <Table columns={columns} rows={rows} rowKey={(d) => d.id} emptyMessage="No documents yet." />
-          {query.data ? (
-            <Pagination page={page} pageSize={PAGE_SIZE} count={query.data.count} onPageChange={goToPage} />
-          ) : null}
-        </>
+        <ListLayout>
+          <div className="flex flex-col gap-4">
+            <Table columns={columns} rows={rows} rowKey={(d) => d.id} emptyMessage="No documents yet." />
+            {query.data ? (
+              <Pagination page={page} pageSize={PAGE_SIZE} count={query.data.count} onPageChange={goToPage} />
+            ) : null}
+          </div>
+        </ListLayout>
       )}
       {confirmDialog}
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

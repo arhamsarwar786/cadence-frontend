@@ -1,6 +1,7 @@
 "use client";
 
 import { TaskBoard } from "@/features/tasks/components/TaskBoard";
+import { PageFrame } from "@/shared/ui";
 
 /**
  * Staff home (ARCHITECTURE.md §7: "open tasks / work queue") — the Penpot
@@ -9,8 +10,8 @@ import { TaskBoard } from "@/features/tasks/components/TaskBoard";
  */
 export default function StaffHomePage() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <PageFrame className="min-h-0 gap-0">
       <TaskBoard />
-    </div>
+    </PageFrame>
   );
 }

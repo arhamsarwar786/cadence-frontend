@@ -11,6 +11,7 @@ export { Fab } from "@/shared/ui/Fab";
 export { Field, type FieldProps, Input, Select, Textarea } from "@/shared/ui/Field";
 export { FilterChip } from "@/shared/ui/FilterChip";
 export { ListLayout, PageHeader, StatRail, type StatItem } from "@/shared/ui/ListLayout";
+export { PageBody, PageFrame, PageScrollRegion } from "@/shared/ui/PageFrame";
 export { ListSkeleton, type ListSkeletonProps } from "@/shared/ui/ListSkeleton";
 export { Pagination, type PaginationProps } from "@/shared/ui/Pagination";
 export { PDFViewer, type PDFViewerProps } from "@/shared/ui/PDFViewer";

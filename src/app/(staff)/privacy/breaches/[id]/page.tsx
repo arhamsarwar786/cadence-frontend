@@ -5,7 +5,7 @@ import { notFound, useParams } from "next/navigation";
 import { api } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
-import { Chip, PageHeader } from "@/shared/ui";
+import { Chip, PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const breachKeys = resourceKeys("privacy-breaches");
 
@@ -36,7 +36,8 @@ export default function BreachDetailPage() {
   if (!b) return null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title="Breach record"
         actions={
@@ -76,6 +77,7 @@ export default function BreachDetailPage() {
           <dd>{b.retention_until}</dd>
         </div>
       </dl>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

@@ -7,6 +7,7 @@ import { ClientForm } from "@/features/clients/components/ClientForm";
 import { createClient } from "@/features/clients/actions";
 import type { ClientFormValues } from "@/features/clients/schemas";
 import type { ClientWrite } from "@/features/clients/types";
+import { PageFrame, PageScrollRegion } from "@/shared/ui";
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -25,9 +26,11 @@ export default function NewClientPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="font-heading text-3xl text-cadence-ink">New client</h1>
-      <ClientForm onSubmit={handleSubmit} submitLabel="Create client" requireMarkup />
-    </div>
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-4">
+        <h1 className="font-heading text-3xl text-cadence-ink">New client</h1>
+        <ClientForm onSubmit={handleSubmit} submitLabel="Create client" requireMarkup />
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

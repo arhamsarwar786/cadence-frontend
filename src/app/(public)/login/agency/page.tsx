@@ -157,7 +157,7 @@ export default function AgencyLoginPage() {
               autoFocus
             />
           </Field>
-          <ul className="mt-4 flex max-h-56 flex-col gap-2 overflow-y-auto">
+          <ul className="scroll-area-y mt-4 flex max-h-[min(14rem,40dvh)] flex-col gap-2">
             {filtered.map((agency) => (
               <li key={agency.id}>
                 <button

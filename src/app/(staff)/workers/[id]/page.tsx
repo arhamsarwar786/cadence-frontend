@@ -25,6 +25,7 @@ import { SkillsPanel } from "@/features/workers/components/SkillsPanel";
 import { TimeOffPanel } from "@/features/workers/components/TimeOffPanel";
 import { WorkerDocumentsPanel } from "@/features/workers/components/WorkerDocumentsPanel";
 import { WorkerLifecycleActions } from "@/features/workers/components/WorkerLifecycleActions";
+import { WorkerPortalAccessPanel } from "@/features/workers/components/WorkerPortalAccessPanel";
 import { WorkerPersonalPanel } from "@/features/workers/components/WorkerPersonalPanel";
 import { WorkerProfileForm } from "@/features/workers/components/WorkerProfileForm";
 import type { WorkerProfileFormValues } from "@/features/workers/schemas";
@@ -33,8 +34,9 @@ import { listShifts as listJobShifts, shiftKeys } from "@/features/jobs/api";
 import { documentDownloadUrl } from "@/features/documents/api";
 import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
+import { isActiveEmployee } from "@/features/workers/lifecycle";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
-import { Button, Chip, EmptyState, PDFViewer, Tabs } from "@/shared/ui";
+import { Button, Chip, EmptyState, PDFViewer, Tabs, PageFrame, PageScrollRegion } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 
 type MainTab = "resume" | "history" | "personal" | "more";
@@ -46,6 +48,7 @@ type MoreTab =
   | "documents"
   | "incidents"
   | "consent"
+  | "portal"
   | "skills"
   | "certs"
   | "education"
@@ -78,6 +81,7 @@ export default function WorkerDetailPage() {
   const availabilityQuery = useQuery({
     queryKey: ["worker-availability", workerId],
     queryFn: () => listWorkerAvailability(workerId),
+    enabled: isActiveEmployee(query.data?.lifecycle_status),
   });
   const historyQuery = useQuery({
     queryKey: shiftKeys.list({ employee: workerId }),
@@ -97,6 +101,7 @@ export default function WorkerDetailPage() {
   }
 
   async function handleUpdateProfile(values: WorkerProfileFormValues) {
+    const lifecycle = query.data?.lifecycle_status;
     await updateWorker(workerId, {
       first_name: values.first_name,
       last_name: values.last_name,
@@ -112,7 +117,9 @@ export default function WorkerDetailPage() {
       emergency_contact_phone: values.emergency_contact_phone || undefined,
       employment_type: values.employment_type || undefined,
       work_authorization: values.work_authorization || undefined,
-      work_status: values.work_status || undefined,
+      ...(isActiveEmployee(lifecycle)
+        ? { work_status: values.work_status || undefined }
+        : {}),
       pay_method: values.pay_method || undefined,
       notification_channel: values.notification_channel,
       referral_source: values.referral_source || undefined,
@@ -136,7 +143,8 @@ export default function WorkerDetailPage() {
     docsQuery.data?.find((d) => d.document_type === "resume") ?? docsQuery.data?.[0] ?? null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageFrame>
+      <PageScrollRegion className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-heading text-4xl text-cadence-ink sm:text-5xl">
@@ -147,7 +155,9 @@ export default function WorkerDetailPage() {
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <LifecycleStatusBadge status={worker.lifecycle_status as LifecycleStatus} />
-            {"work_status" in worker && worker.work_status ? (
+            {isActiveEmployee(worker.lifecycle_status) &&
+            "work_status" in worker &&
+            worker.work_status ? (
               <Chip tone="yellow">{String(worker.work_status).replaceAll("_", " ")}</Chip>
             ) : null}
             {"rating" in worker && worker.rating != null ? (
@@ -226,10 +236,12 @@ export default function WorkerDetailPage() {
             <div>
               <dt className="text-cadence-ink/60">Availability</dt>
               <dd>
-                {(availabilityQuery.data ?? [])
-                  .slice(0, 3)
-                  .map((a) => `D${a.day_of_week} ${a.start_time}–${a.end_time}`)
-                  .join(" · ") || "—"}
+                {isActiveEmployee(worker.lifecycle_status)
+                  ? (availabilityQuery.data ?? [])
+                      .slice(0, 3)
+                      .map((a) => `D${a.day_of_week} ${a.start_time}–${a.end_time}`)
+                      .join(" · ") || "—"
+                  : "—"}
               </dd>
             </div>
             <div>
@@ -329,6 +341,7 @@ export default function WorkerDetailPage() {
                       ["documents", "Documents"],
                       ["incidents", "Incidents"],
                       ["consent", "Consent"],
+                      ["portal", "Portal login"],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -349,6 +362,7 @@ export default function WorkerDetailPage() {
                 {moreTab === "profile" ? (
                   editingProfile ? (
                     <WorkerProfileForm
+                      lifecycleStatus={worker.lifecycle_status}
                       defaultValues={{
                         first_name: worker.first_name,
                         last_name: worker.last_name,
@@ -386,7 +400,12 @@ export default function WorkerDetailPage() {
                 ) : null}
                 {moreTab === "skills" ? <SkillsPanel workerId={workerId} /> : null}
                 {moreTab === "certs" ? <CertsPanel workerId={workerId} /> : null}
-                {moreTab === "availability" ? <AvailabilityPanel workerId={workerId} /> : null}
+                {moreTab === "availability" ? (
+                  <AvailabilityPanel
+                    workerId={workerId}
+                    lifecycleStatus={worker.lifecycle_status as LifecycleStatus}
+                  />
+                ) : null}
                 {moreTab === "education" ? <EducationPanel workerId={workerId} /> : null}
                 {moreTab === "background" ? (
                   <BackgroundCheckPanel worker={worker} onRefetch={refetch} />
@@ -398,11 +417,13 @@ export default function WorkerDetailPage() {
                 {moreTab === "documents" ? <WorkerDocumentsPanel workerId={workerId} /> : null}
                 {moreTab === "incidents" ? <IncidentsPanel workerId={workerId} /> : null}
                 {moreTab === "consent" ? <ConsentPanel worker={worker} /> : null}
+                {moreTab === "portal" ? <WorkerPortalAccessPanel workerId={workerId} /> : null}
               </div>
             ) : null}
           </div>
         </section>
       </div>
-    </div>
+    </PageScrollRegion>
+    </PageFrame>
   );
 }

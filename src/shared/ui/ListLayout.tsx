@@ -61,9 +61,13 @@ export function ListLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="flex gap-6">
+    <div className="flex min-h-0 flex-1 gap-6">
       {stats ? <StatRail stats={stats} /> : null}
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

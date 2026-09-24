@@ -73,11 +73,13 @@ function headersToObject(headers: Headers): Record<string, string> {
 function httpsViaIp(
   dest: URL,
   ip: string,
-  init: { method: string; headers: Headers; body?: ArrayBuffer },
+  init: { method: string; headers: Headers; body?: Uint8Array },
 ): Promise<Response> {
   const pathWithQuery = `${dest.pathname}${dest.search}`;
   const headers = headersToObject(init.headers);
   headers.host = dest.hostname;
+  const bodyBuf = init.body?.length ? Buffer.from(init.body) : undefined;
+  if (bodyBuf) headers["content-length"] = String(bodyBuf.length);
 
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -115,9 +117,7 @@ function httpsViaIp(
       },
     );
     req.on("error", reject);
-    if (init.body && init.body.byteLength > 0) {
-      req.write(Buffer.from(init.body));
-    }
+    if (bodyBuf) req.write(bodyBuf);
     req.end();
   });
 }
@@ -127,14 +127,14 @@ async function upstreamFetch(
   init: {
     method: string;
     headers: Headers;
-    body?: ArrayBuffer;
+    body?: Uint8Array;
   },
 ): Promise<Response> {
   try {
     return await fetch(dest, {
       method: init.method,
       headers: init.headers,
-      body: init.body,
+      body: init.body?.length ? Buffer.from(init.body) : undefined,
       cache: "no-store",
       redirect: "manual",
     });
@@ -174,7 +174,11 @@ async function proxy(req: NextRequest, path: string[]) {
   headers.set("Referer", `${DJANGO_ORIGIN}/`);
 
   const method = req.method.toUpperCase();
-  const body = method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();
+  let body: Uint8Array | undefined;
+  if (method !== "GET" && method !== "HEAD") {
+    const raw = await req.text();
+    body = raw.length > 0 ? new TextEncoder().encode(raw) : undefined;
+  }
 
   let upstream: Response;
   try {

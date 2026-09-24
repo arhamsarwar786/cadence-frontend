@@ -10,3 +10,8 @@ export function login(credential: string, password: string): Promise<CurrentUser
 export function logout(): Promise<void> {
   return api.post<void>("/api/v1/auth/logout/");
 }
+
+/** Admin sets another user's password (staff or worker). Uses existing auth door. */
+export function resetUserCredentials(userId: string, password: string): Promise<void> {
+  return api.post<void>(`/api/v1/auth/users/${userId}/reset-credentials/`, { password });
+}

@@ -315,7 +315,7 @@ export function TaskBoard() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden sm:gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:items-stretch lg:gap-8">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:items-stretch lg:gap-8">
       <section className="shrink-0 pt-1 sm:pt-2">
         <p className="font-heading text-[2.75rem] leading-none text-cadence-ink sm:text-5xl lg:text-6xl">
           {clock.hour12}:{clock.minutes}
@@ -384,7 +384,8 @@ export function TaskBoard() {
         )}
       </section>
 
-      <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] bg-card p-4 text-on-card shadow-card sm:rounded-[2rem] sm:p-5 lg:min-h-[28rem]">
+      <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] bg-card p-4 pb-5 text-on-card shadow-card sm:rounded-[2rem] sm:p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
         {selectedId && detailQuery.data ? (
           <TaskDetailPanel
             task={detailQuery.data}
@@ -452,7 +453,7 @@ export function TaskBoard() {
                     No jobs.
                   </p>
                 ) : (
-                  <ul className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                  <ul className="mt-4 pb-14">
                     {jobs.map((job) => (
                       <JobCard key={job.id} job={job} timeZone={timeZone} />
                     ))}
@@ -477,7 +478,7 @@ export function TaskBoard() {
                     No open tasks.
                   </p>
                 ) : (
-                  <ul className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                  <ul className="mt-4 pb-14">
                     {tasks.map((task) => (
                       <TaskRow
                         key={task.id}
@@ -508,6 +509,7 @@ export function TaskBoard() {
             )}
           </>
         )}
+        </div>
       </section>
 
       <Dialog
@@ -764,7 +766,7 @@ function TaskDetailPanel({
   }, [task.assignee_id, task.id]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex flex-col pb-4">
       <button
         type="button"
         onClick={onClose}

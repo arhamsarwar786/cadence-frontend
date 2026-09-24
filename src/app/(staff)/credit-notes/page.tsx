@@ -6,7 +6,7 @@ import { listCreditNotes, creditNoteKeys } from "@/features/money/api";
 import type { CreditNote } from "@/features/money/types";
 import { messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Chip, ListLayout, ListSkeleton, PageHeader, Pagination, Table, type Column } from "@/shared/ui";
+import { Chip, ListLayout, ListSkeleton, PageHeader, Pagination, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 
@@ -36,9 +36,11 @@ export default function CreditNotesPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageFrame>
       <PageHeader title="Credit notes" />
-      {query.isLoading ? (
+      <PageBody>
+
+        {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
         <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>
@@ -61,6 +63,7 @@ export default function CreditNotesPage() {
           ) : null}
         </ListLayout>
       )}
-    </div>
+    </PageBody>
+    </PageFrame>
   );
 }

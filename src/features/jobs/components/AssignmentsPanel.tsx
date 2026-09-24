@@ -235,7 +235,7 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
             <TableSkeleton rows={6} columns={showRating ? 6 : 5} />
           ) : (
             <>
-              <div className="max-h-[28rem] overflow-auto rounded-xl border border-border bg-surface text-cadence-ink">
+              <div className="scroll-area-y max-h-[min(28rem,55dvh)] rounded-xl border border-border bg-surface text-cadence-ink">
                 <table className="w-full min-w-[48rem] text-left text-sm">
                   <thead className="sticky top-0 bg-surface font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
                     <tr>

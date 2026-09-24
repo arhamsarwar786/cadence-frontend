@@ -20,7 +20,9 @@ import {
   updateSkill,
   updateTimeOff,
 } from "@/features/portal/actions";
+import { AVAILABILITY_ACTIVE_ONLY_MESSAGE } from "@/features/workers/lifecycle";
 import {
+  getMe,
   listAvailability,
   listEducation,
   listEmploymentHistory,
@@ -49,7 +51,7 @@ import type {
 import { DAYS_OF_WEEK } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { TIME_OFF_TYPE_LABELS } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, Select, useConfirm } from "@/shared/ui";
+import { Button, Dialog, EmptyState, Field, Input, Select, useConfirm } from "@/shared/ui";
 
 const DAY_LABEL = new Map<number, string>(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
 
@@ -194,9 +196,12 @@ export function SkillsPanel() {
 }
 
 export function AvailabilityPanel() {
+  const meQuery = useQuery({ queryKey: ["portal", "me"], queryFn: getMe });
+  const lifecycle = meQuery.data?.lifecycle_status;
+  const canEdit = lifecycle === "active";
   const queryClient = useQueryClient();
   const queryKey = ["portal", "availability"] as const;
-  const query = useQuery({ queryKey, queryFn: listAvailability });
+  const query = useQuery({ queryKey, queryFn: listAvailability, enabled: canEdit });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PortalAvailability | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -263,6 +268,20 @@ export function AvailabilityPanel() {
     if (!ok) return;
     await deleteAvailability(id);
     await invalidate();
+  }
+
+  if (meQuery.isLoading) {
+    return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+  }
+
+  if (!canEdit) {
+    return (
+      <EmptyState
+        title="Not active yet"
+        description={AVAILABILITY_ACTIVE_ONLY_MESSAGE}
+        className="items-start py-6 text-left"
+      />
+    );
   }
 
   return (
