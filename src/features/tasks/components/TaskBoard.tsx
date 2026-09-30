@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -42,6 +43,9 @@ import {
   Field,
   Input,
   PermGate,
+  QueryError,
+  useConfirm,
+  useHasPerm,
   Select,
   Tabs,
   Tooltip,
@@ -185,14 +189,18 @@ export function TaskBoard() {
     queryFn: () => listClients({ page: 1, pageSize: 1 }),
     retry: false,
   });
+  const canViewReports = useHasPerm(PERM.REPORTS_DASHBOARD_VIEW);
+  const canViewUsers = useHasPerm(PERM.ADMIN_USERS_VIEW);
   const reportsQuery = useQuery({
     queryKey: reportKeys.detail("dashboard"),
     queryFn: getReportsDashboard,
     retry: false,
+    enabled: canViewReports,
   });
   const usersQuery = useQuery({
     queryKey: userKeys.list({ pageSize: 200 }),
     queryFn: () => listUsers({ pageSize: 200 }),
+    enabled: canViewUsers,
   });
   const users = normalizeUsers(usersQuery.data);
 
@@ -401,6 +409,7 @@ export function TaskBoard() {
               setFollowUpOffer(task);
               setSelectedId(null);
             }}
+            actionError={actionError}
             setActionError={setActionError}
           />
         ) : (
@@ -443,11 +452,13 @@ export function TaskBoard() {
                   ))}
                 </div>
                 {jobsQuery.isLoading ? (
-                  <p className="mt-6 font-body text-sm text-on-card-muted">Loading…</p>
+                  <Loading />
                 ) : jobsQuery.isError ? (
-                  <p className="mt-6 font-body text-sm text-cadence-red">
-                    {messageFrom(jobsQuery.error)}
-                  </p>
+                  <QueryError
+                    className="mt-6"
+                    error={jobsQuery.error}
+                    onRetry={() => jobsQuery.refetch()}
+                  />
                 ) : jobs.length === 0 ? (
                   <p className="py-10 text-center font-body text-sm text-on-card-muted">
                     No jobs.
@@ -468,11 +479,13 @@ export function TaskBoard() {
             ) : (
               <>
                 {tasksQuery.isLoading ? (
-                  <p className="mt-6 font-body text-sm text-on-card-muted">Loading…</p>
+                  <Loading />
                 ) : tasksQuery.isError ? (
-                  <p className="mt-6 font-body text-sm text-cadence-red">
-                    {messageFrom(tasksQuery.error)}
-                  </p>
+                  <QueryError
+                    className="mt-6"
+                    error={tasksQuery.error}
+                    onRetry={() => tasksQuery.refetch()}
+                  />
                 ) : tasks.length === 0 ? (
                   <p className="py-10 text-center font-body text-sm text-on-card-muted">
                     No open tasks.
@@ -743,6 +756,7 @@ function TaskDetailPanel({
   onLogFollowUp,
   onMutate,
   onCompletedFollowUp,
+  actionError,
   setActionError,
 }: {
   task: Task;
@@ -752,9 +766,11 @@ function TaskDetailPanel({
   onLogFollowUp: () => void;
   onMutate: () => Promise<void>;
   onCompletedFollowUp: (task: Task) => void;
+  actionError: string | null;
   setActionError: (msg: string | null) => void;
 }) {
   const timeZone = useOrgTimeZone();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const mirrored = MIRRORED_TASK_TYPES.includes(task.type as TaskType);
   const link = taskLink(task);
   const [assignee, setAssignee] = useState(task.assignee_id ?? "");
@@ -834,6 +850,12 @@ function TaskDetailPanel({
         </div>
       </PermGate>
 
+      {actionError ? (
+        <p role="alert" className="mt-3 font-body text-xs text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
+
       <div className="mt-auto flex flex-wrap gap-2 pt-8">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
@@ -882,8 +904,13 @@ function TaskDetailPanel({
         {task.status === "done" ? (
           <Button
             onClick={async () => {
-              await reopenTask(task.id);
-              await onMutate();
+              setActionError(null);
+              try {
+                await reopenTask(task.id);
+                await onMutate();
+              } catch (error) {
+                setActionError(messageFrom(error));
+              }
             }}
           >
             Reopen
@@ -893,9 +920,21 @@ function TaskDetailPanel({
           <Button
             variant="danger"
             onClick={async () => {
-              await deleteTask(task.id);
-              await onMutate();
-              onClose();
+              const ok = await confirm({
+                title: "Delete this task?",
+                body: "This can't be undone.",
+                confirmLabel: "Delete",
+                danger: true,
+              });
+              if (!ok) return;
+              setActionError(null);
+              try {
+                await deleteTask(task.id);
+                await onMutate();
+                onClose();
+              } catch (error) {
+                setActionError(messageFrom(error));
+              }
             }}
           >
             Delete
@@ -907,6 +946,7 @@ function TaskDetailPanel({
           </Button>
         </PermGate>
       </div>
+      {confirmDialog}
     </div>
   );
 }

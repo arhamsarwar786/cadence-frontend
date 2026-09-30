@@ -10,7 +10,7 @@ import type { NotificationTemplate } from "@/features/notifications/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { NOTIFICATION_TYPE_LABELS, type NotificationType } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, Input, ListSkeleton, PermGate, Select, useConfirm, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListSkeleton, PermGate, QueryError, Select, useConfirm, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const templateSchema = z
   .object({
@@ -37,6 +37,7 @@ export default function NotificationTemplatesPage() {
   const query = useQuery({ queryKey: QUERY_KEY, queryFn: listTemplates });
   const [dialogState, setDialogState] = useState<null | { mode: "create" } | { mode: "edit"; tpl: NotificationTemplate }>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const {
     register,
@@ -49,6 +50,23 @@ export default function NotificationTemplatesPage() {
     defaultValues: { channel: "email", subject: "", body: "" },
   });
 
+  function openCreate() {
+    setFormError(null);
+    reset({ type: "shift_offer", channel: "email", subject: "", body: "" });
+    setDialogState({ mode: "create" });
+  }
+
+  function openEdit(tpl: NotificationTemplate) {
+    setFormError(null);
+    reset({
+      type: tpl.type as TemplateFormValues["type"],
+      channel: tpl.channel as TemplateFormValues["channel"],
+      subject: tpl.subject ?? "",
+      body: tpl.body,
+    });
+    setDialogState({ mode: "edit", tpl });
+  }
+
   function invalidate() {
     return queryClient.invalidateQueries({ queryKey: QUERY_KEY });
   }
@@ -56,7 +74,7 @@ export default function NotificationTemplatesPage() {
   async function submit(values: TemplateFormValues) {
     setFormError(null);
     try {
-      const body = { ...values, subject: values.subject || undefined };
+      const body = { ...values, subject: values.subject ?? "" };
       if (dialogState?.mode === "edit") {
         await updateTemplate(dialogState.tpl.id, body);
       } else {
@@ -79,8 +97,13 @@ export default function NotificationTemplatesPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteTemplate(id);
-    await invalidate();
+    setDeleteError(null);
+    try {
+      await deleteTemplate(id);
+      await invalidate();
+    } catch (error) {
+      setDeleteError(messageFrom(error));
+    }
   }
 
   return (
@@ -89,14 +112,20 @@ export default function NotificationTemplatesPage() {
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl text-cadence-ink">Notification templates</h1>
         <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
-          <Button onClick={() => setDialogState({ mode: "create" })}>New template</Button>
+          <Button onClick={openCreate}>New template</Button>
         </PermGate>
       </div>
+
+      {deleteError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {deleteError}
+        </p>
+      ) : null}
 
       {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((tpl) => (
@@ -109,7 +138,7 @@ export default function NotificationTemplatesPage() {
               </div>
               <div className="flex gap-2">
                 <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
-                  <Button size="sm" variant="secondary" onClick={() => setDialogState({ mode: "edit", tpl })}>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(tpl)}>
                     Edit
                   </Button>
                 </PermGate>
@@ -133,7 +162,7 @@ export default function NotificationTemplatesPage() {
       >
         <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-col gap-4">
           <Field label="Type" htmlFor="tpl-type" error={errors.type?.message}>
-            <Select id="tpl-type" defaultValue={dialogState?.mode === "edit" ? dialogState.tpl.type : undefined} {...register("type")}>
+            <Select id="tpl-type" {...register("type")}>
               <option value="shift_offer">Shift offer</option>
               <option value="esign">E-sign</option>
               <option value="cert_expiry">Certification expiry</option>
@@ -142,20 +171,19 @@ export default function NotificationTemplatesPage() {
             </Select>
           </Field>
           <Field label="Channel" htmlFor="tpl-channel" error={errors.channel?.message}>
-            <Select id="tpl-channel" defaultValue={dialogState?.mode === "edit" ? dialogState.tpl.channel : undefined} {...register("channel")}>
+            <Select id="tpl-channel" {...register("channel")}>
               <option value="email">Email</option>
               <option value="in_app">In-app</option>
               <option value="sms">SMS</option>
             </Select>
           </Field>
           <Field label="Subject" htmlFor="tpl-subject" error={errors.subject?.message}>
-            <Input id="tpl-subject" defaultValue={dialogState?.mode === "edit" ? (dialogState.tpl.subject ?? "") : ""} {...register("subject")} />
+            <Input id="tpl-subject" {...register("subject")} />
           </Field>
           <Field label="Body" htmlFor="tpl-body" error={errors.body?.message}>
             <textarea
               id="tpl-body"
               rows={5}
-              defaultValue={dialogState?.mode === "edit" ? dialogState.tpl.body : ""}
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-body text-cadence-ink"
               {...register("body")}
             />

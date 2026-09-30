@@ -27,6 +27,7 @@ export function InvoiceLinesPanel({
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -60,8 +61,13 @@ export function InvoiceLinesPanel({
       danger: true,
     });
     if (!ok) return;
-    await deleteInvoiceLine(invoiceId, lineId);
-    await refetch();
+    setActionError(null);
+    try {
+      await deleteInvoiceLine(invoiceId, lineId);
+      await refetch();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -74,6 +80,12 @@ export function InvoiceLinesPanel({
           </Button>
         ) : null}
       </div>
+
+      {actionError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
 
       {lines.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">

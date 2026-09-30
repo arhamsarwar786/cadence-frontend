@@ -26,6 +26,7 @@ import {
   ListSkeleton,
   Pagination,
   PermGate,
+  QueryError,
   Table,
   type Column,
   PageFrame,
@@ -169,7 +170,7 @@ export default function CandidateImportsPage() {
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <>
           <Table

@@ -8,6 +8,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   agentRules: false,
   skipTrailingSlashRedirect: true,
+  // E2E builds into its own dir so a running `next dev` (which wipes .next) can't break them.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
 };
 
 export default nextConfig;

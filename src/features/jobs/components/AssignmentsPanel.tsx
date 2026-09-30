@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -163,7 +164,7 @@ export function AssignmentsPanel({ jobId }: { jobId: string }) {
       </div>
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((a) => (

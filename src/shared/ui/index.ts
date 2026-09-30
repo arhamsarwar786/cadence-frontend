@@ -12,6 +12,7 @@ export { Field, type FieldProps, Input, Select, Textarea } from "@/shared/ui/Fie
 export { FilterChip } from "@/shared/ui/FilterChip";
 export { ListLayout, PageHeader, StatRail, type StatItem } from "@/shared/ui/ListLayout";
 export { PageBody, PageFrame, PageScrollRegion } from "@/shared/ui/PageFrame";
+export { Loading, type LoadingProps } from "@/shared/ui/Loading";
 export { ListSkeleton, type ListSkeletonProps } from "@/shared/ui/ListSkeleton";
 export { Pagination, type PaginationProps } from "@/shared/ui/Pagination";
 export { PDFViewer, type PDFViewerProps } from "@/shared/ui/PDFViewer";
@@ -29,3 +30,4 @@ export { Tabs, type TabItem } from "@/shared/ui/Tabs";
 export { ToastProvider, useToast } from "@/shared/ui/Toast";
 export { TooltipProvider } from "@/components/ui/tooltip";
 export { Tooltip, type TooltipProps, type TooltipSide } from "@/shared/ui/Tooltip";
+export { QueryError } from "@/shared/ui/QueryError";

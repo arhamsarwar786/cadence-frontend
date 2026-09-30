@@ -1,5 +1,7 @@
 "use client";
 
+import { useHasPerm } from "@/shared/ui";
+import { Loading } from "@/shared/ui/Loading";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -22,9 +24,11 @@ export function WorkerPortalAccessPanel({ workerId }: { workerId: string }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const canViewUsers = useHasPerm(PERM.ADMIN_USERS_VIEW);
   const usersQuery = useQuery({
     queryKey: userKeys.list({ pageSize: 200 }),
     queryFn: () => listUsersNormalized({ pageSize: 200 }),
+    enabled: canViewUsers,
   });
 
   const portalUser = usersQuery.data ? findPortalUser(usersQuery.data, workerId) : undefined;
@@ -64,7 +68,7 @@ export function WorkerPortalAccessPanel({ workerId }: { workerId: string }) {
       </div>
 
       {usersQuery.isLoading ? (
-        <p className="text-sm text-cadence-ink/55">Checking portal account…</p>
+        <Loading label="Checking portal account" />
       ) : usersQuery.isError ? (
         <p className="text-sm text-cadence-red">{messageFrom(usersQuery.error)}</p>
       ) : portalUser ? (

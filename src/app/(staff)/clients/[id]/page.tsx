@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +17,7 @@ import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog
 import { PERM } from "@/permissions/keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import type { ClientStatus } from "@/shared/lib/status-labels";
-import { Button, PermGate, useConfirm } from "@/shared/ui";
+import { Button, PermGate, QueryError, useConfirm } from "@/shared/ui";
 
 const billingQueryKey = (clientId: string) => ["clients", clientId, "billing"] as const;
 
@@ -27,6 +28,7 @@ export default function ClientDetailPage() {
   const [editingClient, setEditingClient] = useState(false);
   const [editingBilling, setEditingBilling] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const clientQuery = useQuery({
     queryKey: clientKeys.detail(clientId),
@@ -74,16 +76,21 @@ export default function ClientDetailPage() {
       danger: true,
     });
     if (!ok) return;
-    await archiveClient(clientId);
-    await queryClient.invalidateQueries({ queryKey: clientKeys.all });
-    router.push("/clients");
+    setArchiveError(null);
+    try {
+      await archiveClient(clientId);
+      await queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      router.push("/clients");
+    } catch (error) {
+      setArchiveError(messageFrom(error));
+    }
   }
 
   if (clientQuery.isLoading) {
-    return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+    return <Loading />;
   }
   if (clientQuery.isError) {
-    return <p className="font-body text-sm text-cadence-red">{messageFrom(clientQuery.error)}</p>;
+    return <QueryError error={clientQuery.error} onRetry={() => clientQuery.refetch()} />;
   }
   const client = clientQuery.data;
   if (!client) return null;
@@ -118,6 +125,12 @@ export default function ClientDetailPage() {
           </PermGate>
         </div>
       </div>
+
+      {archiveError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {archiveError}
+        </p>
+      ) : null}
 
       {editingClient ? (
         <ClientForm
@@ -168,14 +181,14 @@ export default function ClientDetailPage() {
           ) : null}
         </div>
         {billingQuery.isLoading ? (
-          <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+          <Loading />
         ) : billingQuery.isError && isNotFound(billingQuery.error) ? (
           // A client isn't seeded with a billing row (services.set_billing
           // is PUT create-or-replace) — the "not found" IS the "nothing
           // set up yet" state, not an error to surface.
           <ClientBillingForm defaultValues={{ payment_terms: "net_30" }} onSubmit={handleUpdateBilling} />
         ) : billingQuery.isError ? (
-          <p className="font-body text-sm text-cadence-red">{messageFrom(billingQuery.error)}</p>
+          <QueryError error={billingQuery.error} onRetry={() => billingQuery.refetch()} />
         ) : editingBilling && billingQuery.data ? (
           <ClientBillingForm
             defaultValues={{

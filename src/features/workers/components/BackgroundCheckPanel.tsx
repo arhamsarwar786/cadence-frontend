@@ -36,7 +36,13 @@ export function BackgroundCheckPanel({
     },
   });
 
-  if (!("background_check_status" in worker)) return null;
+  if (!("background_check_status" in worker)) {
+    return (
+      <p className="font-body text-sm text-cadence-ink/60">
+        You don&apos;t have access to background check details.
+      </p>
+    );
+  }
 
   async function submit(values: BackgroundCheckFormValues) {
     setFormError(null);

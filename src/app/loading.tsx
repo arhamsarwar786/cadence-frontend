@@ -1,7 +1,5 @@
-export default function Loading() {
-  return (
-    <main className="flex min-h-dvh items-center justify-center">
-      <p className="font-body text-sm text-cadence-ink/70">Loading Cadence…</p>
-    </main>
-  );
+import { Loading } from "@/shared/ui/Loading";
+
+export default function AppLoading() {
+  return <Loading fullScreen label="Loading Cadence" />;
 }

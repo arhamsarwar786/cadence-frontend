@@ -5,7 +5,7 @@ import { useState } from "react";
 import { acceptOffer, declineOffer } from "@/features/portal/actions";
 import { listShifts } from "@/features/portal/api";
 import { messageFrom } from "@/shared/lib/errors";
-import { Button, useConfirm } from "@/shared/ui";
+import { Button, QueryError, useConfirm } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 const SHIFTS_KEY = ["portal", "shifts"] as const;
@@ -64,7 +64,9 @@ export default function OffersPage() {
       subtitle="Accept or decline a job placement. Accepting confirms every shift on that assignment. Declining deletes the placement — there is no third status."
     >
       {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
-      {byAssignment.size > 0 ? (
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : byAssignment.size > 0 ? (
         <ul className="flex flex-col gap-3">
           {Array.from(byAssignment.entries()).map(([assignmentId, shifts]) => (
             <li key={assignmentId}>

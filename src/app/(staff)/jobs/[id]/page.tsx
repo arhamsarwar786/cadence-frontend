@@ -1,9 +1,11 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "@/auth/session-context";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { cancelJob, completeJob, deleteJob, updateJob } from "@/features/jobs/actions";
 import { getJob, jobKeys, listShifts } from "@/features/jobs/api";
 import { AssignmentsPanel } from "@/features/jobs/components/AssignmentsPanel";
@@ -14,11 +16,11 @@ import { ShiftPatternsPanel } from "@/features/jobs/components/ShiftPatternsPane
 import type { JobFormValues } from "@/features/jobs/schemas";
 import type { JobUpdate } from "@/features/jobs/types";
 import { PERM } from "@/permissions/keys";
-import { formatDateTime } from "@/shared/lib/datetime";
+import { formatDateTime, orgLocalToUtcIso, utcIsoToOrgLocal } from "@/shared/lib/datetime";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { JobStatus, ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, PermGate, Table, useConfirm, useHasPerm, type Column } from "@/shared/ui";
+import { Button, PermGate, QueryError, Table, useConfirm, useHasPerm, type Column } from "@/shared/ui";
 
 export default function JobDetailPage() {
   const { id: jobId } = useParams<{ id: string }>();
@@ -26,6 +28,8 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient();
   const { session } = useSession();
   const [editing, setEditing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const timeZone = useOrgTimeZone();
   const { confirm, dialog: confirmDialog } = useConfirm();
   const canEditBillRate = useHasPerm(PERM.JOBS_BILL_RATE_EDIT);
   const canEditMarkup = useHasPerm(PERM.CLIENTS_MARKUP_EDIT);
@@ -47,6 +51,7 @@ export default function JobDetailPage() {
   }
 
   async function handleUpdate(values: JobFormValues) {
+    if (!timeZone) throw new Error("Organization timezone is not loaded yet. Try again.");
     await updateJob(jobId, {
       title: values.title,
       ...(canEditBillRate
@@ -57,8 +62,8 @@ export default function JobDetailPage() {
         : {}),
       ...(canEditMarkup ? { markup_pct: values.markup_pct || undefined } : {}),
       headcount_needed: values.headcount_needed,
-      start_datetime: values.start_datetime,
-      end_datetime: values.end_datetime,
+      start_datetime: orgLocalToUtcIso(values.start_datetime, timeZone),
+      end_datetime: orgLocalToUtcIso(values.end_datetime, timeZone),
       po_number: values.po_number || undefined,
       invoice_date: values.invoice_date || undefined,
     } as JobUpdate);
@@ -74,8 +79,13 @@ export default function JobDetailPage() {
       danger: true,
     });
     if (!ok) return;
-    await cancelJob(jobId);
-    await refetch();
+    setActionError(null);
+    try {
+      await cancelJob(jobId);
+      await refetch();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   async function handleComplete() {
@@ -85,8 +95,13 @@ export default function JobDetailPage() {
       confirmLabel: "Mark completed",
     });
     if (!ok) return;
-    await completeJob(jobId);
-    await refetch();
+    setActionError(null);
+    try {
+      await completeJob(jobId);
+      await refetch();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   async function handleArchive() {
@@ -97,12 +112,17 @@ export default function JobDetailPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteJob(jobId);
-    router.push("/jobs");
+    setActionError(null);
+    try {
+      await deleteJob(jobId);
+      router.push("/jobs");
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const job = query.data;
   if (!job) return null;
 
@@ -151,6 +171,12 @@ export default function JobDetailPage() {
         </div>
       </div>
 
+      {actionError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
+
       {editing ? (
         <JobForm
           mode="edit"
@@ -161,8 +187,8 @@ export default function JobDetailPage() {
             bill_rate_unit: job.bill_rate_unit,
             markup_pct: "markup_pct" in job ? (job.markup_pct ?? "") : undefined,
             headcount_needed: job.headcount_needed,
-            start_datetime: job.start_datetime,
-            end_datetime: job.end_datetime,
+            start_datetime: timeZone ? utcIsoToOrgLocal(job.start_datetime, timeZone) : "",
+            end_datetime: timeZone ? utcIsoToOrgLocal(job.end_datetime, timeZone) : "",
             po_number: job.po_number ?? "",
             invoice_date: job.invoice_date ?? "",
           }}

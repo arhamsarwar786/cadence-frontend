@@ -8,6 +8,15 @@ const CSRF_COOKIE_NAME = "csrftoken";
 const CSRF_HEADER_NAME = "X-CSRFToken";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+type UnauthorizedHandler = () => void;
+let onUnauthorized: UnauthorizedHandler | null = null;
+
+/** The session provider registers this so any 401 on a data call (expired
+ * session) signs the user out and the route guards redirect to /login. */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  onUnauthorized = handler;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -141,6 +150,8 @@ async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promi
     : await response.text();
 
   if (!response.ok) {
+    // A wrong password on the login door is also a 401 — that is not an expired session.
+    if (response.status === 401 && !path.includes("/api/v1/auth/login/")) onUnauthorized?.();
     throw new ApiError(response.status, data);
   }
 

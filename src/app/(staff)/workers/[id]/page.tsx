@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
@@ -33,10 +34,10 @@ import type { EmployeeWrite } from "@/features/workers/types";
 import { listShifts as listJobShifts, shiftKeys } from "@/features/jobs/api";
 import { documentDownloadUrl } from "@/features/documents/api";
 import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog";
-import { isNotFound, messageFrom } from "@/shared/lib/errors";
+import { isNotFound } from "@/shared/lib/errors";
 import { isActiveEmployee } from "@/features/workers/lifecycle";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
-import { Button, Chip, EmptyState, PDFViewer, Tabs, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Button, Chip, EmptyState, PDFViewer, QueryError, Tabs, PageFrame, PageScrollRegion } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
 
 type MainTab = "resume" | "history" | "personal" | "more";
@@ -67,19 +68,19 @@ export default function WorkerDetailPage() {
     retry: false,
   });
   const skillsQuery = useQuery({
-    queryKey: ["worker-skills", workerId],
+    queryKey: ["workers", workerId, "skills"],
     queryFn: () => listWorkerSkills(workerId),
   });
   const certsQuery = useQuery({
-    queryKey: ["worker-certs", workerId],
+    queryKey: ["workers", workerId, "certs"],
     queryFn: () => listWorkerCerts(workerId),
   });
   const educationQuery = useQuery({
-    queryKey: ["worker-education", workerId],
+    queryKey: ["workers", workerId, "education"],
     queryFn: () => listWorkerEducation(workerId),
   });
   const availabilityQuery = useQuery({
-    queryKey: ["worker-availability", workerId],
+    queryKey: ["workers", workerId, "availability"],
     queryFn: () => listWorkerAvailability(workerId),
     enabled: isActiveEmployee(query.data?.lifecycle_status),
   });
@@ -117,7 +118,9 @@ export default function WorkerDetailPage() {
       emergency_contact_phone: values.emergency_contact_phone || undefined,
       employment_type: values.employment_type || undefined,
       work_authorization: values.work_authorization || undefined,
-      ...(isActiveEmployee(lifecycle)
+      // Backend stopgap: the update rejects work_status on an active
+      // employee unless it's actually changing, so only send it then.
+      ...(isActiveEmployee(lifecycle) && (values.work_status || undefined) !== (query.data?.work_status || undefined)
         ? { work_status: values.work_status || undefined }
         : {}),
       pay_method: values.pay_method || undefined,
@@ -128,9 +131,9 @@ export default function WorkerDetailPage() {
     setEditingProfile(false);
   }
 
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+  if (query.isLoading) return <Loading />;
   if (query.isError) {
-    return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+    return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   }
   const worker = query.data;
   if (!worker) return null;
@@ -282,7 +285,7 @@ export default function WorkerDetailPage() {
             {tab === "resume" ? (
               <div className="flex flex-col gap-4">
                 {docsQuery.isLoading ? (
-                  <p className="text-sm text-cadence-ink/60">Loading résumé…</p>
+                  <Loading label="Loading résumé" />
                 ) : resumeDoc ? (
                   <PDFViewer
                     src={documentDownloadUrl(resumeDoc.document_id)}
@@ -299,7 +302,7 @@ export default function WorkerDetailPage() {
 
             {tab === "history" ? (
               historyQuery.isLoading ? (
-                <p className="text-sm text-cadence-ink/60">Loading…</p>
+                <Loading />
               ) : (
                 <ul className="divide-y divide-border rounded-lg border border-border">
                   {(historyQuery.data?.results ?? []).map((s) => (

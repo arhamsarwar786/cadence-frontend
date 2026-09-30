@@ -1,11 +1,12 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
 import { api } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
-import { isNotFound, messageFrom } from "@/shared/lib/errors";
-import { Chip, PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { isNotFound } from "@/shared/lib/errors";
+import { Chip, PageHeader, PageFrame, PageScrollRegion, QueryError } from "@/shared/ui";
 
 const breachKeys = resourceKeys("privacy-breaches");
 
@@ -30,8 +31,8 @@ export default function BreachDetailPage() {
     retry: false,
   });
   if (query.isError && isNotFound(query.error)) notFound();
-  if (query.isLoading) return <p className="text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const b = query.data;
   if (!b) return null;
 

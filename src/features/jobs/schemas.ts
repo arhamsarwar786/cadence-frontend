@@ -27,7 +27,9 @@ export function jobFormSchema(requireBillRate: boolean) {
     .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/, "Enter a number like 35 or 35.00.")
     .optional()
     .or(z.literal("")),
-  headcount_needed: optionalNumber(z.coerce.number().int().min(1)),
+  headcount_needed: optionalNumber(
+    z.coerce.number().int("Whole number.").min(1, "Headcount must be at least 1."),
+  ),
   start_datetime: z.string().min(1, "Start is required."),
   end_datetime: z.string().min(1, "End is required."),
   po_number: z.string().max(64).optional().or(z.literal("")),

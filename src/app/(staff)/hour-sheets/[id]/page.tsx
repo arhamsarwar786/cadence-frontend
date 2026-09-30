@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
@@ -14,6 +15,7 @@ import {
 import { getHourSheet, hourSheetKeys, listHourSheetLines } from "@/features/jobs/api";
 import { HourSheetStatusBadge } from "@/features/jobs/components/StatusBadges";
 import { hourSheetLineSchema, type HourSheetLineFormValues } from "@/features/jobs/schemas";
+import { PERM } from "@/permissions/keys";
 import { listWorkers } from "@/features/workers/api";
 import { applyFieldErrors, isNotFound, messageFrom } from "@/shared/lib/errors";
 import {
@@ -21,7 +23,7 @@ import {
   type HourSheetStatus,
   type MatchStatus,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Dialog, Field, Input, Select, useConfirm, type BadgeTone, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, PermGate, QueryError, Select, useConfirm, type BadgeTone, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const LINE_FIELD_NAMES = Object.keys(hourSheetLineSchema.shape);
 
@@ -144,13 +146,18 @@ export default function HourSheetDetailPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteHourSheetLine(sheetId, lineId);
-    await refetchLines();
+    setActionError(null);
+    try {
+      await deleteHourSheetLine(sheetId, lineId);
+      await refetchLines();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
-  if (sheetQuery.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+  if (sheetQuery.isLoading) return <Loading />;
   if (sheetQuery.isError) {
-    return <p className="font-body text-sm text-cadence-red">{messageFrom(sheetQuery.error)}</p>;
+    return <QueryError error={sheetQuery.error} onRetry={() => sheetQuery.refetch()} />;
   }
   const sheet = sheetQuery.data;
   if (!sheet) return null;
@@ -171,15 +178,17 @@ export default function HourSheetDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {sheet.status === "received" ? (
-            <Button onClick={handleApprove} disabled={!hasLines || !allMatched}>
-              Approve
-            </Button>
-          ) : (
-            <Button variant="secondary" onClick={handleUnapprove}>
-              Unapprove
-            </Button>
-          )}
+          <PermGate anyOf={PERM.HOURSHEETS_APPROVE}>
+            {sheet.status === "received" ? (
+              <Button onClick={handleApprove} disabled={!hasLines || !allMatched}>
+                Approve
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={handleUnapprove}>
+                Unapprove
+              </Button>
+            )}
+          </PermGate>
         </div>
       </div>
       {sheet.status === "received" && hasLines && !allMatched ? (
@@ -192,13 +201,15 @@ export default function HourSheetDetailPage() {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-subheading text-xl text-cadence-ink">Lines</h2>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            Add line
-          </Button>
+          <PermGate anyOf={PERM.HOURSHEETS_EDIT}>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              Add line
+            </Button>
+          </PermGate>
         </div>
 
         {linesQuery.isLoading ? (
-          <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+          <Loading />
         ) : linesQuery.data && linesQuery.data.length > 0 ? (
           <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
             {linesQuery.data.map((line) => (
@@ -218,9 +229,11 @@ export default function HourSheetDetailPage() {
                       {MATCH_STATUS_LABELS[line.match_status as MatchStatus]}
                     </Badge>
                   ) : null}
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteLine(line.id)}>
-                    Remove
-                  </Button>
+                  <PermGate anyOf={PERM.HOURSHEETS_EDIT}>
+                    <Button size="sm" variant="ghost" onClick={() => handleDeleteLine(line.id)}>
+                      Remove
+                    </Button>
+                  </PermGate>
                 </div>
               </li>
             ))}

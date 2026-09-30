@@ -6,7 +6,7 @@ import { removeDocument, uploadDocument } from "@/features/portal/actions";
 import { listDocuments } from "@/features/portal/api";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/shared/lib/status-labels";
-import { Button, Select, useConfirm } from "@/shared/ui";
+import { Button, QueryError, Select, useConfirm } from "@/shared/ui";
 
 const DEFAULT_UPLOADABLE: DocumentType[] = [
   "resume",
@@ -64,8 +64,13 @@ export function DocumentsPanel({
       danger: true,
     });
     if (!ok) return;
-    await removeDocument(linkId);
-    await invalidate();
+    setError(null);
+    try {
+      await removeDocument(linkId);
+      await invalidate();
+    } catch (err) {
+      setError(messageFrom(err));
+    }
   }
 
   return (
@@ -97,7 +102,9 @@ export function DocumentsPanel({
         </label>
       </div>
       {error ? <p className="font-body text-xs text-cadence-red">{error}</p> : null}
-      {query.data && query.data.length > 0 ? (
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((doc) => (
             <li key={doc.id} className="flex items-start justify-between gap-3 px-4 py-3">

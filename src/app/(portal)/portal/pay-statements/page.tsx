@@ -4,10 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { PayStatementStatusBadge } from "@/features/money/components/StatusBadges";
 import { listPayslips } from "@/features/portal/api";
-import { messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { PayStatementStatus } from "@/shared/lib/status-labels";
-import { ListSkeleton, Table, type Column } from "@/shared/ui";
+import { ListSkeleton, QueryError, Table, type Column } from "@/shared/ui";
 import type { PayStatement } from "@/features/money/types";
 import { PortalFrame } from "../../_components/PortalFrame";
 
@@ -15,6 +14,10 @@ export default function PortalPayStatementsPage() {
   const query = useQuery({ queryKey: ["portal", "pay-statements"], queryFn: listPayslips });
 
   const columns: Column<PayStatement>[] = [
+    {
+      header: "Issued",
+      cell: (p) => new Date(p.created_at).toLocaleDateString("en-CA", { dateStyle: "medium" }),
+    },
     { header: "Gross", cell: (p) => ("gross" in p ? formatMoney(p.gross) : "—") },
     { header: "Net", cell: (p) => ("net_amount" in p ? formatMoney(p.net_amount) : "—") },
     { header: "Hours", cell: (p) => p.hours_total ?? "—" },
@@ -29,14 +32,16 @@ export default function PortalPayStatementsPage() {
           <Link href={`/portal/pay-statements/${p.id}`} className="underline">
             Details
           </Link>
-          <a
-            href={`/api/v1/portal/me/pay-statements/${p.id}/pdf/`}
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            PDF
-          </a>
+          {p.document_id ? (
+            <a
+              href={`/api/v1/portal/me/pay-statements/${p.id}/pdf/`}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              PDF
+            </a>
+          ) : null}
         </div>
       ),
     },
@@ -53,7 +58,7 @@ export default function PortalPayStatementsPage() {
       {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <Table
           columns={columns}

@@ -1,23 +1,27 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
 import { PlacementActions } from "@/app/(staff)/perm-placements/page";
 import { getPlacement, placementKeys } from "@/features/money/api";
-import { isNotFound, messageFrom } from "@/shared/lib/errors";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { formatDate } from "@/shared/lib/datetime";
+import { isNotFound } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Chip, PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Chip, PageHeader, QueryError, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 export default function PlacementDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const timeZone = useOrgTimeZone();
   const query = useQuery({
     queryKey: placementKeys.detail(id),
     queryFn: () => getPlacement(id),
     retry: false,
   });
   if (query.isError && isNotFound(query.error)) notFound();
-  if (query.isLoading) return <p className="text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const p = query.data;
   if (!p) return null;
 
@@ -45,7 +49,7 @@ export default function PlacementDetailPage() {
         </div>
         <div>
           <dt className="text-cadence-ink/60">Confirmed</dt>
-          <dd>{p.confirmed_at ?? "—"}</dd>
+          <dd>{timeZone ? formatDate(p.confirmed_at, timeZone) : "—"}</dd>
         </div>
       </dl>
       <PlacementActions id={id} />

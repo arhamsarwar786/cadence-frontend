@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { BrandLockup, Tooltip } from "@/shared/ui";
+import { useState, type ReactNode } from "react";
+import { useSession } from "@/auth/session-context";
+import { BrandLockup, Button, Tooltip } from "@/shared/ui";
 
 /** Full-viewport cream canvas so a missing API never leaves a blank page. */
 export function StatusScreen({
@@ -20,15 +23,28 @@ export function StatusScreen({
 }
 
 export function BackendDownScreen() {
+  const { refresh } = useSession();
+  const [retrying, setRetrying] = useState(false);
+
+  async function retry() {
+    setRetrying(true);
+    try {
+      await refresh();
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   return (
     <StatusScreen title="The API isn’t running">
       <p>
-        The frontend is up. It proxies{" "}
-        <span className="font-fine text-cadence-ink">/api/v1</span> to{" "}
-        <span className="font-fine text-cadence-ink">https://api.app-cadence.com</span>. Refresh when
-        that host is reachable, or open sign-in to keep browsing the UI.
+        The frontend is up, but it can’t reach the API right now. Try again in a moment, or open
+        sign-in to keep browsing the UI.
       </p>
-      <p className="mt-6">
+      <p className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Button onClick={retry} disabled={retrying}>
+          {retrying ? "Retrying…" : "Retry"}
+        </Button>
         <Tooltip content="Open the shared sign-in page">
           <Link
             href="/login"

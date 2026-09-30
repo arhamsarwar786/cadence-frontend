@@ -18,6 +18,7 @@ import {
   PageHeader,
   Pagination,
   PermGate,
+  QueryError,
   Select,
   Table,
   useConfirm,
@@ -79,8 +80,13 @@ export default function DocumentsPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteDocument(id);
-    await invalidate();
+    setError(null);
+    try {
+      await deleteDocument(id);
+      await invalidate();
+    } catch (err) {
+      setError(messageFrom(err));
+    }
   }
 
   function goToPage(nextPage: number) {
@@ -185,7 +191,7 @@ export default function DocumentsPage() {
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <ListLayout>
           <div className="flex flex-col gap-4">

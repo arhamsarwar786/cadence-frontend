@@ -11,6 +11,7 @@ import { hourSheetKeys, listHourSheets, listJobs } from "@/features/jobs/api";
 import { HourSheetStatusBadge } from "@/features/jobs/components/StatusBadges";
 import { hourSheetSchema, type HourSheetFormValues } from "@/features/jobs/schemas";
 import type { HourSheet } from "@/features/jobs/types";
+import { ListError } from "@/features/jobs/components/ListError";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { HourSheetStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
@@ -144,7 +145,12 @@ export default function HourSheetsListPage() {
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <ListError
+            error={query.error}
+            page={page}
+            onRetry={() => query.refetch()}
+            onFirstPage={() => goToPage(1)}
+          />
       ) : (
         <>
           <Table

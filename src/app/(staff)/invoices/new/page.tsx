@@ -1,5 +1,7 @@
 "use client";
 
+import { PERM } from "@/permissions/keys";
+import { useHasPerm } from "@/shared/ui/PermGate";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -32,9 +34,11 @@ export default function NewInvoicePage() {
   const [autofillJobId, setAutofillJobId] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const canViewOrg = useHasPerm(PERM.ADMIN_ORG_VIEW);
   const orgQuery = useQuery({
     queryKey: orgKeys.settings,
     queryFn: getOrgSettings,
+    enabled: canViewOrg,
   });
 
   const {

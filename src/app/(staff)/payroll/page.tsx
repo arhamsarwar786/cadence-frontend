@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,10 +12,11 @@ import { PayrollRunStatusBadge } from "@/features/money/components/StatusBadges"
 import { payrollRunCreateSchema, type PayrollRunCreateFormValues } from "@/features/money/schemas";
 import type { PayCycle, PayrollRun } from "@/features/money/types";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { ListError } from "@/features/jobs/components/ListError";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { PayrollRunStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, QueryError, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(payrollRunCreateSchema.shape);
@@ -80,6 +82,7 @@ export default function PayrollRunsPage() {
     },
   });
   const [genError, setGenError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   function goToPage(nextPage: number) {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(nextPage));
@@ -107,7 +110,10 @@ export default function PayrollRunsPage() {
             <PermGate anyOf={PERM.PAYROLL_RUN}>
               <Button
                 variant="secondary"
+                disabled={generating}
                 onClick={async () => {
+                  if (generating) return;
+                  setGenerating(true);
                   setGenError(null);
                   try {
                     const run = await generatePayrollRun();
@@ -115,6 +121,8 @@ export default function PayrollRunsPage() {
                     router.push(`/payroll/runs/${run.id}`);
                   } catch (error) {
                     setGenError(messageFrom(error));
+                  } finally {
+                    setGenerating(false);
                   }
                 }}
               >
@@ -134,7 +142,9 @@ export default function PayrollRunsPage() {
           Pay cycles
         </h2>
         {cyclesQuery.isLoading ? (
-          <p className="text-sm text-cadence-ink/50">Loading…</p>
+          <Loading />
+        ) : cyclesQuery.isError ? (
+          <QueryError error={cyclesQuery.error} onRetry={() => cyclesQuery.refetch()} />
         ) : cycles.length === 0 ? (
           <p className="text-sm text-cadence-ink/50">No pay cycles configured yet.</p>
         ) : (
@@ -160,7 +170,12 @@ export default function PayrollRunsPage() {
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <ListError
+            error={query.error}
+            page={page}
+            onRetry={() => query.refetch()}
+            onFirstPage={() => goToPage(1)}
+          />
       ) : (
         <ListLayout
           stats={[

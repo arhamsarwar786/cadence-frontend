@@ -9,7 +9,7 @@ import { listCerts } from "@/features/portal/api";
 import { portalCertSchema, type PortalCertFormValues } from "@/features/portal/schemas";
 import type { PortalCert } from "@/features/portal/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
+import { Button, Dialog, Field, Input, QueryError, useConfirm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(portalCertSchema.shape);
 const QUERY_KEY = ["portal", "certs"] as const;
@@ -32,6 +32,7 @@ export function CertsPanel() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PortalCert | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const {
     register,
@@ -84,7 +85,6 @@ export function CertsPanel() {
     } catch (error) {
       const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
       if (formMessage) setFormError(formMessage);
-      else setFormError(messageFrom(error));
     }
   }
 
@@ -96,8 +96,13 @@ export function CertsPanel() {
       danger: true,
     });
     if (!ok) return;
-    await deleteCert(id);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteCert(id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -108,7 +113,10 @@ export function CertsPanel() {
           Add certification
         </Button>
       </div>
-      {query.data && query.data.length > 0 ? (
+      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((cert) => (
             <li key={cert.id} className="flex items-start justify-between gap-3 px-4 py-3">

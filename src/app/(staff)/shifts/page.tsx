@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,6 +13,7 @@ import { shiftMarkSchema, type ShiftMarkFormValues } from "@/features/jobs/schem
 import type { Shift } from "@/features/jobs/types";
 import { listWorkers } from "@/features/workers/api";
 import { PERM } from "@/permissions/keys";
+import { ListError } from "@/features/jobs/components/ListError";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { ShiftStatus } from "@/shared/lib/status-labels";
 import {
@@ -45,6 +47,7 @@ export default function ShiftsListPage() {
   const [markTarget, setMarkTarget] = useState<Shift | null>(null);
   const [backfillTarget, setBackfillTarget] = useState<Shift | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const jobsQuery = useQuery({
     queryKey: ["jobs-picker"],
@@ -106,16 +109,31 @@ export default function ShiftsListPage() {
       await markShiftNotWorked(markTarget.id, values);
       await invalidate();
       reset();
-      setMarkTarget(null);
+      closeMark();
     } catch (error) {
       const banner = applyFieldErrors(setError, error, FIELD_NAMES);
       if (banner) setFormError(banner);
     }
   }
 
+  function openMark(shift: Shift) {
+    setFormError(null);
+    setMarkTarget(shift);
+  }
+
+  function closeMark() {
+    setFormError(null);
+    setMarkTarget(null);
+  }
+
   async function handleClearMark(shift: Shift) {
-    await clearShiftMark(shift.id);
-    await invalidate();
+    setActionError(null);
+    try {
+      await clearShiftMark(shift.id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   const shiftColumns: Column<Shift>[] = [
@@ -144,7 +162,7 @@ export default function ShiftsListPage() {
           ) : null}
           {s.status === "scheduled" ? (
             <PermGate anyOf={PERM.SHIFTS_EDIT}>
-              <Button size="sm" variant="secondary" onClick={() => setMarkTarget(s)}>
+              <Button size="sm" variant="secondary" onClick={() => openMark(s)}>
                 Mark not worked
               </Button>
             </PermGate>
@@ -205,12 +223,22 @@ export default function ShiftsListPage() {
       </div>
 
       <PageBody>
+        {actionError ? (
+          <p role="alert" className="mb-3 font-body text-sm text-cadence-red">
+            {actionError}
+          </p>
+        ) : null}
 
 
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <ListError
+            error={query.error}
+            page={page}
+            onRetry={() => query.refetch()}
+            onFirstPage={() => setParams({ page: "1" })}
+          />
       ) : (
         <ListLayout>
           <div className="flex flex-col gap-4">
@@ -232,7 +260,7 @@ export default function ShiftsListPage() {
         </ListLayout>
       )}
 
-      <Dialog open={markTarget !== null} onClose={() => setMarkTarget(null)} title="Mark not worked">
+      <Dialog open={markTarget !== null} onClose={() => closeMark()} title="Mark not worked">
         <form onSubmit={handleSubmit(submitMark)} noValidate className="flex flex-col gap-4">
           <Field label="Reason" htmlFor="mark-reason" error={errors.reason?.message}>
             <Select id="mark-reason" {...register("reason")}>
@@ -246,7 +274,7 @@ export default function ShiftsListPage() {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : "Save"}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setMarkTarget(null)}>
+            <Button type="button" variant="secondary" onClick={() => closeMark()}>
               Cancel
             </Button>
           </div>
@@ -259,7 +287,7 @@ export default function ShiftsListPage() {
         title="Who can cover this shift"
       >
         {backfillQuery.isLoading ? (
-          <p className="text-sm text-on-card-muted">Loading…</p>
+          <Loading />
         ) : backfillQuery.isError ? (
           <p className="text-sm text-cadence-red">{messageFrom(backfillQuery.error)}</p>
         ) : (

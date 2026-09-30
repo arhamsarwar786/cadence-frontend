@@ -13,7 +13,6 @@ import {
 } from "@/features/workers/api";
 import type { EmployeeList } from "@/features/workers/types";
 import { PERM } from "@/permissions/keys";
-import { messageFrom } from "@/shared/lib/errors";
 import { matchesQuery } from "@/shared/lib/matches";
 import { isActiveEmployee } from "@/features/workers/lifecycle";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
@@ -30,6 +29,7 @@ import {
   PageHeader,
   Pagination,
   PermGate,
+  QueryError,
   SearchField,
   Select,
   Table,
@@ -238,7 +238,7 @@ export default function WorkersListPage() {
         {query.isLoading ? (
           <ListSkeleton />
         ) : query.isError ? (
-          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+          <QueryError error={query.error} onRetry={() => query.refetch()} />
         ) : (
           <ListLayout
           stats={[

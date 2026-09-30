@@ -2,13 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, type Paginated } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { listUsersNormalized, userKeys } from "@/features/accounts/api";
+import { readKnownUserLogins } from "@/features/accounts/roster-access";
+import { PERM } from "@/permissions/keys";
 import { formatDateTime } from "@/shared/lib/datetime";
-import { messageFrom } from "@/shared/lib/errors";
-import { Button, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, Select, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
+import { Button, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, QueryError, Select, Table, type Column, PageFrame, PageBody, useHasPerm } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const auditKeys = resourceKeys("audit");
@@ -58,6 +60,29 @@ export default function AuditLogPage() {
       }),
   });
 
+  // Resolve actor ids to a readable login when the caller may list users;
+  // otherwise fall back to a short label rather than a raw UUID.
+  const canListUsers = useHasPerm(PERM.ADMIN_USERS_VIEW);
+  const usersQuery = useQuery({
+    queryKey: userKeys.list({ pageSize: 200 }),
+    queryFn: () => listUsersNormalized({ pageSize: 200 }),
+    enabled: canListUsers,
+  });
+  const actorLabels = useMemo(() => {
+    const known = readKnownUserLogins();
+    const map = new Map<string, string>();
+    for (const u of usersQuery.data ?? []) {
+      const label = known[u.id] ?? u.login_masked;
+      if (label) map.set(u.id, label);
+    }
+    return map;
+  }, [usersQuery.data]);
+
+  function actorLabel(id: string | null): string {
+    if (!id) return "System";
+    return actorLabels.get(id) ?? `User ····${id.slice(-4)}`;
+  }
+
   function setParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams);
     for (const [k, v] of Object.entries(patch)) {
@@ -72,7 +97,7 @@ export default function AuditLogPage() {
       header: "When",
       cell: (r) => (timeZone ? formatDateTime(r.created_at, timeZone) : "—"),
     },
-    { header: "Actor", cell: (r) => r.actor_id ?? "—" },
+    { header: "Actor", cell: (r) => actorLabel(r.actor_id) },
     { header: "Action", cell: (r) => r.action },
     { header: "Entity", cell: (r) => `${r.entity_type}${r.entity_id ? ` · ${r.entity_id.slice(0, 8)}` : ""}` },
   ];
@@ -117,7 +142,7 @@ export default function AuditLogPage() {
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <ListLayout stats={[{ value: query.data?.count ?? 0, label: "entries", tone: "ink" }]}>
           <Table

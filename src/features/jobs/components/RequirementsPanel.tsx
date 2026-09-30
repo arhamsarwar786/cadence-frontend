@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -21,6 +22,7 @@ export function RequirementsPanel({ jobId }: { jobId: string }) {
   const skillsQuery = useQuery({ queryKey: ["skills-catalog"], queryFn: listSkillsCatalog });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -63,8 +65,13 @@ export function RequirementsPanel({ jobId }: { jobId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteRequirement(jobId, id);
-    await invalidate();
+    setListError(null);
+    try {
+      await deleteRequirement(jobId, id);
+      await invalidate();
+    } catch (error) {
+      setListError(messageFrom(error));
+    }
   }
 
   return (
@@ -76,8 +83,13 @@ export function RequirementsPanel({ jobId }: { jobId: string }) {
         </Button>
       </div>
 
+      {listError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {listError}
+        </p>
+      ) : null}
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((r) => (

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -19,6 +20,7 @@ export function EducationPanel({ workerId }: { workerId: string }) {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -56,8 +58,13 @@ export function EducationPanel({ workerId }: { workerId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteEducation(workerId, rowId);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteEducation(workerId, rowId);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -69,8 +76,14 @@ export function EducationPanel({ workerId }: { workerId: string }) {
         </Button>
       </div>
 
+      {actionError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
+
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((row) => (

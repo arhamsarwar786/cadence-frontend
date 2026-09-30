@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listSignatureRequests, revokeSignatureRequest, signatureRequestKeys } from "@/features/esign/api";
 import type { SignatureRequest } from "@/features/esign/types";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { PERM } from "@/permissions/keys";
-import { Badge, Button, ListSkeleton, Pagination, PermGate, Table, useConfirm, type Column, PageFrame, PageBody } from "@/shared/ui";
+import { Badge, Button, ListSkeleton, Pagination, PermGate, QueryError, Table, useConfirm, type Column, PageFrame, PageBody } from "@/shared/ui";
 import { formatDate } from "@/shared/lib/datetime";
 import { messageFrom } from "@/shared/lib/errors";
 import {
@@ -25,6 +26,7 @@ export default function EsignPage() {
   const timeZone = useOrgTimeZone();
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const [revokeError, setRevokeError] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: signatureRequestKeys.list({ page }),
@@ -45,8 +47,13 @@ export default function EsignPage() {
       danger: true,
     });
     if (!ok) return;
-    await revokeSignatureRequest(id);
-    await queryClient.invalidateQueries({ queryKey: signatureRequestKeys.all });
+    setRevokeError(null);
+    try {
+      await revokeSignatureRequest(id);
+      await queryClient.invalidateQueries({ queryKey: signatureRequestKeys.all });
+    } catch (err) {
+      setRevokeError(messageFrom(err));
+    }
   }
 
   const columns: Column<SignatureRequest>[] = [
@@ -77,11 +84,16 @@ export default function EsignPage() {
     <PageFrame>
       <h1 className="font-heading text-3xl text-cadence-ink">E-sign</h1>
       <PageBody>
+        {revokeError ? (
+          <p role="alert" className="font-body text-sm text-cadence-red">
+            {revokeError}
+          </p>
+        ) : null}
 
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <>
           <Table columns={columns} rows={query.data?.results ?? []} rowKey={(r) => r.id} emptyMessage="No signature requests." />

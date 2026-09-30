@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -22,6 +23,7 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const {
     register,
     handleSubmit,
@@ -58,15 +60,27 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteShiftPattern(jobId, id);
-    await invalidate();
+    setNotice(null);
+    try {
+      await deleteShiftPattern(jobId, id);
+      await invalidate();
+    } catch (error) {
+      setNotice({ tone: "error", text: messageFrom(error) });
+    }
   }
 
   async function handleRegenerate() {
     setRegenerating(true);
+    setNotice(null);
     try {
       await regenerateShifts(jobId);
-      await queryClient.invalidateQueries({ queryKey: ["jobs", jobId, "assignments"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["jobs", jobId, "assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["jobs", jobId, "shifts"] }),
+      ]);
+      setNotice({ tone: "ok", text: "Shifts regenerated." });
+    } catch (error) {
+      setNotice({ tone: "error", text: messageFrom(error) });
     } finally {
       setRegenerating(false);
     }
@@ -86,8 +100,16 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
         </div>
       </div>
 
+      {notice ? (
+        <p
+          role={notice.tone === "error" ? "alert" : "status"}
+          className={`font-body text-sm ${notice.tone === "error" ? "text-cadence-red" : "text-cadence-ink/70"}`}
+        >
+          {notice.text}
+        </p>
+      ) : null}
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((p) => (

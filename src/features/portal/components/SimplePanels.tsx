@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -51,7 +52,10 @@ import type {
 import { DAYS_OF_WEEK } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { TIME_OFF_TYPE_LABELS } from "@/shared/lib/status-labels";
-import { Button, Dialog, EmptyState, Field, Input, Select, useConfirm } from "@/shared/ui";
+import { Button, Dialog, EmptyState, Field, Input, QueryError, Select, useConfirm } from "@/shared/ui";
+
+/** API times come back as HH:MM:SS; show and edit HH:MM. */
+const hhmm = (t: string) => t.slice(0, 5);
 
 const DAY_LABEL = new Map<number, string>(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
 
@@ -63,6 +67,8 @@ export function SkillsPanel() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PortalSkill | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalSkillLinkSchema.shape);
   const {
     register,
@@ -95,7 +101,6 @@ export function SkillsPanel() {
     try {
       if (editing) {
         await updateSkill(editing.skill_id, {
-          skill_id: values.skill_id,
           years_exp: values.years_exp || undefined,
         });
       } else {
@@ -108,7 +113,23 @@ export function SkillsPanel() {
     } catch (error) {
       const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
       if (formMessage) setFormError(formMessage);
-      else setFormError(messageFrom(error));
+    }
+  }
+
+  async function handleRemove(row: PortalSkill) {
+    const ok = await confirm({
+      title: `Remove ${row.skill_name}?`,
+      body: "This skill will be removed from your profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
+    setActionError(null);
+    try {
+      await removeSkill(row.skill_id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
     }
   }
 
@@ -120,7 +141,10 @@ export function SkillsPanel() {
           Add skill
         </Button>
       </div>
-      {query.data && query.data.length > 0 ? (
+      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-wrap gap-2">
           {query.data.map((row) => (
             <li
@@ -139,7 +163,7 @@ export function SkillsPanel() {
               </button>
               <button
                 type="button"
-                onClick={() => removeSkill(row.skill_id).then(invalidate)}
+                onClick={() => handleRemove(row)}
                 className="text-cadence-ink/50 hover:text-cadence-red"
                 aria-label={`Remove ${row.skill_name}`}
               >
@@ -191,6 +215,7 @@ export function SkillsPanel() {
           </div>
         </form>
       </Dialog>
+      {confirmDialog}
     </section>
   );
 }
@@ -205,6 +230,7 @@ export function AvailabilityPanel() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PortalAvailability | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalAvailabilitySchema.shape);
   const {
@@ -232,8 +258,8 @@ export function AvailabilityPanel() {
     setEditing(row);
     reset({
       day_of_week: row.day_of_week,
-      start_time: row.start_time,
-      end_time: row.end_time,
+      start_time: hhmm(row.start_time),
+      end_time: hhmm(row.end_time),
     });
     setFormError(null);
     setOpen(true);
@@ -254,7 +280,6 @@ export function AvailabilityPanel() {
     } catch (error) {
       const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
       if (formMessage) setFormError(formMessage);
-      else setFormError(messageFrom(error));
     }
   }
 
@@ -266,12 +291,17 @@ export function AvailabilityPanel() {
       danger: true,
     });
     if (!ok) return;
-    await deleteAvailability(id);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteAvailability(id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   if (meQuery.isLoading) {
-    return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+    return <Loading />;
   }
 
   if (!canEdit) {
@@ -292,12 +322,15 @@ export function AvailabilityPanel() {
           Add window
         </Button>
       </div>
-      {query.data && query.data.length > 0 ? (
+      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
               <p className="min-w-0 font-body text-sm text-cadence-ink">
-                {DAY_LABEL.get(row.day_of_week)} · {row.start_time}–{row.end_time}
+                {DAY_LABEL.get(row.day_of_week)} · {hhmm(row.start_time)}–{hhmm(row.end_time)}
               </p>
               <div className="flex shrink-0 gap-1">
                 <Button size="sm" variant="ghost" onClick={() => openEdit(row)}>
@@ -367,6 +400,7 @@ export function EducationPanel() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PortalEducation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalEducationSchema.shape);
   const {
@@ -417,7 +451,6 @@ export function EducationPanel() {
     } catch (error) {
       const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
       if (formMessage) setFormError(formMessage);
-      else setFormError(messageFrom(error));
     }
   }
 
@@ -429,8 +462,13 @@ export function EducationPanel() {
       danger: true,
     });
     if (!ok) return;
-    await deleteEducation(id);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteEducation(id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -441,7 +479,10 @@ export function EducationPanel() {
           Add entry
         </Button>
       </div>
-      {query.data && query.data.length > 0 ? (
+      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
@@ -510,6 +551,7 @@ export function EmploymentHistoryPanel() {
   const query = useQuery({ queryKey, queryFn: listEmploymentHistory });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalEmploymentHistorySchema.shape);
   const {
@@ -553,8 +595,13 @@ export function EmploymentHistoryPanel() {
       danger: true,
     });
     if (!ok) return;
-    await deleteEmploymentHistory(id);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteEmploymentHistory(id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -565,7 +612,10 @@ export function EmploymentHistoryPanel() {
           Add entry
         </Button>
       </div>
-      {query.data && query.data.length > 0 ? (
+      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">
@@ -621,6 +671,7 @@ export function TimeOffPanel() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PortalTimeOff | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
   const FIELD_NAMES = Object.keys(portalTimeOffSchema.shape);
   const {
@@ -668,7 +719,6 @@ export function TimeOffPanel() {
     } catch (error) {
       const formMessage = applyFieldErrors(setError, error, FIELD_NAMES);
       if (formMessage) setFormError(formMessage);
-      else setFormError(messageFrom(error));
     }
   }
 
@@ -680,8 +730,13 @@ export function TimeOffPanel() {
       danger: true,
     });
     if (!ok) return;
-    await deleteTimeOff(id);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteTimeOff(id);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -692,7 +747,10 @@ export function TimeOffPanel() {
           Add entry
         </Button>
       </div>
-      {query.data && query.data.length > 0 ? (
+      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
+      {query.isError ? (
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
+      ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
           {query.data.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-2 px-4 py-3">

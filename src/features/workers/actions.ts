@@ -240,6 +240,14 @@ export function uploadDocument(file: File, type: string): Promise<Document> {
   return api.post<Document>("/api/v1/documents/", formData);
 }
 
+/** PII upload door — /documents/ refuses gov_id; this one encrypts and wants pii.govid.edit. */
+export function uploadGovIdDocument(file: File): Promise<Document> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("type", "gov_id");
+  return api.post<Document>("/api/v1/documents/gov-id/", formData);
+}
+
 export function attachWorkerDocument(
   workerId: string,
   body: EmployeeDocumentAttach,

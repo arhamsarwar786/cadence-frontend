@@ -19,7 +19,11 @@ const optionalStr = (max: number) => z.string().max(max).optional().or(z.literal
 export const workerProfileSchema = z.object({
   first_name: z.string().min(1, "First name is required.").max(150),
   last_name: z.string().min(1, "Last name is required.").max(150),
-  email: z.string().email("Enter a valid email.").max(254).optional().or(z.literal("")),
+  email: z
+    .string()
+    .min(1, "Email is required.")
+    .email("Enter a valid email.")
+    .max(254),
   phone: optionalStr(24),
   pronouns: optionalStr(64),
   address_line_1: optionalStr(255),
@@ -67,11 +71,16 @@ export const certSchema = z.object({
 
 export type CertFormValues = z.infer<typeof certSchema>;
 
-export const availabilitySchema = z.object({
-  day_of_week: z.coerce.number().int().min(1).max(7),
-  start_time: z.string().min(1, "Start time is required."),
-  end_time: z.string().min(1, "End time is required."),
-});
+export const availabilitySchema = z
+  .object({
+    day_of_week: z.coerce.number().int().min(1).max(7),
+    start_time: z.string().min(1, "Start time is required."),
+    end_time: z.string().min(1, "End time is required."),
+  })
+  .refine((v) => !v.start_time || !v.end_time || v.end_time > v.start_time, {
+    message: "End time must be after start time.",
+    path: ["end_time"],
+  });
 
 export type AvailabilityFormValues = z.infer<typeof availabilitySchema>;
 

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { AuthSplitLayout } from "@/app/(public)/_components/AuthSplitLayout";
+import { takeNextPath } from "@/auth/next-path";
 import { useSession } from "@/auth/session-context";
 import { login as loginAction } from "@/features/accounts/actions";
 import { loginSchema, type LoginFormValues } from "@/features/accounts/schemas";
@@ -52,6 +53,8 @@ export default function AgencyLoginPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const stayOnSuccess = useRef(false);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Deep link the visitor was originally after (validated same-origin path). */
+  const nextPath = useRef<string | null>(null);
 
   const {
     register,
@@ -60,9 +63,10 @@ export default function AgencyLoginPage() {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
+    if (nextPath.current === null) nextPath.current = takeNextPath();
     if (stayOnSuccess.current || step === 3) return;
     if (!isLoading && session) {
-      router.replace(session.user.user_type === "worker" ? "/portal" : "/");
+      router.replace(session.user.user_type === "worker" ? "/portal" : (nextPath.current ?? "/"));
     }
   }, [isLoading, session, router, step]);
 
@@ -95,7 +99,7 @@ export default function AgencyLoginPage() {
 
   function goToDashboard() {
     if (redirectTimer.current) clearTimeout(redirectTimer.current);
-    router.replace("/");
+    router.replace(nextPath.current ?? "/");
   }
 
   async function onSubmit(values: LoginFormValues) {
@@ -132,7 +136,7 @@ export default function AgencyLoginPage() {
       setTasks(nextTasks);
       setStep(3);
       redirectTimer.current = setTimeout(() => {
-        router.replace("/");
+        router.replace(nextPath.current ?? "/");
       }, SUCCESS_REDIRECT_MS);
     } catch (error) {
       stayOnSuccess.current = false;

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
@@ -13,12 +14,26 @@ import {
 import { creditNoteKeys, getCreditNote } from "@/features/money/api";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Button, Chip, PageHeader, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import {
+  Button,
+  Chip,
+  PageHeader,
+  PageFrame,
+  PageScrollRegion,
+  PermGate,
+  QueryError,
+  useConfirm,
+  useToast,
+} from "@/shared/ui";
 
 export default function CreditNoteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const toast = useToast();
   const query = useQuery({
     queryKey: creditNoteKeys.detail(id),
     queryFn: () => getCreditNote(id),
@@ -26,19 +41,34 @@ export default function CreditNoteDetailPage() {
   });
 
   if (query.isError && isNotFound(query.error)) notFound();
-  if (query.isLoading) return <p className="text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const note = query.data;
   if (!note) return null;
 
-  async function act(fn: () => Promise<unknown>) {
+  async function act(fn: () => Promise<unknown>, successMessage?: string) {
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
       await fn();
       await queryClient.invalidateQueries({ queryKey: creditNoteKeys.detail(id) });
+      if (successMessage) toast.success(successMessage);
     } catch (err) {
       setError(messageFrom(err));
+    } finally {
+      setBusy(false);
     }
+  }
+
+  async function handleVoid() {
+    const ok = await confirm({
+      title: "Void this credit note?",
+      body: "A voided credit note no longer offsets the invoice. This cannot be undone from this screen.",
+      confirmLabel: "Void credit note",
+      danger: true,
+    });
+    if (ok) await act(() => voidCreditNote(id));
   }
 
   return (
@@ -61,23 +91,46 @@ export default function CreditNoteDetailPage() {
       {error ? <p className="text-sm text-cadence-red">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         {note.status === "draft" && !note.voided_at ? (
-          <Button onClick={() => act(() => approveCreditNote(id))}>Approve</Button>
+          <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
+            <Button disabled={busy} onClick={() => act(() => approveCreditNote(id))}>
+              Approve
+            </Button>
+          </PermGate>
         ) : null}
         {note.status === "approved" && !note.voided_at ? (
           <>
-            <Button variant="secondary" onClick={() => act(() => unapproveCreditNote(id))}>
-              Unapprove
-            </Button>
-            <Button onClick={() => act(() => issueCreditNote(id))}>Issue</Button>
+            <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => act(() => unapproveCreditNote(id))}
+              >
+                Unapprove
+              </Button>
+            </PermGate>
+            <PermGate anyOf={PERM.INVOICES_SEND}>
+              <Button disabled={busy} onClick={() => act(() => issueCreditNote(id))}>
+                Issue
+              </Button>
+            </PermGate>
           </>
         ) : null}
         {note.status === "issued" && !note.voided_at ? (
-          <Button onClick={() => act(() => sendCreditNote(id))}>Send</Button>
+          <PermGate anyOf={PERM.INVOICES_SEND}>
+            <Button
+              disabled={busy}
+              onClick={() => act(() => sendCreditNote(id), "Credit note sent.")}
+            >
+              Send
+            </Button>
+          </PermGate>
         ) : null}
         {!note.voided_at ? (
-          <Button variant="danger" onClick={() => act(() => voidCreditNote(id))}>
-            Void
-          </Button>
+          <PermGate anyOf={[PERM.CLIENTS_INVOICE_EDIT, PERM.INVOICES_SEND]}>
+            <Button variant="danger" disabled={busy} onClick={handleVoid}>
+              Void
+            </Button>
+          </PermGate>
         ) : null}
         <a href={`/api/v1/credit-notes/${id}/pdf/`} target="_blank" rel="noreferrer" className="underline text-sm self-center">
           PDF
@@ -91,6 +144,7 @@ export default function CreditNoteDetailPage() {
           </li>
         ))}
       </ul>
+      {confirmDialog}
     </PageScrollRegion>
     </PageFrame>
   );

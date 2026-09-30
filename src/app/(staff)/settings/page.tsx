@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -18,7 +19,7 @@ import {
 import { hasAnyPerm } from "@/permissions/has-perm";
 import { PERM } from "@/permissions/keys";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Field, Input, Select, Textarea } from "@/shared/ui";
+import { Button, Field, Input, QueryError, Select, Textarea } from "@/shared/ui";
 
 const PROVINCES = [
   "AB",
@@ -219,9 +220,9 @@ export default function SettingsPage() {
       </div>
 
       {orgQuery.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : orgQuery.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(orgQuery.error)}</p>
+        <QueryError error={orgQuery.error} onRetry={() => orgQuery.refetch()} />
       ) : org ? (
         <form onSubmit={handleSubmit(onSave)} noValidate className="flex flex-col gap-8">
           <section className="flex flex-col gap-3">

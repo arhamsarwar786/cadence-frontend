@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -12,7 +13,8 @@ import {
 import { listWorkerCerts } from "@/features/workers/api";
 import { certSchema, type CertFormValues } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Dialog, Field, Input, useConfirm, useHasPerm } from "@/shared/ui";
 
 const FIELD_NAMES = Object.keys(certSchema.shape);
 
@@ -21,8 +23,10 @@ export function CertsPanel({ workerId }: { workerId: string }) {
   const queryKey = ["workers", workerId, "certs"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerCerts(workerId) });
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const canVerify = useHasPerm(PERM.WORKERS_PROFILE_MANAGE);
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -60,13 +64,23 @@ export function CertsPanel({ workerId }: { workerId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteWorkerCert(workerId, certId);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteWorkerCert(workerId, certId);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   async function handleVerify(certId: string) {
-    await verifyWorkerCert(workerId, certId);
-    await invalidate();
+    setActionError(null);
+    try {
+      await verifyWorkerCert(workerId, certId);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -78,8 +92,14 @@ export function CertsPanel({ workerId }: { workerId: string }) {
         </Button>
       </div>
 
+      {actionError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
+
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((cert) => (
@@ -98,7 +118,7 @@ export function CertsPanel({ workerId }: { workerId: string }) {
                 </p>
               </div>
               <div className="flex gap-2">
-                {!cert.is_verified ? (
+                {!cert.is_verified && canVerify ? (
                   <Button size="sm" variant="secondary" onClick={() => handleVerify(cert.id)}>
                     Verify
                   </Button>

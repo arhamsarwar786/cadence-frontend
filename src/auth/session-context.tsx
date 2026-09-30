@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { ApiError } from "@/api/client";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { ApiError, setUnauthorizedHandler } from "@/api/client";
 import { getMe } from "@/features/accounts/api";
 import type { CurrentSession } from "@/features/accounts/types";
 import { isUnreachable } from "@/shared/lib/errors";
@@ -53,6 +53,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     refetchOnMount: false,
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => queryClient.setQueryData(SESSION_QUERY_KEY, null));
+    return () => setUnauthorizedHandler(null);
+  }, [queryClient]);
 
   const isSignedOut =
     query.data === null ||

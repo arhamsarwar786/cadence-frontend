@@ -10,7 +10,12 @@ export function makeQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         staleTime: 30_000,
-        retry: 1,
+        // Retrying a 4xx (403/404/400) can't change the answer and only delays the error UI.
+        retry: (failureCount, error) => {
+          const status = (error as { status?: number }).status;
+          if (typeof status === "number" && status >= 400 && status < 500) return false;
+          return failureCount < 1;
+        },
       },
     },
   });

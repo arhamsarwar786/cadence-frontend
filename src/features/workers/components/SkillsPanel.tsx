@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -19,6 +20,7 @@ export function SkillsPanel({ workerId }: { workerId: string }) {
   const catalogQuery = useQuery({ queryKey: ["skills-catalog"], queryFn: listSkillsCatalog });
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -45,8 +47,13 @@ export function SkillsPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleRemove(skillId: string) {
-    await removeWorkerSkill(workerId, skillId);
-    await invalidate();
+    setActionError(null);
+    try {
+      await removeWorkerSkill(workerId, skillId);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -58,8 +65,14 @@ export function SkillsPanel({ workerId }: { workerId: string }) {
         </Button>
       </div>
 
+      {actionError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
+
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-wrap gap-2">
           {query.data.map((row) => (
@@ -73,7 +86,7 @@ export function SkillsPanel({ workerId }: { workerId: string }) {
               ) : null}
               <button
                 type="button"
-                onClick={() => handleRemove(row.id)}
+                onClick={() => handleRemove(row.skill_id)}
                 className="text-cadence-ink/50 hover:text-cadence-red"
                 aria-label={`Remove ${row.skill_name}`}
               >

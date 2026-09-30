@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -11,7 +12,8 @@ import {
 import { listWorkerDocuments } from "@/features/workers/api";
 import { messageFrom } from "@/shared/lib/errors";
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/shared/lib/status-labels";
-import { Button, Select, useConfirm } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Select, useConfirm, useHasPerm } from "@/shared/ui";
 
 const UPLOADABLE_TYPES: DocumentType[] = ["resume", "cert", "work_permit", "study_permit", "other"];
 
@@ -23,6 +25,7 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const canVerify = useHasPerm(PERM.WORKERS_PROFILE_MANAGE);
 
   function invalidate() {
     return queryClient.invalidateQueries({ queryKey });
@@ -43,8 +46,13 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
   }
 
   async function handleVerify(linkId: string) {
-    await verifyWorkerDocument(workerId, linkId);
-    await invalidate();
+    setError(null);
+    try {
+      await verifyWorkerDocument(workerId, linkId);
+      await invalidate();
+    } catch (err) {
+      setError(messageFrom(err));
+    }
   }
 
   async function handleRemove(linkId: string) {
@@ -55,8 +63,13 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await removeWorkerDocument(workerId, linkId);
-    await invalidate();
+    setError(null);
+    try {
+      await removeWorkerDocument(workerId, linkId);
+      await invalidate();
+    } catch (err) {
+      setError(messageFrom(err));
+    }
   }
 
   return (
@@ -94,7 +107,7 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
       {error ? <p className="font-body text-xs text-cadence-red">{error}</p> : null}
 
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.map((doc) => (
@@ -111,7 +124,7 @@ export function WorkerDocumentsPanel({ workerId }: { workerId: string }) {
                 </p>
               </div>
               <div className="flex gap-2">
-                {!doc.is_verified ? (
+                {!doc.is_verified && canVerify ? (
                   <Button size="sm" variant="secondary" onClick={() => handleVerify(doc.id)}>
                     Verify
                   </Button>

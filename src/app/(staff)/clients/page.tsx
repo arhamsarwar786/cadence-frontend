@@ -8,19 +8,19 @@ import { clientKeys, listClients } from "@/features/clients/api";
 import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBadge";
 import type { Client } from "@/features/clients/types";
 import { PERM } from "@/permissions/keys";
-import { messageFrom } from "@/shared/lib/errors";
 import { matchesQuery } from "@/shared/lib/matches";
 import type { ClientStatus } from "@/shared/lib/status-labels";
 import {
   Avatar,
   Button,
+  useHasPerm,
   ListLayout,
   ListSkeleton,
   PageBody,
   PageFrame,
   PageHeader,
   Pagination,
-  PermGate,
+  QueryError,
   SearchField,
   Table,
   type Column,
@@ -35,6 +35,9 @@ export default function ClientsListPage() {
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const q = searchParams.get("q") ?? "";
   const finding = q.trim().length > 0;
+  const hasCreate = useHasPerm(PERM.CLIENTS_CREATE);
+  const hasMarkupEdit = useHasPerm(PERM.CLIENTS_MARKUP_EDIT);
+  const canCreate = hasCreate && hasMarkupEdit;
 
   const query = useQuery({
     queryKey: clientKeys.list({ page: finding ? 1 : page, find: finding }),
@@ -86,11 +89,13 @@ export default function ClientsListPage() {
       <PageHeader
         title="Clients"
         actions={
-          <PermGate anyOf={PERM.CLIENTS_CREATE}>
+          // Create also writes markup_pct, which the API gates on
+          // clients.markup.edit — without both the POST always 403s.
+          canCreate ? (
             <Link href="/clients/new">
               <Button>New client</Button>
             </Link>
-          </PermGate>
+          ) : null
         }
       />
       <SearchField
@@ -108,7 +113,7 @@ export default function ClientsListPage() {
         {query.isLoading ? (
           <ListSkeleton />
         ) : query.isError ? (
-          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+          <QueryError error={query.error} onRetry={() => query.refetch()} />
         ) : (
           <ListLayout
           stats={[

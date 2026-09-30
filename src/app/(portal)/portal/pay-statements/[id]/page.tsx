@@ -1,11 +1,12 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
+import { QueryError } from "@/shared/ui/QueryError";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { use } from "react";
 import { PayStatementStatusBadge } from "@/features/money/components/StatusBadges";
 import { getPayslip } from "@/features/portal/api";
-import { messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { PayStatementStatus } from "@/shared/lib/status-labels";
 import { PortalCard, PortalFrame } from "../../../_components/PortalFrame";
@@ -32,9 +33,9 @@ export default function PortalPayStatementDetailPage({
         reviewed this pay statement.
       </p>
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : p ? (
         <div className="mt-4 flex flex-col gap-4">
           <PortalCard>
@@ -47,14 +48,16 @@ export default function PortalPayStatementDetailPage({
               </div>
               <PayStatementStatusBadge status={p.status as PayStatementStatus} />
             </div>
-            <a
-              href={`/api/v1/portal/me/pay-statements/${p.id}/pdf/`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-block font-body text-sm text-cadence-red underline"
-            >
-              Download PDF
-            </a>
+            {p.document_id ? (
+              <a
+                href={`/api/v1/portal/me/pay-statements/${p.id}/pdf/`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-block font-body text-sm text-cadence-red underline"
+              >
+                Download PDF
+              </a>
+            ) : null}
           </PortalCard>
           <PortalCard>
             <h2 className="mb-3 font-subheading text-sm uppercase tracking-[0.14em] text-cadence-ink/50">

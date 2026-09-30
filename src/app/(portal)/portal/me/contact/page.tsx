@@ -9,7 +9,7 @@ import { updateMe } from "@/features/portal/actions";
 import { getMe } from "@/features/portal/api";
 import { portalProfileSchema, type PortalProfileFormValues } from "@/features/portal/schemas";
 import { PROVINCE_LABELS, PROVINCES } from "@/features/clients/schemas";
-import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
+import { applyFieldErrors } from "@/shared/lib/errors";
 import { Button, Field, Input, Select } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../../_components/PortalFrame";
 
@@ -20,6 +20,7 @@ export default function PortalContactPage() {
   const queryClient = useQueryClient();
   const meQuery = useQuery({ queryKey: ME_KEY, queryFn: getMe });
   const [formError, setFormError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const me = meQuery.data;
   const {
     register,
@@ -50,6 +51,7 @@ export default function PortalContactPage() {
 
   async function submit(values: PortalProfileFormValues) {
     setFormError(null);
+    setSaved(false);
     try {
       await updateMe({
         ...values,
@@ -66,6 +68,7 @@ export default function PortalContactPage() {
         work_authorization: values.work_authorization || null,
       });
       await queryClient.invalidateQueries({ queryKey: ME_KEY });
+      setSaved(true);
     } catch (error) {
       const banner = applyFieldErrors(setError, error, FIELD_NAMES);
       if (banner) setFormError(banner);
@@ -120,14 +123,18 @@ export default function PortalContactPage() {
           >
             <Input id="emergency_contact_phone" {...register("emergency_contact_phone")} />
           </Field>
-          <Field label="Notify me by" htmlFor="notification_channel">
+          <Field label="Notify me by" htmlFor="notification_channel" error={errors.notification_channel?.message}>
             <Select id="notification_channel" {...register("notification_channel")}>
               <option value="email">Email</option>
               <option value="sms">SMS</option>
-              <option value="in_app">In app</option>
             </Select>
           </Field>
           {formError ? <p className="text-sm text-cadence-red">{formError}</p> : null}
+          {saved ? (
+            <p role="status" className="text-sm text-cadence-ink/70">
+              Saved.
+            </p>
+          ) : null}
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Saving…" : "Save changes"}
           </Button>

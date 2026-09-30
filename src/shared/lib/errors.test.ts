@@ -18,8 +18,9 @@ describe("messageFrom", () => {
 
   it("maps 403 to a permission line", () => {
     expect(messageFrom(new ApiError(403, { detail: "missing permission: clients.create" }))).toBe(
-      "missing permission: clients.create",
+      'You don\'t have access to this. Ask an admin to grant the "clients.create" permission.',
     );
+    expect(messageFrom(new ApiError(403, { detail: "Not allowed." }))).toBe("Not allowed.");
   });
 
   it("joins Django ValidationError detail arrays from 400s", () => {

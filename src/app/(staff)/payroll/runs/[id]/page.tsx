@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
@@ -22,7 +23,7 @@ import {
   type PayrollRunStatus,
 } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Avatar, Button, FilterChip, ListLayout, PermGate, SearchField, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Avatar, Button, FilterChip, ListLayout, PermGate, QueryError, SearchField, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 function preferenceLabel(method: string | undefined): string {
   if (!method) return "—";
@@ -33,6 +34,7 @@ export default function PayrollRunDetailPage() {
   const { id: runId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
   const [preference, setPreference] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -50,12 +52,16 @@ export default function PayrollRunDetailPage() {
   }
 
   async function runAction(action: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
     setActionError(null);
     try {
       await action();
       await refetch();
     } catch (error) {
       setActionError(messageFrom(error));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -119,9 +125,9 @@ export default function PayrollRunDetailPage() {
     },
   ];
 
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+  if (query.isLoading) return <Loading />;
   if (query.isError) {
-    return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+    return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   }
   const run = query.data;
   if (!run) return null;
@@ -143,12 +149,14 @@ export default function PayrollRunDetailPage() {
         <div className="flex flex-wrap gap-2">
           {status === "draft" ? (
             <PermGate anyOf={PERM.PAYROLL_APPROVE}>
-              <Button onClick={() => runAction(() => approvePayrollRun(runId))}>Approve</Button>
+              <Button disabled={busy} onClick={() => runAction(() => approvePayrollRun(runId))}>
+                Approve
+              </Button>
             </PermGate>
           ) : null}
           {status === "approved" && !run.paid_at ? (
             <PermGate anyOf={PERM.PAYROLL_RELEASE}>
-              <Button onClick={() => runAction(() => releasePayrollRun(runId))}>
+              <Button disabled={busy} onClick={() => runAction(() => releasePayrollRun(runId))}>
                 Release pay statements
               </Button>
             </PermGate>

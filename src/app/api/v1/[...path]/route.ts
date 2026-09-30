@@ -176,8 +176,9 @@ async function proxy(req: NextRequest, path: string[]) {
   const method = req.method.toUpperCase();
   let body: Uint8Array | undefined;
   if (method !== "GET" && method !== "HEAD") {
-    const raw = await req.text();
-    body = raw.length > 0 ? new TextEncoder().encode(raw) : undefined;
+    // Read raw bytes: text() UTF-8-decodes and corrupts multipart/binary uploads.
+    const raw = new Uint8Array(await req.arrayBuffer());
+    body = raw.length > 0 ? raw : undefined;
   }
 
   let upstream: Response;

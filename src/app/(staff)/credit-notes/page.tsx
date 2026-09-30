@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listCreditNotes, creditNoteKeys } from "@/features/money/api";
 import type { CreditNote } from "@/features/money/types";
-import { messageFrom } from "@/shared/lib/errors";
+import { ListError } from "@/features/jobs/components/ListError";
 import { formatMoney } from "@/shared/lib/money";
 import { Chip, ListLayout, ListSkeleton, PageHeader, Pagination, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
@@ -43,7 +43,12 @@ export default function CreditNotesPage() {
         {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <ListError
+            error={query.error}
+            page={page}
+            onRetry={() => query.refetch()}
+            onFirstPage={() => router.push("/credit-notes")}
+          />
       ) : (
         <ListLayout stats={[{ value: query.data?.count ?? 0, label: "notes", tone: "ink" }]}>
           <Table

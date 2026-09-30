@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -111,6 +112,7 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
   const query = useQuery({ queryKey, queryFn: () => listClientContacts(clientId) });
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [dialogState, setDialogState] = useState<DialogState>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   function invalidate() {
     return queryClient.invalidateQueries({ queryKey });
@@ -136,8 +138,13 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteClientContact(clientId, contactId);
-    await invalidate();
+    setActionError(null);
+    try {
+      await deleteClientContact(clientId, contactId);
+      await invalidate();
+    } catch (error) {
+      setActionError(messageFrom(error));
+    }
   }
 
   return (
@@ -149,8 +156,14 @@ export function ClientContactsPanel({ clientId }: { clientId: string }) {
         </Button>
       </div>
 
+      {actionError ? (
+        <p role="alert" className="font-body text-sm text-cadence-red">
+          {actionError}
+        </p>
+      ) : null}
+
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.isError ? (
         <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
       ) : query.data && query.data.length > 0 ? (

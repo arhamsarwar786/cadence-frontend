@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
@@ -28,7 +29,7 @@ import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatDate } from "@/shared/lib/datetime";
 import { formatMoney } from "@/shared/lib/money";
 import type { InvoiceStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, PermGate, Select, useConfirm } from "@/shared/ui";
+import { Button, Dialog, Field, Input, PermGate, QueryError, Select, useConfirm, useHasPerm } from "@/shared/ui";
 
 export default function InvoiceDetailPage() {
   const { id: invoiceId } = useParams<{ id: string }>();
@@ -37,6 +38,7 @@ export default function InvoiceDetailPage() {
   const timeZone = session?.organization.timezone;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
@@ -45,9 +47,11 @@ export default function InvoiceDetailPage() {
     retry: false,
   });
 
+  const canViewOrg = useHasPerm(PERM.ADMIN_ORG_VIEW);
   const orgQuery = useQuery({
     queryKey: orgKeys.settings,
     queryFn: getOrgSettings,
+    enabled: canViewOrg,
   });
 
   const clientId = query.data?.client_id;
@@ -80,12 +84,16 @@ export default function InvoiceDetailPage() {
   }
 
   async function runAction(action: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
     setActionError(null);
     try {
       await action();
       await refetch();
     } catch (error) {
       setActionError(messageFrom(error));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -104,9 +112,9 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+  if (query.isLoading) return <Loading />;
   if (query.isError) {
-    return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+    return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   }
   const invoice = query.data;
   if (!invoice) return null;
@@ -143,7 +151,7 @@ export default function InvoiceDetailPage() {
                 <Button variant="secondary" onClick={() => setAutofillOpen(true)}>
                   Autofill
                 </Button>
-                <Button onClick={() => runAction(() => submitInvoice(invoiceId))}>
+                <Button disabled={busy} onClick={() => runAction(() => submitInvoice(invoiceId))}>
                   Submit for approval
                 </Button>
               </>
@@ -152,8 +160,8 @@ export default function InvoiceDetailPage() {
           {status === "pending_approval" ? (
             <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
               <>
-                <Button onClick={() => runAction(() => approveInvoice(invoiceId))}>Approve</Button>
-                <Button variant="secondary" onClick={() => runAction(() => returnInvoiceToDraft(invoiceId))}>
+                <Button disabled={busy} onClick={() => runAction(() => approveInvoice(invoiceId))}>Approve</Button>
+                <Button variant="secondary" disabled={busy} onClick={() => runAction(() => returnInvoiceToDraft(invoiceId))}>
                   Return to draft
                 </Button>
               </>
@@ -162,25 +170,26 @@ export default function InvoiceDetailPage() {
           {status === "approved" ? (
             <>
               <PermGate anyOf={PERM.INVOICES_SEND}>
-                <Button onClick={() => runAction(() => sendInvoice(invoiceId))}>Send</Button>
+                <Button disabled={busy} onClick={() => runAction(() => sendInvoice(invoiceId))}>Send</Button>
               </PermGate>
               <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
-                <Button variant="secondary" onClick={() => runAction(() => unapproveInvoice(invoiceId))}>
+                <Button variant="secondary" disabled={busy} onClick={() => runAction(() => unapproveInvoice(invoiceId))}>
                   Unapprove
                 </Button>
               </PermGate>
             </>
           ) : null}
-          {status === "sent" && !invoice.paid_at ? (
+          {status === "sent" && !invoice.paid_at && !invoice.voided_at ? (
             <>
               <PermGate anyOf={PERM.INVOICES_MARK_PAID}>
-                <Button onClick={() => runAction(() => markInvoicePaid(invoiceId))}>
+                <Button disabled={busy} onClick={() => runAction(() => markInvoicePaid(invoiceId))}>
                   Mark paid
                 </Button>
               </PermGate>
               <PermGate anyOf={[PERM.CLIENTS_INVOICE_EDIT, PERM.INVOICES_SEND]}>
                 <Button
                   variant="danger"
+                  disabled={busy}
                   onClick={async () => {
                     const ok = await confirm({
                       title: "Void this invoice?",

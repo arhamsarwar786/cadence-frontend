@@ -1,15 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { listWorkers } from "@/features/workers/api";
+import { getWorker, listWorkers } from "@/features/workers/api";
 import { createPrivacyRequest, listPrivacyRequests, privacyRequestKeys } from "@/features/privacy/api";
 import type { PrivacyRequest } from "@/features/privacy/types";
-import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
+import { applyFieldErrors } from "@/shared/lib/errors";
 import {
   PRIVACY_REQUEST_STATUS_LABELS,
   PRIVACY_REQUEST_TYPE_LABELS,
@@ -17,7 +17,7 @@ import {
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, QueryError, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const createSchema = z.object({
@@ -41,6 +41,33 @@ export default function PrivacyRequestsPage() {
     queryFn: () => listPrivacyRequests(page),
   });
   const workersQuery = useQuery({ queryKey: ["workers-picker"], queryFn: () => listWorkers({ pageSize: 200 }) });
+
+  // Names come from the picker list; anyone beyond it is fetched by id.
+  const pickerNames = new Map(
+    (workersQuery.data?.results ?? []).map((w) => [w.id, `${w.first_name} ${w.last_name}`]),
+  );
+  const missingIds = workersQuery.isSuccess
+    ? [...new Set((query.data?.results ?? []).map((r) => r.employee_id))].filter(
+        (id) => !pickerNames.has(id),
+      )
+    : [];
+  const fetchedWorkers = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: ["privacy", "worker-name", id],
+      queryFn: () => getWorker(id),
+      retry: false,
+      staleTime: 5 * 60_000,
+    })),
+  });
+  const fetchedNames = new Map(
+    missingIds.map((id, i) => {
+      const w = fetchedWorkers[i]?.data;
+      return [id, w ? `${w.first_name} ${w.last_name}` : null] as const;
+    }),
+  );
+  function workerName(id: string) {
+    return pickerNames.get(id) ?? fetchedNames.get(id) ?? (workersQuery.isLoading ? "…" : "Unknown worker");
+  }
 
   const {
     register,
@@ -75,6 +102,7 @@ export default function PrivacyRequestsPage() {
   }
 
   const columns: Column<PrivacyRequest>[] = [
+    { header: "Worker", cell: (r) => workerName(r.employee_id) },
     { header: "Type", cell: (r) => PRIVACY_REQUEST_TYPE_LABELS[r.type as PrivacyRequestType] },
     {
       header: "Status",
@@ -101,7 +129,7 @@ export default function PrivacyRequestsPage() {
       {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <>
           <Table

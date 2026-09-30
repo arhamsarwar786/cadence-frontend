@@ -6,7 +6,7 @@ import { useSession } from "@/auth/session-context";
 import { getMe, listSignatureRequests, listShifts } from "@/features/portal/api";
 import { LIFECYCLE_STATUS_LABELS, type LifecycleStatus } from "@/shared/lib/status-labels";
 import { PortalCard } from "../_components/PortalFrame";
-import { PageFrame, PageScrollRegion } from "@/shared/ui";
+import { PageFrame, PageScrollRegion, QueryError } from "@/shared/ui";
 
 export default function PortalHomePage() {
   const { session } = useSession();
@@ -42,6 +42,16 @@ export default function PortalHomePage() {
             {me?.work_status ? ` · ${me.work_status.replace("_", " ")}` : ""}
           </p>
         ) : null}
+        {shiftsQuery.isError || requestsQuery.isError ? (
+          <div className="mt-10 flex flex-col gap-2">
+            {shiftsQuery.isError ? (
+              <QueryError error={shiftsQuery.error} onRetry={() => shiftsQuery.refetch()} />
+            ) : null}
+            {requestsQuery.isError ? (
+              <QueryError error={requestsQuery.error} onRetry={() => requestsQuery.refetch()} />
+            ) : null}
+          </div>
+        ) : (
         <div className="mt-10 flex flex-wrap items-end gap-8">
           <div>
             <span aria-hidden className="mb-1.5 block h-1 w-6 rounded-full bg-cadence-orange" />
@@ -71,6 +81,7 @@ export default function PortalHomePage() {
             </p>
           </div>
         </div>
+        )}
       </section>
 
       <PortalCard className="flex flex-col gap-4 bg-card p-5 text-on-card">

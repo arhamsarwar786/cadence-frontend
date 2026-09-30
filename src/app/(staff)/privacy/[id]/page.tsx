@@ -1,20 +1,22 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { getWorker } from "@/features/workers/api";
 import { answerPrivacyRequest, getPrivacyRequest, privacyRequestKeys } from "@/features/privacy/api";
-import { applyFieldErrors, isNotFound, messageFrom } from "@/shared/lib/errors";
+import { applyFieldErrors, isNotFound } from "@/shared/lib/errors";
 import {
   PRIVACY_REQUEST_STATUS_LABELS,
   PRIVACY_REQUEST_TYPE_LABELS,
   type PrivacyRequestStatus,
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Field, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Badge, Button, Field, PageFrame, PageScrollRegion, QueryError } from "@/shared/ui";
 
 const answerSchema = z.object({ response_note: z.string().min(1, "A response note is required.") });
 type AnswerFormValues = z.infer<typeof answerSchema>;
@@ -30,6 +32,19 @@ export default function PrivacyRequestDetailPage() {
     queryFn: () => getPrivacyRequest(requestId),
     retry: false,
   });
+
+  const employeeId = query.data?.employee_id;
+  const workerQuery = useQuery({
+    queryKey: ["privacy", "worker-name", employeeId],
+    queryFn: () => getWorker(employeeId as string),
+    enabled: Boolean(employeeId),
+    retry: false,
+  });
+  const workerName = workerQuery.data
+    ? `${workerQuery.data.first_name} ${workerQuery.data.last_name}`
+    : workerQuery.isError
+      ? "Unknown worker"
+      : "…";
 
   const {
     register,
@@ -51,8 +66,8 @@ export default function PrivacyRequestDetailPage() {
     }
   }
 
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const request = query.data;
   if (!request) return null;
 
@@ -63,6 +78,7 @@ export default function PrivacyRequestDetailPage() {
         <h1 className="font-heading text-3xl text-cadence-ink">
           {PRIVACY_REQUEST_TYPE_LABELS[request.type as PrivacyRequestType]} request
         </h1>
+        <p className="mt-1 font-body text-sm text-cadence-ink/70">For {workerName}</p>
         <div className="mt-1 flex items-center gap-2">
           <Badge tone={request.status === "answered" ? "positive" : "warning"}>
             {PRIVACY_REQUEST_STATUS_LABELS[request.status as PrivacyRequestStatus]}

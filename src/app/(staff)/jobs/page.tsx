@@ -4,12 +4,12 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ListError } from "@/features/jobs/components/ListError";
 import { jobKeys, listJobs } from "@/features/jobs/api";
 import { listClients } from "@/features/clients/api";
 import { JobStatusBadge } from "@/features/jobs/components/StatusBadges";
 import type { Job } from "@/features/jobs/types";
 import { formatMoney } from "@/shared/lib/money";
-import { messageFrom } from "@/shared/lib/errors";
 import { matchesQuery } from "@/shared/lib/matches";
 import type { JobStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
@@ -132,7 +132,12 @@ export default function JobsListPage() {
         {query.isLoading ? (
           <ListSkeleton />
         ) : query.isError ? (
-          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+          <ListError
+            error={query.error}
+            page={page}
+            onRetry={() => query.refetch()}
+            onFirstPage={() => setParams({ page: "1" })}
+          />
         ) : (
           <ListLayout
           stats={[

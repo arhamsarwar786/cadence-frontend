@@ -1,11 +1,11 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { getReportsDashboard, reportKeys } from "@/features/money/api";
-import { messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { PageHeader } from "@/shared/ui";
+import { PageHeader, QueryError } from "@/shared/ui";
 
 export default function ReportsPage() {
   const query = useQuery({
@@ -13,8 +13,8 @@ export default function ReportsPage() {
     queryFn: getReportsDashboard,
   });
 
-  if (query.isLoading) return <p className="text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const data = query.data;
   if (!data) return null;
 
@@ -63,6 +63,9 @@ export default function ReportsPage() {
             ? formatMoney(overdue.total)
             : "—"}
         </p>
+        {(overdue?.invoices ?? []).length === 0 ? (
+          <p className="text-sm text-cadence-ink/60">No overdue invoices.</p>
+        ) : null}
         <ul className="divide-y divide-border rounded-lg border border-border">
           {(overdue?.invoices ?? []).map((inv) => (
             <li key={inv.id}>
@@ -95,8 +98,11 @@ export default function ReportsPage() {
             to see margin.
           </p>
         ) : null}
+        {(margins?.rows ?? []).length === 0 ? (
+          <p className="text-sm text-cadence-ink/60">No margin data.</p>
+        ) : null}
         <ul className="divide-y divide-border rounded-lg border border-border">
-          {margins.rows.map((row) => (
+          {(margins?.rows ?? []).map((row) => (
             <li key={row.client_id} className="flex justify-between px-4 py-3 text-sm">
               <span>{row.client_name}</span>
               <span>

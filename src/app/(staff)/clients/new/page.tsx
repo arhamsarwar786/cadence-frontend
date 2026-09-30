@@ -7,11 +7,16 @@ import { ClientForm } from "@/features/clients/components/ClientForm";
 import { createClient } from "@/features/clients/actions";
 import type { ClientFormValues } from "@/features/clients/schemas";
 import type { ClientWrite } from "@/features/clients/types";
-import { PageFrame, PageScrollRegion } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { EmptyState, PageFrame, PageScrollRegion, useHasPerm } from "@/shared/ui";
 
 export default function NewClientPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  // Creating a client sets markup_pct, so the API wants clients.markup.edit too.
+  const hasCreate = useHasPerm(PERM.CLIENTS_CREATE);
+  const hasMarkupEdit = useHasPerm(PERM.CLIENTS_MARKUP_EDIT);
+  const canCreate = hasCreate && hasMarkupEdit;
 
   async function handleSubmit(values: ClientFormValues) {
     // clientCreateSchema guarantees markup_pct is a non-empty string here.
@@ -29,7 +34,15 @@ export default function NewClientPage() {
     <PageFrame>
       <PageScrollRegion className="flex flex-col gap-4">
         <h1 className="font-heading text-3xl text-cadence-ink">New client</h1>
-        <ClientForm onSubmit={handleSubmit} submitLabel="Create client" requireMarkup />
+        {canCreate ? (
+          <ClientForm onSubmit={handleSubmit} submitLabel="Create client" requireMarkup />
+        ) : (
+          <EmptyState
+            title="You can't create clients"
+            description="Creating a client needs both the create-client and markup-edit permissions. Ask an administrator."
+            className="items-start py-6 text-left"
+          />
+        )}
       </PageScrollRegion>
     </PageFrame>
   );

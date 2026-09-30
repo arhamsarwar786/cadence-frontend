@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams, useRouter } from "next/navigation";
@@ -14,11 +15,13 @@ import {
 } from "@/features/jobs/actions";
 import { getAssignment, listShifts } from "@/features/jobs/api";
 import { AssignmentStatusBadge, ShiftStatusBadge } from "@/features/jobs/components/StatusBadges";
+import { useOrgTimeZone } from "@/auth/use-org-timezone";
+import { formatDateTime } from "@/shared/lib/datetime";
 import { applyFieldErrors, isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { AssignmentStatus, ShiftStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Field, Input, PermGate, Table, useConfirm, type Column } from "@/shared/ui";
+import { Button, Field, Input, PermGate, QueryError, Table, useConfirm, type Column } from "@/shared/ui";
 import { optionalNumber } from "@/shared/lib/zod-helpers";
 import { z } from "zod";
 
@@ -37,6 +40,8 @@ export default function AssignmentDetailPage() {
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const timeZone = useOrgTimeZone();
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
@@ -69,12 +74,16 @@ export default function AssignmentDetailPage() {
   }
 
   async function handleConfirm() {
+    if (busy) return;
+    setBusy(true);
     setActionError(null);
     try {
       await confirmAssignment(assignmentId);
       await refetch();
     } catch (error) {
       setActionError(messageFrom(error));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -120,9 +129,9 @@ export default function AssignmentDetailPage() {
     }
   }
 
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
+  if (query.isLoading) return <Loading />;
   if (query.isError) {
-    return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+    return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   }
   const assignment = query.data;
   if (!assignment) return null;
@@ -146,7 +155,9 @@ export default function AssignmentDetailPage() {
         <div className="flex gap-2">
           {assignment.status === "offered" ? (
             <PermGate anyOf={PERM.JOBS_ASSIGN}>
-              <Button onClick={handleConfirm}>Confirm</Button>
+              <Button onClick={handleConfirm} disabled={busy}>
+                Confirm
+              </Button>
             </PermGate>
           ) : null}
           <PermGate anyOf={PERM.JOBS_ASSIGN}>
@@ -164,6 +175,7 @@ export default function AssignmentDetailPage() {
 
       {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
 
+      {assignment.status === "confirmed" && !assignment.client_notified_at ? (
       <PermGate anyOf={PERM.JOBS_CLIENT_NOTIFY}>
         <div className="rounded-2xl border border-cadence-orange/40 bg-cadence-orange/10 px-4 py-3">
           <p className="font-body text-sm text-cadence-ink">
@@ -172,13 +184,18 @@ export default function AssignmentDetailPage() {
           <Button
             className="mt-2"
             size="sm"
+            disabled={busy}
             onClick={async () => {
+              if (busy) return;
+              setBusy(true);
               setActionError(null);
               try {
                 await notifyClientAssignment(assignmentId);
                 await refetch();
               } catch (error) {
                 setActionError(messageFrom(error));
+              } finally {
+                setBusy(false);
               }
             }}
           >
@@ -186,6 +203,12 @@ export default function AssignmentDetailPage() {
           </Button>
         </div>
       </PermGate>
+      ) : assignment.client_notified_at ? (
+        <p className="font-body text-sm text-cadence-ink/70">
+          Client notified at{" "}
+          {timeZone ? formatDateTime(assignment.client_notified_at, timeZone) : assignment.client_notified_at}.
+        </p>
+      ) : null}
 
       {assignment.warnings && assignment.warnings.length > 0 ? (
         <ul className="rounded-md border border-cadence-yellow bg-cadence-yellow/20 p-3 font-body text-sm text-cadence-ink">

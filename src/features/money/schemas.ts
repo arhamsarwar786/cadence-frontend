@@ -75,3 +75,16 @@ export const payslipDeductionSchema = z.object({
 });
 
 export type PayslipDeductionFormValues = z.infer<typeof payslipDeductionSchema>;
+
+export const placementCreateSchema = z.object({
+  client_id: z.string().min(1, "Pick a client."),
+  employee_id: z.string().min(1, "Pick a worker."),
+  job_id: z.string().optional().or(z.literal("")),
+  annual_salary: decimalStr(10),
+  fee_pct: z
+    .string()
+    .min(1, "Required.")
+    .regex(/^\d{0,2}(?:\.\d{0,2})?$/, "Enter a percentage like 15 or 12.5."),
+});
+
+export type PlacementCreateFormValues = z.infer<typeof placementCreateSchema>;

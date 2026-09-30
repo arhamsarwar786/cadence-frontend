@@ -3,10 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
+import { Loading } from "@/shared/ui/Loading";
 import { getConsentText } from "@/features/portal/api";
 import { captureConsent } from "@/features/portal/actions";
 import { messageFrom } from "@/shared/lib/errors";
-import { Button } from "@/shared/ui";
+import { Button, QueryError } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 /**
@@ -46,7 +47,7 @@ export default function ConsentPage() {
         </Link>
       </p>
       {consentQuery.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(consentQuery.error)}</p>
+        <QueryError error={consentQuery.error} onRetry={() => consentQuery.refetch()} />
       ) : consentVersion === 0 ? (
         <PortalCard>
           <p className="font-body text-sm text-cadence-ink/70">
@@ -60,7 +61,7 @@ export default function ConsentPage() {
       ) : (
         <PortalCard className="flex flex-col gap-4">
           <div className="scroll-area-y max-h-[min(16rem,45dvh)] whitespace-pre-wrap rounded-xl bg-surface p-4 font-body text-sm text-cadence-ink/80">
-            {consentText || "Loading…"}
+            {consentText || <Loading label="Loading consent" className="py-4" />}
           </div>
           {error ? <p className="font-body text-sm text-cadence-red">{error}</p> : null}
           <Button onClick={handleAgree} disabled={submitting || !consentText}>

@@ -1,8 +1,12 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound, useParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   addPayStatementDeduction,
   addPayStatementLine,
@@ -11,16 +15,19 @@ import {
 } from "@/features/money/actions";
 import { getEmployeeYtd, getPayStatement, payStatementKeys } from "@/features/money/api";
 import { PayStatementStatusBadge } from "@/features/money/components/StatusBadges";
-import { isNotFound, messageFrom } from "@/shared/lib/errors";
+import { payslipDeductionSchema, payslipLineSchema } from "@/features/money/schemas";
+import { applyFieldErrors, isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { PayStatementStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Field, Input, PageHeader, PermGate, Select } from "@/shared/ui";
+import { Button, Field, Input, PageHeader, PermGate, QueryError, Select, useConfirm } from "@/shared/ui";
 
 export default function PayStatementDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const query = useQuery({
     queryKey: payStatementKeys.detail(id),
@@ -36,21 +43,42 @@ export default function PayStatementDetailPage() {
   });
 
   if (query.isError && isNotFound(query.error)) notFound();
-  if (query.isLoading) return <p className="font-body text-sm text-cadence-ink/60">Loading…</p>;
-  if (query.isError) return <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>;
+  if (query.isLoading) return <Loading />;
+  if (query.isError) return <QueryError error={query.error} onRetry={() => query.refetch()} />;
   const stmt = query.data;
   if (!stmt) return null;
 
   const draft = stmt.status === "draft";
 
-  async function mutate(action: () => Promise<unknown>) {
+  /** Runs one write at a time. Throws so a form can pin the API's field errors. */
+  async function run(action: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
       await action();
       await queryClient.invalidateQueries({ queryKey: payStatementKeys.detail(id) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function mutate(action: () => Promise<unknown>) {
+    try {
+      await run(action);
     } catch (err) {
       setError(messageFrom(err));
     }
+  }
+
+  async function removeRow(what: string, action: () => Promise<unknown>) {
+    const ok = await confirm({
+      title: `Remove this ${what}?`,
+      body: "It will be deleted from this pay statement.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (ok) await mutate(action);
   }
 
   return (
@@ -104,8 +132,9 @@ export default function PayStatementDetailPage() {
                   <PermGate anyOf={PERM.PAYROLL_PAY_STATEMENTS_EDIT}>
                     <button
                       type="button"
-                      className="text-xs text-cadence-red underline"
-                      onClick={() => mutate(() => deletePayStatementLine(id, line.id))}
+                      disabled={busy}
+                      className="text-xs text-cadence-red underline disabled:opacity-50"
+                      onClick={() => removeRow("earning line", () => deletePayStatementLine(id, line.id))}
                     >
                       Remove
                     </button>
@@ -118,7 +147,9 @@ export default function PayStatementDetailPage() {
         {draft ? (
           <PermGate anyOf={PERM.PAYROLL_PAY_STATEMENTS_EDIT}>
             <AddEarningForm
-              onAdd={(body) => mutate(() => addPayStatementLine(id, body))}
+              onAdd={(body) =>
+                run(() => addPayStatementLine(id, { ...body, description: body.description ?? "" }))
+              }
             />
           </PermGate>
         ) : null}
@@ -136,8 +167,9 @@ export default function PayStatementDetailPage() {
                   <PermGate anyOf={PERM.PAYROLL_PAY_STATEMENTS_EDIT}>
                     <button
                       type="button"
-                      className="text-xs text-cadence-red underline"
-                      onClick={() => mutate(() => deletePayStatementDeduction(id, d.id))}
+                      disabled={busy}
+                      className="text-xs text-cadence-red underline disabled:opacity-50"
+                      onClick={() => removeRow("deduction", () => deletePayStatementDeduction(id, d.id))}
                     >
                       Remove
                     </button>
@@ -150,7 +182,7 @@ export default function PayStatementDetailPage() {
         {draft ? (
           <PermGate anyOf={PERM.PAYROLL_PAY_STATEMENTS_EDIT}>
             <AddDeductionForm
-              onAdd={(body) => mutate(() => addPayStatementDeduction(id, body))}
+              onAdd={(body) => run(() => addPayStatementDeduction(id, body))}
             />
           </PermGate>
         ) : null}
@@ -201,76 +233,109 @@ export default function PayStatementDetailPage() {
           </dl>
         </section>
       ) : null}
+      {confirmDialog}
     </div>
   );
 }
 
-function AddEarningForm({
-  onAdd,
-}: {
-  onAdd: (body: {
-    type: "bonus" | "adjustment" | "allowance" | "other";
-    description: string;
-    amount: string;
-    hours?: string | null;
-  }) => void;
-}) {
-  const [lineType, setLineType] = useState<"bonus" | "adjustment" | "allowance" | "other">("bonus");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+const earningFormSchema = payslipLineSchema
+  .pick({ description: true, amount: true })
+  .extend({ type: z.enum(["bonus", "adjustment", "allowance", "other"]) });
+type EarningFormValues = z.infer<typeof earningFormSchema>;
+const EARNING_FIELDS = Object.keys(earningFormSchema.shape);
+
+function AddEarningForm({ onAdd }: { onAdd: (body: EarningFormValues) => Promise<void> }) {
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<EarningFormValues>({
+    resolver: zodResolver(earningFormSchema),
+    defaultValues: { type: "bonus", description: "", amount: "" },
+  });
+
+  async function submit(values: EarningFormValues) {
+    setFormError(null);
+    try {
+      await onAdd(values);
+      reset();
+    } catch (err) {
+      const banner = applyFieldErrors(setError, err, EARNING_FIELDS);
+      if (banner) setFormError(banner);
+    }
+  }
+
   return (
     <form
       className="mt-3 flex flex-wrap items-end gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onAdd({ type: lineType, description, amount });
-        setDescription("");
-        setAmount("");
-      }}
+      noValidate
+      onSubmit={handleSubmit(submit)}
     >
-      <Field label="Type" htmlFor="earn-type">
-        <Select id="earn-type" value={lineType} onChange={(e) => setLineType(e.target.value as typeof lineType)}>
+      <Field label="Type" htmlFor="earn-type" error={errors.type?.message}>
+        <Select id="earn-type" {...register("type")}>
           <option value="bonus">Bonus</option>
           <option value="adjustment">Adjustment</option>
           <option value="allowance">Allowance</option>
           <option value="other">Other</option>
         </Select>
       </Field>
-      <Field label="Description" htmlFor="earn-desc">
-        <Input id="earn-desc" value={description} onChange={(e) => setDescription(e.target.value)} required />
+      <Field label="Description" htmlFor="earn-desc" error={errors.description?.message}>
+        <Input id="earn-desc" {...register("description")} />
       </Field>
-      <Field label="Amount" htmlFor="earn-amt">
-        <Input id="earn-amt" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+      <Field label="Amount" htmlFor="earn-amt" error={errors.amount?.message}>
+        <Input id="earn-amt" {...register("amount")} />
       </Field>
-      <Button type="submit" size="sm">
+      <Button type="submit" size="sm" disabled={isSubmitting}>
         Add earning
       </Button>
+      {formError ? <p className="w-full text-sm text-cadence-red">{formError}</p> : null}
     </form>
   );
 }
 
+const deductionFormSchema = payslipDeductionSchema.pick({ code: true, amount: true });
+type DeductionFormValues = z.infer<typeof deductionFormSchema>;
+const DEDUCTION_FIELDS = [...Object.keys(deductionFormSchema.shape), "label"];
+
 function AddDeductionForm({
   onAdd,
 }: {
-  onAdd: (body: {
-    code: "cpp" | "ei" | "federal_tax" | "provincial_tax" | "other";
-    amount: string;
-    label: string;
-  }) => void;
+  onAdd: (body: DeductionFormValues & { label: string }) => Promise<void>;
 }) {
-  const [code, setCode] = useState<"cpp" | "ei" | "federal_tax" | "provincial_tax" | "other">("cpp");
-  const [amount, setAmount] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<DeductionFormValues>({
+    resolver: zodResolver(deductionFormSchema),
+    defaultValues: { code: "cpp", amount: "" },
+  });
+
+  async function submit(values: DeductionFormValues) {
+    setFormError(null);
+    try {
+      await onAdd({ ...values, label: values.code });
+      reset({ code: values.code, amount: "" });
+    } catch (err) {
+      const banner = applyFieldErrors(setError, err, DEDUCTION_FIELDS);
+      if (banner) setFormError(banner);
+    }
+  }
+
   return (
     <form
       className="mt-3 flex flex-wrap items-end gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onAdd({ code, amount, label: code });
-        setAmount("");
-      }}
+      noValidate
+      onSubmit={handleSubmit(submit)}
     >
-      <Field label="Code" htmlFor="ded-code">
-        <Select id="ded-code" value={code} onChange={(e) => setCode(e.target.value as typeof code)}>
+      <Field label="Code" htmlFor="ded-code" error={errors.code?.message}>
+        <Select id="ded-code" {...register("code")}>
           <option value="cpp">CPP</option>
           <option value="ei">EI</option>
           <option value="federal_tax">Federal tax</option>
@@ -278,12 +343,13 @@ function AddDeductionForm({
           <option value="other">Other</option>
         </Select>
       </Field>
-      <Field label="Amount" htmlFor="ded-amt">
-        <Input id="ded-amt" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+      <Field label="Amount" htmlFor="ded-amt" error={errors.amount?.message}>
+        <Input id="ded-amt" {...register("amount")} />
       </Field>
-      <Button type="submit" size="sm">
+      <Button type="submit" size="sm" disabled={isSubmitting}>
         Add deduction
       </Button>
+      {formError ? <p className="w-full text-sm text-cadence-red">{formError}</p> : null}
     </form>
   );
 }

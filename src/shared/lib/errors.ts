@@ -197,6 +197,11 @@ export function messageFrom(error: unknown): string {
     return "Can't reach the API. Is the backend running?";
   }
   if (error instanceof ApiError) {
+    if (error.status === 403) {
+      const raw = detailMessage(error.body);
+      const key = raw?.match(/^missing permission:\s*(\S+)/i)?.[1];
+      if (key) return `You don't have access to this. Ask an admin to grant the "${key}" permission.`;
+    }
     const fromBody =
       detailMessage(error.body) ??
       (error.status === 400 || error.status === 409 || error.status === 422

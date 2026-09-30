@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -16,7 +17,7 @@ import type { WorkerIncident } from "@/features/workers/types";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Badge, Button, Dialog, Field, Input, Select } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, QueryError, Select } from "@/shared/ui";
 
 const LOG_FIELD_NAMES = Object.keys(incidentLogSchema.shape);
 const VOID_FIELD_NAMES = Object.keys(incidentVoidSchema.shape);
@@ -120,6 +121,13 @@ export function IncidentsPanel({ workerId }: { workerId: string }) {
   const timeZone = useOrgTimeZone();
   const queryKey = ["workers", workerId, "incidents"] as const;
   const query = useQuery({ queryKey, queryFn: () => listWorkerIncidents(workerId) });
+  // Same key as the log form's query — shared cache. A 403 here means the
+  // category list is empty for this user, so logging is hidden, not broken.
+  const catalogQuery = useQuery({
+    queryKey: ["incident-weights"],
+    queryFn: listIncidentWeights,
+    retry: false,
+  });
   const [logOpen, setLogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<WorkerIncident | null>(null);
 
@@ -131,13 +139,19 @@ export function IncidentsPanel({ workerId }: { workerId: string }) {
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="font-subheading text-xl text-cadence-ink">Incidents</h2>
-        <Button size="sm" onClick={() => setLogOpen(true)}>
-          Log incident
-        </Button>
+        {catalogQuery.isError ? null : (
+          <Button size="sm" onClick={() => setLogOpen(true)}>
+            Log incident
+          </Button>
+        )}
       </div>
 
+      {catalogQuery.isError ? (
+        <QueryError error={catalogQuery.error} onRetry={() => catalogQuery.refetch()} />
+      ) : null}
+
       {query.isLoading ? (
-        <p className="font-body text-sm text-cadence-ink/60">Loading…</p>
+        <Loading />
       ) : query.data && query.data.results.length > 0 ? (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {query.data.results.map((incident) => (

@@ -3,9 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { ShiftStatusBadge } from "@/features/jobs/components/StatusBadges";
 import { listShifts } from "@/features/portal/api";
-import { messageFrom } from "@/shared/lib/errors";
 import type { ShiftStatus } from "@/shared/lib/status-labels";
-import { ListSkeleton, Table, type Column } from "@/shared/ui";
+import { ListSkeleton, QueryError, Table, type Column } from "@/shared/ui";
 import type { PortalShift } from "@/features/portal/types";
 import { PortalFrame } from "../../_components/PortalFrame";
 
@@ -29,7 +28,7 @@ export default function PortalShiftsPage() {
       {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (
-        <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+        <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <Table columns={columns} rows={shifts} rowKey={(s) => s.id} emptyMessage="No shifts scheduled." />
       )}

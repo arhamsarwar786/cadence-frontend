@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { invoiceKeys, listInvoices } from "@/features/money/api";
 import { InvoiceStatusBadge } from "@/features/money/components/StatusBadges";
 import type { Invoice } from "@/features/money/types";
-import { messageFrom } from "@/shared/lib/errors";
+import { ListError } from "@/features/jobs/components/ListError";
 import { matchesQuery } from "@/shared/lib/matches";
 import { formatMoney } from "@/shared/lib/money";
 import type { InvoiceStatus } from "@/shared/lib/status-labels";
@@ -36,27 +36,35 @@ export default function InvoicesListPage() {
   const page = Number(searchParams.get("page") ?? "1") || 1;
   const status = searchParams.get("status") ?? undefined;
   const q = searchParams.get("q") ?? "";
-  const finding = q.trim().length > 0;
+  const hasText = q.trim().length > 0;
+  // paid / voided are stamps, not API statuses: fetch the window unfiltered
+  // and narrow client-side (same window approach as the text find).
+  const stamp = status === "paid" || status === "voided" ? status : null;
+  const finding = hasText || stamp !== null;
 
   const query = useQuery({
-    queryKey: invoiceKeys.list({ page: finding ? 1 : page, status, find: finding }),
+    queryKey: invoiceKeys.list({ page: finding ? 1 : page, status, find: finding, q }),
     queryFn: () =>
       listInvoices({
         page: finding ? 1 : page,
         pageSize: finding ? FIND_WINDOW : PAGE_SIZE,
-        status,
+        status: stamp ? undefined : status,
       }),
   });
 
   const rows = useMemo(() => {
     const results = query.data?.results ?? [];
     if (!finding) return results;
-    return results.filter(
-      (invoice) =>
+    return results.filter((invoice) => {
+      if (stamp === "paid" && !(invoice.paid_at && !invoice.voided_at)) return false;
+      if (stamp === "voided" && !invoice.voided_at) return false;
+      return (
+        !hasText ||
         matchesQuery(invoice.client_name, q) ||
-        matchesQuery(invoice.invoice_number ?? "", q),
-    );
-  }, [finding, q, query.data?.results]);
+        matchesQuery(invoice.invoice_number ?? "", q)
+      );
+    });
+  }, [finding, hasText, stamp, q, query.data?.results]);
 
   function setParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams);
@@ -102,7 +110,7 @@ export default function InvoicesListPage() {
           label="Find invoices"
         />
         <div className="flex flex-wrap gap-2">
-          {["", "draft", "pending_approval", "approved", "sent"].map((s) => (
+          {["", "draft", "pending_approval", "approved", "sent", "paid", "voided"].map((s) => (
             <FilterChip
               key={s || "all"}
               active={(status ?? "") === s}
@@ -118,7 +126,12 @@ export default function InvoicesListPage() {
         {query.isLoading ? (
           <ListSkeleton />
         ) : query.isError ? (
-          <p className="font-body text-sm text-cadence-red">{messageFrom(query.error)}</p>
+          <ListError
+            error={query.error}
+            page={page}
+            onRetry={() => query.refetch()}
+            onFirstPage={() => setParams({ page: "1" })}
+          />
         ) : (
           <ListLayout
           stats={[

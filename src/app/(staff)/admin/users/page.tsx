@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@/shared/ui/Loading";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/auth/session-context";
@@ -61,6 +62,16 @@ function formatUserType(userType: string): string {
   return userType;
 }
 
+/** Scopes the API accepts per key (cadence-permissions.txt): everything is
+ * "all"-only except these families. */
+function allowedScopes(key: string): UserGrant["scope"][] {
+  if (key.startsWith("tasks.")) return ["own", "all"];
+  if (/^(clients|workers|jobs|shifts|hoursheets|documents)\./.test(key)) return ["assigned", "all"];
+  return ["all"];
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const NOOP_KEYS = new Set([
   "admin.users.edit",
   "admin.integrations.manage",
@@ -98,6 +109,10 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState("");
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [permError, setPermError] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
@@ -125,8 +140,16 @@ export default function AdminUsersPage() {
     setDraftGrants(Array.isArray(permsQuery.data) ? permsQuery.data : []);
   }, [editingId, permsQuery.data]);
 
+  function closeInvite() {
+    setInviteOpen(false);
+    setEmail("");
+    setInviteToken(null);
+    setInviteError(null);
+  }
+
   function openEditor(id: string) {
     setDraftGrants([]);
+    setPermError(null);
     setEditingId(id);
   }
 
@@ -227,7 +250,7 @@ export default function AdminUsersPage() {
                     {accessLabels.join(" · ")}
                   </p>
                 ) : canLoadGrants && u.user_type === "staff" && grantQueries[users.indexOf(u)]?.isLoading ? (
-                  <p className="mt-1 font-fine text-[11px] text-cadence-ink/50">Loading access…</p>
+                  <Loading label="Loading access" className="py-2" />
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -243,6 +266,7 @@ export default function AdminUsersPage() {
                     onClick={() => {
                       setResetUserId(u.id);
                       setResetPassword("");
+                      setResetError(null);
                     }}
                   >
                     Set password
@@ -278,8 +302,8 @@ export default function AdminUsersPage() {
         </ul>
       )}
 
-      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite user">
-        <Field label="Work email" htmlFor="invite-email">
+      <Dialog open={inviteOpen} onClose={closeInvite} title="Invite user">
+        <Field label="Work email" htmlFor="invite-email" error={inviteError ?? undefined}>
           <Input id="invite-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         {inviteToken ? (
@@ -289,29 +313,43 @@ export default function AdminUsersPage() {
         ) : null}
         <Button
           className="mt-4"
+          disabled={inviting}
           onClick={async () => {
-            setError(null);
+            if (inviting) return;
+            setInviteError(null);
+            const trimmed = email.trim();
+            if (!trimmed) {
+              setInviteError("Enter an email address.");
+              return;
+            }
+            if (!EMAIL_RE.test(trimmed)) {
+              setInviteError("Enter a valid email address.");
+              return;
+            }
+            setInviting(true);
             try {
-              const res = await inviteUser(email);
+              const res = await inviteUser(trimmed);
               setInviteToken(res.invite_token ?? null);
               if (res.user?.id) {
-                rememberUserLogin(res.user.id, email);
+                rememberUserLogin(res.user.id, trimmed);
                 setKnownLogins(readKnownUserLogins());
               }
               await queryClient.invalidateQueries({ queryKey: userKeys.all });
             } catch (err) {
-              setError(messageFrom(err));
+              setInviteError(messageFrom(err));
+            } finally {
+              setInviting(false);
             }
           }}
         >
-          Send invite
+          {inviting ? "Sending…" : "Send invite"}
         </Button>
       </Dialog>
 
       {editingId ? (
         <Dialog open onClose={() => setEditingId(null)} title="Permission editor">
           {permsQuery.isLoading ? (
-            <p className="text-sm text-on-card-muted">Loading…</p>
+            <Loading />
           ) : permsQuery.isError ? (
             <p className="text-sm text-cadence-red">{messageFrom(permsQuery.error)}</p>
           ) : (
@@ -364,23 +402,31 @@ export default function AdminUsersPage() {
                         }}
                         className="!h-8 !w-auto shrink-0"
                       >
-                        <option value="own">own</option>
-                        <option value="assigned">assigned</option>
-                        <option value="all">all</option>
+                        {[...new Set([...allowedScopes(key), ...(grant ? [grant.scope] : [])])].map((sc) => (
+                          <option key={sc} value={sc} disabled={!allowedScopes(key).includes(sc)}>
+                            {sc}
+                          </option>
+                        ))}
                       </Select>
                     ) : null}
                   </div>
                 );
               })}
+              {permError ? (
+                <p role="alert" className="mt-2 text-sm text-cadence-red">
+                  {permError}
+                </p>
+              ) : null}
               <Button
                 className="mt-3 sticky bottom-0"
                 onClick={async () => {
+                  setPermError(null);
                   try {
                     await putPermissions(editingId, draftGrants);
                     setEditingId(null);
                     await queryClient.invalidateQueries({ queryKey: userKeys.all });
                   } catch (err) {
-                    setError(messageFrom(err));
+                    setPermError(messageFrom(err));
                   }
                 }}
               >
@@ -411,20 +457,25 @@ export default function AdminUsersPage() {
             />
           </Field>
         </div>
+        {resetError ? (
+          <p role="alert" className="mt-3 text-sm text-cadence-red">
+            {resetError}
+          </p>
+        ) : null}
         <Button
           className="mt-4"
           onClick={async () => {
             if (!resetUserId || !resetPassword.trim()) {
-              setError("Enter a password.");
+              setResetError("Enter a password.");
               return;
             }
             try {
-              setError(null);
+              setResetError(null);
               await resetUserCredentials(resetUserId, resetPassword);
               setResetUserId(null);
               setResetPassword("");
             } catch (err) {
-              setError(messageFrom(err));
+              setResetError(messageFrom(err));
             }
           }}
         >

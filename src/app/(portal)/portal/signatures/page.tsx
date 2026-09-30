@@ -11,7 +11,7 @@ import {
   type SignatureRequestPurpose,
   type SignatureRequestStatus,
 } from "@/shared/lib/status-labels";
-import { Badge, Button } from "@/shared/ui";
+import { Badge, Button, QueryError } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
 
 const REQUESTS_KEY = ["portal", "signature-requests"] as const;
@@ -102,7 +102,13 @@ export default function SignaturesPage() {
 
       <PortalCard>
         <h2 className="font-subheading text-xl text-cadence-ink">Requests</h2>
-        {requestsQuery.data && requestsQuery.data.length > 0 ? (
+        {requestsQuery.isError ? (
+          <QueryError
+            className="mt-4"
+            error={requestsQuery.error}
+            onRetry={() => requestsQuery.refetch()}
+          />
+        ) : requestsQuery.data && requestsQuery.data.length > 0 ? (
           <ul className="mt-4 flex flex-col divide-y divide-border">
             {requestsQuery.data.map((req) => (
               <li key={req.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -110,7 +116,7 @@ export default function SignaturesPage() {
                   <p className="font-body text-sm font-medium text-cadence-ink">
                     {SIGNATURE_REQUEST_PURPOSE_LABELS[req.purpose as SignatureRequestPurpose]}
                   </p>
-                  <p className="font-body text-xs text-cadence-ink/60">Expires {req.expires_at}</p>
+                  <p className="font-body text-xs text-cadence-ink/60">Expires {new Date(req.expires_at).toLocaleDateString("en-CA", { dateStyle: "medium" })}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={req.status === "signed" ? "positive" : "info"}>

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { attachGovIdDocument, setPersonal, uploadDocument } from "@/features/workers/actions";
+import { attachGovIdDocument, setPersonal, uploadGovIdDocument } from "@/features/workers/actions";
 import { getGovIdDocumentIds, getPersonalField } from "@/features/workers/api";
 import { personalSchema, type PersonalFormValues } from "@/features/workers/schemas";
 import type { Employee } from "@/features/workers/types";
@@ -135,7 +135,7 @@ function GovIdPanel({ workerId }: { workerId: string }) {
     setUploading(true);
     setError(null);
     try {
-      const doc = await uploadDocument(file, "gov_id");
+      const doc = await uploadGovIdDocument(file);
       await attachGovIdDocument(workerId, doc.id);
       await queryClient.invalidateQueries({ queryKey });
     } catch (err) {
@@ -148,7 +148,7 @@ function GovIdPanel({ workerId }: { workerId: string }) {
   return (
     <div className="flex flex-col gap-2 font-body text-sm">
       <p className="text-cadence-ink/60">
-        {query.data ? `${query.data.gov_id_document_ids.length} ID scan(s) on file` : "Loading…"}
+        {query.data ? `${query.data.gov_id_document_ids.length} ID scan(s) on file` : "Checking…"}
       </p>
       <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-cadence-ink hover:bg-surface-muted">
         {uploading ? "Uploading…" : "Upload a scan"}
