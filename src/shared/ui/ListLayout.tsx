@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { BackButton } from "@/shared/ui/BackButton";
 import { Tooltip } from "@/shared/ui/Tooltip";
 
 export interface StatItem {
@@ -64,7 +65,9 @@ export function ListLayout({
     <div className="flex min-h-0 flex-1 gap-6">
       {stats ? <StatRail stats={stats} /> : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+        {/* Flex column so a Table can shrink to the space left and scroll its own
+         * rows; anything taller than that still scrolls here as a fallback. */}
+        <div className="list-layout-body flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           {children}
         </div>
       </div>
@@ -75,14 +78,26 @@ export function ListLayout({
 export function PageHeader({
   title,
   actions,
+  meta,
 }: {
-  title: string;
+  title: ReactNode;
   actions?: ReactNode;
+  /** Optional row under the title — status badges, subtitle, etc. */
+  meta?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="font-heading text-3xl text-cadence-ink">{title}</h1>
+    // Not sticky: <main> is overflow-hidden, so sticky pinned the header below
+    // main's top padding. The negative top margin cancels that padding instead.
+    <header className="z-30 -mx-4 -mt-5 mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-cadence-ink/10 bg-[rgba(246,239,217,0.78)] px-4 py-3 backdrop-blur-xl sm:-mx-8 sm:-mt-6 sm:px-8">
+      {/* basis-48: on a phone, actions that don't fit beside the title wrap below it. */}
+      <div className="flex min-w-0 flex-1 basis-48 items-center gap-3">
+        <BackButton />
+        <div className="min-w-0">
+          <h1 className="font-heading text-2xl leading-tight text-cadence-ink sm:text-3xl">{title}</h1>
+          {meta ? <div className="mt-1 flex flex-wrap items-center gap-2">{meta}</div> : null}
+        </div>
+      </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-    </div>
+    </header>
   );
 }

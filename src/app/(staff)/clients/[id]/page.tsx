@@ -17,7 +17,7 @@ import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog
 import { PERM } from "@/permissions/keys";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import type { ClientStatus } from "@/shared/lib/status-labels";
-import { Button, PermGate, QueryError, useConfirm } from "@/shared/ui";
+import { Button, PageFrame, PageHeader, PageScrollRegion, PermGate, QueryError, useConfirm } from "@/shared/ui";
 
 const billingQueryKey = (clientId: string) => ["clients", clientId, "billing"] as const;
 
@@ -96,36 +96,35 @@ export default function ClientDetailPage() {
   if (!client) return null;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">{client.name}</h1>
-          <div className="mt-1 flex items-center gap-2">
+    <PageFrame>
+      <PageHeader
+        title={client.name}
+        meta={
+          <>
             <ClientStatusBadge status={client.status as ClientStatus} />
             <span className="font-body text-sm text-cadence-ink/60">
               {client.city}, {PROVINCE_LABELS[client.province]}
             </span>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <LogFollowUpButton
-            entityType="client"
-            entityId={client.id}
-            entityLabel={client.name}
-          />
-          <PermGate anyOf={PERM.CLIENTS_EDIT}>
-            <Button variant="secondary" onClick={() => setEditingClient((v) => !v)}>
-              {editingClient ? "Cancel" : "Edit"}
-            </Button>
-          </PermGate>
-          <PermGate anyOf={PERM.CLIENTS_DELETE}>
-            <Button variant="danger" onClick={handleArchive}>
-              Archive
-            </Button>
-          </PermGate>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <LogFollowUpButton entityType="client" entityId={client.id} entityLabel={client.name} />
+            <PermGate anyOf={PERM.CLIENTS_EDIT}>
+              <Button variant="secondary" onClick={() => setEditingClient((v) => !v)}>
+                {editingClient ? "Cancel" : "Edit"}
+              </Button>
+            </PermGate>
+            <PermGate anyOf={PERM.CLIENTS_DELETE}>
+              <Button variant="danger" onClick={handleArchive}>
+                Archive
+              </Button>
+            </PermGate>
+          </>
+        }
+      />
 
+      <PageScrollRegion className="flex flex-col gap-8">
       {archiveError ? (
         <p role="alert" className="font-body text-sm text-cadence-red">
           {archiveError}
@@ -224,6 +223,7 @@ export default function ClientDetailPage() {
 
       <ClientContactsPanel clientId={clientId} />
       {confirmDialog}
-    </div>
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

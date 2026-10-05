@@ -7,6 +7,7 @@ import { listShifts } from "@/features/portal/api";
 import { messageFrom } from "@/shared/lib/errors";
 import { Button, QueryError, useConfirm } from "@/shared/ui";
 import { PortalCard, PortalFrame } from "../../_components/PortalFrame";
+import { formatTimeRange } from "@/shared/lib/datetime";
 
 const SHIFTS_KEY = ["portal", "shifts"] as const;
 
@@ -80,7 +81,7 @@ export default function OffersPage() {
                     <ul className="mt-2 flex flex-col gap-0.5 font-body text-xs text-cadence-ink/70">
                       {shifts.map((s) => (
                         <li key={s.id}>
-                          {s.shift_date} · {s.start_time}–{s.end_time}
+                          {s.shift_date} · {formatTimeRange(s.start_time, s.end_time)}
                         </li>
                       ))}
                     </ul>

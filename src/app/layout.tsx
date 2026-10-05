@@ -1,31 +1,23 @@
 import type { Metadata } from "next";
-import { Catamaran, Chivo_Mono } from "next/font/google";
-import localFont from "next/font/local";
+import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 import { QueryProvider } from "@/api/query-provider";
 import { SessionProvider } from "@/auth/session-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastProvider } from "@/shared/ui/Toast";
 import "./globals.css";
 
-const bonaNovaSC = localFont({
-  variable: "--font-bona-nova-sc",
-  src: [
-    { path: "../fonts/BonaNovaSC-Regular.ttf", weight: "400", style: "normal" },
-    { path: "../fonts/BonaNovaSC-Italic.ttf", weight: "400", style: "italic" },
-    { path: "../fonts/BonaNovaSC-Bold.ttf", weight: "700", style: "normal" },
-  ],
+const cormorantGaramond = Cormorant_Garamond({
+  variable: "--font-cormorant-garamond",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
-const chivoMono = Chivo_Mono({
-  variable: "--font-chivo-mono",
+const sourceSans3 = Source_Sans_3({
+  variable: "--font-source-sans-3",
   subsets: ["latin"],
-  weight: ["400", "700"],
-});
-
-const catamaran = Catamaran({
-  variable: "--font-catamaran",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -43,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bonaNovaSC.variable} ${chivoMono.variable} ${catamaran.variable} h-full antialiased`}
+      className={`${cormorantGaramond.variable} ${sourceSans3.variable} h-full antialiased`}
     >
       <body className="flex min-h-dvh flex-col font-body">
         <QueryProvider>

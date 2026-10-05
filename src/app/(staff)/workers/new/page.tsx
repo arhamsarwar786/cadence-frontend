@@ -7,7 +7,7 @@ import { workerKeys } from "@/features/workers/api";
 import { WorkerProfileForm } from "@/features/workers/components/WorkerProfileForm";
 import type { WorkerProfileFormValues } from "@/features/workers/schemas";
 import type { EmployeeWrite } from "@/features/workers/types";
-import { PageFrame, PageScrollRegion } from "@/shared/ui";
+import { PageFrame, PageHeader, PageScrollRegion } from "@/shared/ui";
 
 export default function NewWorkerPage() {
   const router = useRouter();
@@ -40,8 +40,8 @@ export default function NewWorkerPage() {
 
   return (
     <PageFrame>
+      <PageHeader title="New worker" />
       <PageScrollRegion className="flex flex-col gap-4">
-        <h1 className="font-heading text-3xl text-cadence-ink">New worker</h1>
         <WorkerProfileForm onSubmit={handleSubmit} submitLabel="Create worker" />
       </PageScrollRegion>
     </PageFrame>

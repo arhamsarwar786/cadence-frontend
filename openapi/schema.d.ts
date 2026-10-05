@@ -4,6 +4,67 @@
  */
 
 export interface paths {
+    "/api/v1/agencies/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description `GET /api/v1/agencies/?q=` — the picker both sign-in screens open on.
+         *     **PUBLIC: no session, no grant, no org context** (context.md's
+         *     "agency search on the login screen: BUILD IT", and the surface is a
+         *     DELIBERATE tenant enumeration the user accepted: an unauthenticated
+         *     caller learns which agencies use Cadence). It is registered as a PUBLIC
+         *     door with its reason in core/tests/test_permission_matrix.py, so the
+         *     exemption is declared rather than inferred.
+         *
+         *     What it answers is `{results: [{id, name}], next}` — two fields per row
+         *     and two at the top level, with NO `count` and NO `previous`
+         *     (core.pagination.NarrowPageNumberPagination). Those omissions are the
+         *     design, not an oversight: a total would let a caller walk the roster's
+         *     size and shape one prefix at a time, and the house envelope's 50/200 page
+         *     sizes are a directory's, not a public search box's. There are no
+         *     worker-level hits (the selector reads `organizations` and nothing else,
+         *     so an employee's name is never searchable here), no "did you mean", and
+         *     no 404-on-a-guess: a name that matches nothing and a name that was
+         *     never an agency answer the IDENTICAL empty 200.
+         *
+         *     An empty or blank `q` answers an empty page rather than the roster, so
+         *     the door is a search and not a browse endpoint. A term over
+         *     `AGENCY_PICKER_MAX_QUERY` is a 400 naming the bound — measured on the
+         *     string the client sent, before the selector strips it — and so is a term
+         *     carrying a NUL (0x00) byte, which no PostgreSQL text field can hold: the
+         *     byte reached the paginator's COUNT and answered an anonymous caller a
+         *     traceback until the door refused it here, which is the standing rule that
+         *     a bad value is a 400 and never a 500.
+         *
+         *     RATE LIMITED at 30 requests a minute per client address, counted in Redis
+         *     and FAILING CLOSED (core.rate_limit: an unreachable counter refuses with
+         *     the same 429 as an over-limit one, so the door is never unbounded and
+         *     never tells a caller the limiter is down). The limiter is a SHARED
+         *     helper, not a DRF throttle — DRF's counts through a cache this project
+         *     does not configure, which would make the limit per-process and twice as
+         *     large in production. **Only this door is limited so far**: the login and
+         *     password-reset doors that follow it in the slice get the same helper and
+         *     their own policy numbers, and nothing else in the API is wired to it.
+         *
+         *     A READ door: it writes no audit row and touches no account state. An
+         *     audit event per picker call would put a write on an unauthenticated
+         *     public surface and grow the append-only chain with rows no agency asked
+         *     for; the limiter's own Redis counter is the only state this door leaves
+         *     behind, and it expires.
+         */
+        get: operations["agencies_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assignments/{pk}/": {
         parameters: {
             query?: never;
@@ -973,10 +1034,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Signature requests. GET rides esign.status.view. */
+        /**
+         * @description Signature requests. GET rides esign.status.view (the status pages);
+         *     POST rides esign.request.send (the manual assign door — one uploaded PDF
+         *     and one named worker, or the same PDF and a plural of workers).
+         */
         get: operations["esign_requests_list"];
         put?: never;
-        post?: never;
+        /**
+         * @description Signature requests. GET rides esign.status.view (the status pages);
+         *     POST rides esign.request.send (the manual assign door — one uploaded PDF
+         *     and one named worker, or the same PDF and a plural of workers).
+         */
+        post: operations["esign_requests_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1730,6 +1800,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/me/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The STAFF account's own inbox (the shell's bell): delivered rows
+         *     addressed to this person, newest first, in the house pagination
+         *     envelope. Identity-derived (recipient_user IS the account) — no catalog
+         *     grant, so every staff account has one.
+         */
+        get: operations["notifications_me_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/me/read-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Every delivered, unread row of the staff account's → read. */
+        post: operations["notifications_me_read_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/me/unread-count/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The bell's badge — cheap enough to poll. */
+        get: operations["notifications_me_unread_count_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/me/{pk}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Mark one of the staff account's own delivered rows read. */
+        post: operations["notifications_me_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications/portal/me/notifications/": {
         parameters: {
             query?: never;
@@ -1745,6 +1888,43 @@ export interface paths {
         get: operations["notifications_portal_me_notifications_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/portal/me/notifications/read-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Every delivered, unread row of the worker's → read. */
+        post: operations["notifications_portal_me_notifications_read_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/portal/me/notifications/{pk}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The worker marks one of their OWN delivered rows read (sent → read).
+         *     Identity-derived like the list: anyone else's row is a 404.
+         */
+        post: operations["notifications_portal_me_notifications_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4453,6 +4633,33 @@ export interface components {
             token: string;
         };
         /**
+         * @description One agency row as the PUBLIC picker may show it: an id and a name,
+         *     and nothing else.
+         *
+         *     The field list IS the door's privacy argument, so it is deliberately the
+         *     shortest one in the codebase. `organizations` also carries the printed
+         *     address block, `email`, `phone`, `tax_id` (the agency's GST/HST number)
+         *     and `remit_to_details` (the payable-to instructions on every invoice) —
+         *     none of which a worker choosing their agency needs, and every one of
+         *     which is an agency's financial identity rather than directory data. The
+         *     id is the tenant id the NEXT door (the login that must carry an org)
+         *     needs, so it is disclosed deliberately and not as a by-product.
+         *
+         *     Not a ModelSerializer on purpose: a ModelSerializer over `Organization`
+         *     would emit every field the model declares, which is the opposite of the
+         *     narrowing this door exists to do.
+         */
+        AgencyPicker: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        AgencyPickerPage: {
+            /** @description The next page's URL, or null at the end of the result set. */
+            next: string | null;
+            results: components["schemas"]["AgencyPicker"][];
+        };
+        /**
          * @description The CONTRACT shape of GET /assignments/<pk>/ — the view composes the
          *     placement payload and its warnings from two selector calls, so no
          *     single runtime serializer matches it. This class exists for the
@@ -5062,6 +5269,10 @@ export interface components {
             readonly owner_user_id: string | null;
             pay_method?: (components["schemas"]["PayMethodEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             phone?: string;
+            /** Format: date-time */
+            phone_code_expires_at?: string | null;
+            /** Format: date-time */
+            phone_verified_at?: string | null;
             postal_code?: string | null;
             pronouns?: string;
             province?: (components["schemas"]["ProvinceEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -5223,6 +5434,10 @@ export interface components {
             readonly owner_user_id: string | null;
             pay_method?: (components["schemas"]["PayMethodEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             phone?: string;
+            /** Format: date-time */
+            phone_code_expires_at?: string | null;
+            /** Format: date-time */
+            phone_verified_at?: string | null;
             postal_code?: string | null;
             pronouns?: string;
             province?: (components["schemas"]["ProvinceEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -6192,6 +6407,56 @@ export interface components {
             login: string;
             password: string;
         };
+        /**
+         * @description The BULK manual assign door's body (m7 slice 20b): ONE uploaded PDF
+         *     and SEVERAL named workers, all-or-nothing. The view has already folded
+         *     every accepted wire spelling of the plural field — `employee_ids`
+         *     repeated, `employee_ids[]`, `employee_ids[N]` and a JSON-list value — into
+         *     this one list, in submitted order; this serializer's job is the CONTENT of
+         *     that list, and it is where a malformed batch is refused BEFORE the service
+         *     walks a single signer (zero writes, always):
+         *
+         *       - every entry is a UUID (`UUIDField` children — a non-id is a 400
+         *         naming its position in the list, not a silent skip, and every bad
+         *         entry is reported in one pass);
+         *       - the list is NOT empty (`allow_empty=False` — a batch naming nobody is
+         *         a caller bug, and the service refuses it too);
+         *       - no worker is named twice (`validate_employee_ids` — two invitations
+         *         for one signature, refused in the service's own words so the wire and
+         *         the service cannot drift).
+         *
+         *     The `file` and `label` fields are `_upload_fields()`'s — ONE declaration
+         *     both shapes unpack, so the upload contract (a PDF; the label optional,
+         *     blank-allowed, capped at 255, defaulting to the cleaned filename
+         *     service-side) is defined once for BOTH shapes in code rather than in a
+         *     sentence asking two copies to agree.
+         */
+        ManualBulkSignatureRequest: {
+            /** @description One worker per entry, in the order the invitation is recorded. Every worker must sign the same document. */
+            employee_ids: string[];
+            /** Format: binary */
+            file: string;
+            /** @default  */
+            label: string;
+        };
+        /**
+         * @description The single-worker manual assign door's body (m7 slice 20a): one
+         *     uploaded PDF plus the ONE named worker. The bulk half (m7 slice 20b,
+         *     `ManualBulkSignatureRequestSerializer` below) rides the same door on a
+         *     plural field; a payload carrying both is refused at the VIEW, and a
+         *     plural field never lands here — so neither shape can silently narrow
+         *     into the other.
+         */
+        ManualSignatureRequest: {
+            /** Format: uuid */
+            employee_id: string;
+            /** Format: binary */
+            file: string;
+            /** @default  */
+            label: string;
+        };
+        ManualSignatureRequestBody: components["schemas"]["ManualSignatureRequest"] | components["schemas"]["ManualBulkSignatureRequest"];
+        ManualSignatureRequestCreated: components["schemas"]["SignatureRequest"][] | components["schemas"]["SignatureRequest"];
         MarginByClient: {
             excluded_links_no_margin_grant: number;
             rows: components["schemas"]["MarginByClientRow"][];
@@ -6202,6 +6467,10 @@ export interface components {
             client_id: string;
             client_name: string;
             margin: string | null;
+        };
+        /** @description How many rows the read-all moved sent → read. */
+        MarkAllReadResult: {
+            updated: number;
         };
         /**
          * @description * `email` - Email
@@ -6570,6 +6839,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Placement"][];
         };
+        PaginatedPortalNotificationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["PortalNotification"][];
+        };
         PaginatedPrivacyBreachList: {
             /** @example 123 */
             count: number;
@@ -6746,7 +7030,13 @@ export interface components {
             institution?: string;
             year?: number | null;
         };
-        PatchedEmployeeSkillWrite: {
+        /**
+         * @description PATCH body for one skill link. The skill is named by the URL, so
+         *     ``skill_id`` is optional here and, when a client echoes it back, it
+         *     must match the URL — it can never re-point the link (and it is never
+         *     splatted into the service a second time).
+         */
+        PatchedEmployeeSkillUpdate: {
             /** Format: uuid */
             skill_id?: string;
             /** Format: decimal */
@@ -7637,6 +7927,7 @@ export interface components {
             generated_on: string;
             /** Format: uuid */
             readonly id: string;
+            label?: string;
             purpose: components["schemas"]["PurposeEnum"];
             /** Format: date-time */
             signed_at?: string | null;
@@ -7778,9 +8069,10 @@ export interface components {
         /**
          * @description * `payroll_release` - Payroll release
          *     * `onboarding` - Onboarding
+         *     * `general` - General
          * @enum {string}
          */
-        PurposeEnum: "payroll_release" | "onboarding";
+        PurposeEnum: "payroll_release" | "onboarding" | "general";
         /**
          * @description * `no_show` - No-show
          *     * `excused` - Excused
@@ -7910,6 +8202,7 @@ export interface components {
             expires_at: string;
             /** Format: uuid */
             readonly id: string;
+            label?: string;
             purpose: components["schemas"]["PurposeEnum"];
             /** Format: date-time */
             signed_at?: string | null;
@@ -8033,6 +8326,10 @@ export interface components {
             unbilled_hours: string;
             worked_hours: string;
         };
+        /** @description The bell's badge: the account's own delivered-but-unread count. */
+        UnreadNotificationCount: {
+            unread: number;
+        };
         /**
          * @description One roster row. Masked PII companions ONLY — the raw login (a staff
          *     email) never reaches a response; the full value leaves only through
@@ -8110,6 +8407,46 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    agencies_retrieve: {
+        parameters: {
+            query?: {
+                /** @description A page number within the result set. Out of range is a 404. */
+                page?: number;
+                /** @description Rows per page. Never more than 20, whatever is asked for. */
+                page_size?: number;
+                /** @description Case-insensitive substring of the agency's name. Blank or absent answers an empty page (this is a search, not a browse endpoint); over 100 characters is a 400, and so is a term holding a NUL (0x00) byte, which no PostgreSQL text field can carry. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgencyPickerPage"];
+                };
+            };
+            /** @description The search term is over the accepted length, or carries a NUL (0x00) byte that no PostgreSQL text field can hold. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 30 requests a minute per client address, or the limiter itself being unreachable — the same refusal either way. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     assignments_retrieve: {
         parameters: {
             query?: never;
@@ -9461,8 +9798,9 @@ export interface operations {
                 /**
                  * @description * `payroll_release` - Payroll release
                  *     * `onboarding` - Onboarding
+                 *     * `general` - General
                  */
-                purpose?: "payroll_release" | "onboarding";
+                purpose?: "payroll_release" | "onboarding" | "general";
                 /**
                  * @description * `pending` - Pending
                  *     * `signed` - Signed
@@ -9483,6 +9821,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedSignatureRequestList"];
+                };
+            };
+        };
+    };
+    esign_requests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ManualSignatureRequestBody"];
+            };
+        };
+        responses: {
+            /** @description The request created. The singular payload (employee_id) answers ONE object; the plural payload (employee_ids) answers the created requests in submitted order, all-or-nothing. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManualSignatureRequestCreated"];
                 };
             };
         };
@@ -10664,6 +11026,89 @@ export interface operations {
             };
         };
     };
+    notifications_me_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPortalNotificationList"];
+                };
+            };
+        };
+    };
+    notifications_me_read_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkAllReadResult"];
+                };
+            };
+        };
+    };
+    notifications_me_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadNotificationCount"];
+                };
+            };
+        };
+    };
+    notifications_me_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalNotification"];
+                };
+            };
+        };
+    };
     notifications_portal_me_notifications_list: {
         parameters: {
             query?: never;
@@ -10679,6 +11124,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortalNotification"][];
+                };
+            };
+        };
+    };
+    notifications_portal_me_notifications_read_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkAllReadResult"];
+                };
+            };
+        };
+    };
+    notifications_portal_me_notifications_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pk: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalNotification"];
                 };
             };
         };
@@ -12423,7 +12908,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedEmployeeSkillWrite"];
+                "application/json": components["schemas"]["PatchedEmployeeSkillUpdate"];
             };
         };
         responses: {
@@ -14475,7 +14960,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedEmployeeSkillWrite"];
+                "application/json": components["schemas"]["PatchedEmployeeSkillUpdate"];
             };
         };
         responses: {

@@ -19,7 +19,17 @@ import {
 import { hasAnyPerm } from "@/permissions/has-perm";
 import { PERM } from "@/permissions/keys";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
-import { Button, Field, Input, QueryError, Select, Textarea } from "@/shared/ui";
+import {
+  Button,
+  Field,
+  Input,
+  PageFrame,
+  PageHeader,
+  PageScrollRegion,
+  QueryError,
+  Select,
+  Textarea,
+} from "@/shared/ui";
 
 const PROVINCES = [
   "AB",
@@ -134,12 +144,14 @@ export default function SettingsPage() {
 
   if (session && !canView) {
     return (
-      <div>
-        <h1 className="font-heading text-3xl text-cadence-ink">Settings</h1>
-        <p className="mt-2 font-body text-sm text-cadence-ink/70">
-          You need the admin.org.view permission to open organization settings.
-        </p>
-      </div>
+      <PageFrame>
+        <PageHeader title="Settings" />
+        <PageScrollRegion>
+          <p className="font-body text-sm text-cadence-ink/70">
+            You need the admin.org.view permission to open organization settings.
+          </p>
+        </PageScrollRegion>
+      </PageFrame>
     );
   }
 
@@ -210,14 +222,18 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="flex max-w-2xl flex-col gap-10">
-      <div>
-        <h1 className="font-heading text-3xl text-cadence-ink">Settings</h1>
-        <p className="mt-2 font-body text-sm text-cadence-ink/65">
-          Agency address, clock, remittance, and onboarding mode. Number formats and country are
-          fixed here — contact support to change them.
-        </p>
-      </div>
+    <PageFrame>
+      <PageHeader
+        title="Settings"
+        meta={
+          <p className="font-body text-sm text-cadence-ink/65">
+            Agency address, clock, remittance, and onboarding mode. Number formats and country are
+            fixed here — contact support to change them.
+          </p>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-10">
+      <div className="flex max-w-2xl flex-col gap-10">
 
       {orgQuery.isLoading ? (
         <Loading />
@@ -428,6 +444,8 @@ export default function SettingsPage() {
           </section>
         </>
       ) : null}
-    </div>
+      </div>
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

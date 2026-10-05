@@ -249,7 +249,7 @@ export default function WorkersListPage() {
             },
           ]}
         >
-          <div className="flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4">
             {finding && !filtersActive && (query.data?.count ?? 0) > FIND_WINDOW ? (
               <p className="font-body text-xs text-cadence-ink/60">
                 Showing matches in the first {FIND_WINDOW} of {query.data?.count} workers.

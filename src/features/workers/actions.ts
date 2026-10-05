@@ -1,6 +1,7 @@
 import { api } from "@/api/client";
 import type {
   BackgroundCheckWrite,
+  ConsentRecord,
   Document,
   Employee,
   EmployeeAvailability,
@@ -50,6 +51,24 @@ export function deactivateWorker(id: string): Promise<Employee> {
 
 export function rehireWorker(id: string): Promise<Employee> {
   return api.post<Employee>(`/api/v1/workers/${id}/rehire/`);
+}
+
+// --- Phone verification + consent (staff-mediated) ----------------------
+
+/** Text a 6-digit code to the worker's mobile. The code never comes back
+ * in the response — the worker reads it off their phone and relays it. */
+export function requestPhoneCode(workerId: string): Promise<Employee> {
+  return api.post<Employee>(`/api/v1/workers/${workerId}/phone/request-code/`, {});
+}
+
+export function confirmPhoneCode(workerId: string, code: string): Promise<Employee> {
+  return api.post<Employee>(`/api/v1/workers/${workerId}/phone/confirm/`, { code });
+}
+
+/** Record consent the office collected offline. Bodiless: the server
+ * snapshots the org's CURRENT consent text and version onto the record. */
+export function recordWorkerConsent(workerId: string): Promise<ConsentRecord> {
+  return api.post<ConsentRecord>(`/api/v1/workers/${workerId}/consent/`);
 }
 
 // --- PII ------------------------------------------------------------------

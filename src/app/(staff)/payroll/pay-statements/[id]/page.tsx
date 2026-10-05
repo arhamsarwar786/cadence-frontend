@@ -12,6 +12,7 @@ import {
   addPayStatementLine,
   deletePayStatementDeduction,
   deletePayStatementLine,
+  generatePayStatementPdf,
 } from "@/features/money/actions";
 import { getEmployeeYtd, getPayStatement, payStatementKeys } from "@/features/money/api";
 import { PayStatementStatusBadge } from "@/features/money/components/StatusBadges";
@@ -20,7 +21,20 @@ import { applyFieldErrors, isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { PayStatementStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Field, Input, PageHeader, PermGate, QueryError, Select, useConfirm } from "@/shared/ui";
+import {
+  Button,
+  Field,
+  Input,
+  PageFrame,
+  PageHeader,
+  PageScrollRegion,
+  PermGate,
+  QueryError,
+  Select,
+  useConfirm,
+  useHasPerm,
+  useToast,
+} from "@/shared/ui";
 
 export default function PayStatementDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +42,8 @@ export default function PayStatementDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const toast = useToast();
+  const canGeneratePdf = useHasPerm(PERM.PAYROLL_PAY_STATEMENTS_GENERATE);
 
   const query = useQuery({
     queryKey: payStatementKeys.detail(id),
@@ -71,6 +87,15 @@ export default function PayStatementDetailPage() {
     }
   }
 
+  async function generatePdf() {
+    try {
+      await run(() => generatePayStatementPdf(id));
+      toast.success("PDF generated — the worker can now download it from their portal.");
+    } catch (err) {
+      setError(messageFrom(err));
+    }
+  }
+
   async function removeRow(what: string, action: () => Promise<unknown>) {
     const ok = await confirm({
       title: `Remove this ${what}?`,
@@ -82,11 +107,12 @@ export default function PayStatementDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <PageFrame>
       <PageHeader
         title={stmt.employee_name}
         actions={<PayStatementStatusBadge status={stmt.status as PayStatementStatus} />}
       />
+      <PageScrollRegion className="flex flex-col gap-8">
       <p className="font-body text-sm text-cadence-ink/60">
         Cadence computes <strong>gross only</strong> — deductions here are entered, not calculated.
         This is a pay statement, not an official payslip.
@@ -106,17 +132,31 @@ export default function PayStatementDetailPage() {
           <p className="font-fine text-[10px] uppercase text-cadence-ink/60">Hours</p>
           <p className="font-heading text-2xl">{stmt.hours_total ?? "—"}</p>
         </div>
-        <a
-          href={`/api/v1/payroll/pay-statements/${id}/pdf/`}
-          target="_blank"
-          rel="noreferrer"
-          className="self-end underline"
-        >
-          PDF
-        </a>
+        <div className="self-end">
+          {stmt.document_id ? (
+            <a
+              href={`/api/v1/payroll/pay-statements/${id}/pdf/`}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              Download PDF
+            </a>
+          ) : draft ? (
+            <p className="text-xs text-cadence-ink/60">The PDF can be generated once the run is approved.</p>
+          ) : (
+            canGeneratePdf ? (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={generatePdf}>
+                Generate PDF
+              </Button>
+            ) : (
+              <p className="text-xs text-cadence-ink/60">No PDF generated yet.</p>
+            )
+          )}
+        </div>
       </div>
 
-      {error ? <p className="text-sm text-cadence-red">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-cadence-red">{error}</p> : null}
 
       <section>
         <h2 className="mb-3 font-subheading text-lg">Shift / earning lines</h2>
@@ -234,7 +274,8 @@ export default function PayStatementDetailPage() {
         </section>
       ) : null}
       {confirmDialog}
-    </div>
+      </PageScrollRegion>
+    </PageFrame>
   );
 }
 

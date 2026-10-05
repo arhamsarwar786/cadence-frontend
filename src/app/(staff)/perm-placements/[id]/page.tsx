@@ -27,13 +27,13 @@ export default function PlacementDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title={p.employee_name}
         actions={
           <Chip tone={p.voided_at ? "danger" : "muted"}>{p.voided_at ? "voided" : p.status}</Chip>
         }
       />
+      <PageScrollRegion className="flex flex-col gap-6">
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-cadence-ink/60">Client</dt>

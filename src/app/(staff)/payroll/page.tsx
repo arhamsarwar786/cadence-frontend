@@ -1,22 +1,22 @@
 "use client";
 
-import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { createPayrollRun, generatePayrollRun } from "@/features/money/actions";
-import { listPayCycles, listPayrollRuns, payCycleKeys, payrollRunKeys } from "@/features/money/api";
+import { listPayrollRuns, payrollRunKeys } from "@/features/money/api";
+import { PayCyclesPanel } from "@/features/money/components/PayCyclesPanel";
 import { PayrollRunStatusBadge } from "@/features/money/components/StatusBadges";
 import { payrollRunCreateSchema, type PayrollRunCreateFormValues } from "@/features/money/schemas";
-import type { PayCycle, PayrollRun } from "@/features/money/types";
+import type { PayrollRun } from "@/features/money/types";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { ListError } from "@/features/jobs/components/ListError";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { PayrollRunStatus } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, QueryError, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(payrollRunCreateSchema.shape);
@@ -74,13 +74,6 @@ export default function PayrollRunsPage() {
     queryKey: payrollRunKeys.list({ page }),
     queryFn: () => listPayrollRuns({ page, pageSize: PAGE_SIZE }),
   });
-  const cyclesQuery = useQuery({
-    queryKey: payCycleKeys.list(),
-    queryFn: async () => {
-      const data = await listPayCycles();
-      return Array.isArray(data) ? data : data.results;
-    },
-  });
   const [genError, setGenError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   function goToPage(nextPage: number) {
@@ -98,8 +91,6 @@ export default function PayrollRunsPage() {
     },
     { header: "Paid", cell: (r) => (r.paid_at ? "Yes" : "No") },
   ];
-
-  const cycles = (cyclesQuery.data ?? []) as PayCycle[];
 
   return (
     <PageFrame>
@@ -137,32 +128,7 @@ export default function PayrollRunsPage() {
       />
       {genError ? <p className="font-body text-sm text-cadence-red">{genError}</p> : null}
 
-      <section className="rounded-2xl border border-border bg-surface p-4">
-        <h2 className="mb-2 font-subheading text-sm uppercase tracking-wide text-cadence-ink/50">
-          Pay cycles
-        </h2>
-        {cyclesQuery.isLoading ? (
-          <Loading />
-        ) : cyclesQuery.isError ? (
-          <QueryError error={cyclesQuery.error} onRetry={() => cyclesQuery.refetch()} />
-        ) : cycles.length === 0 ? (
-          <p className="text-sm text-cadence-ink/50">No pay cycles configured yet.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {cycles.map((c) => (
-              <li key={c.id} className="flex justify-between gap-3">
-                <span>
-                  {c.name} · {c.period_kind}
-                  {c.active ? " · active" : ""}
-                </span>
-                <span className="text-cadence-ink/50">
-                  anchor {c.anchor_date} · payday +{c.payday_offset_days}d
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <PayCyclesPanel />
 
       <PageBody>
 
@@ -193,7 +159,7 @@ export default function PayrollRunsPage() {
             },
           ]}
         >
-          <div className="flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4">
             <Table
               columns={columns}
               rows={query.data?.results ?? []}

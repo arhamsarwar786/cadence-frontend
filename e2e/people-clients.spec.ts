@@ -180,13 +180,13 @@ test.describe("worker create", () => {
     await expect(emailField.getByText(/email.*required/i)).toBeVisible({ timeout: 3000 });
   });
 
-  test("server 400 without email is shown in the API's own words", async ({ page }) => {
+  test("missing email is caught client-side with a clear message", async ({ page }) => {
     await apiLogin(page, DEMO.root);
     await page.goto("/workers/new");
     await page.getByLabel("First name").fill("NoEmail");
     await page.getByLabel("Last name").fill("Person" + RUN);
     await page.getByRole("button", { name: "Create worker" }).click();
-    await expect(page.getByText(/a worker email address is required/i)).toBeVisible();
+    await expect(page.getByText(/email is required/i)).toBeVisible();
   });
 
   test("happy path: create -> redirect to detail -> persists; double-click creates ONE record", async ({ page }) => {
@@ -252,6 +252,41 @@ const dlg = (page: Page) => page.locator("dialog[open]");
 async function confirmDialog(page: Page, name: RegExp | string) {
   await dlg(page).getByRole("button", { name }).click();
 }
+/** Dev/test LocalSms outbox (Backend/.data/sms by default; override with CADENCE_LOCAL_SMS_ROOT). */
+const SMS_ROOT = process.env.CADENCE_LOCAL_SMS_ROOT
+  ?? path.resolve(__dirname, "../../app-cadence/Backend/.data/sms");
+/** The latest verification code texted to `to` (E.164), or null when the outbox isn't reachable. */
+async function readSmsCode(to: string, timeoutMs = 5000): Promise<string | null> {
+  if (!fs.existsSync(SMS_ROOT)) return null;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const hit = fs.readdirSync(SMS_ROOT).filter((n) => n.endsWith(".sms")).sort().reverse()
+      .map((n) => fs.readFileSync(path.join(SMS_ROOT, n), "utf8"))
+      .find((t) => t.split("\n").includes(`To: ${to}`));
+    const code = hit?.match(/verification code is (\d{6})/)?.[1];
+    if (code) return code;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return null;
+}
+/** A real one-page PDF (the manual e-sign door page-counts uploads with pypdf). */
+function onePagePdf(text: string): Buffer {
+  const stream = `BT /F1 18 Tf 72 720 Td (${text.replace(/[()\\]/g, "")}) Tj ET`;
+  const objs = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let out = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objs.forEach((o, i) => { offsets.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("");
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, "latin1");
+}
 
 // ================================================================ WORKERS: DETAIL STATES
 test.describe("worker detail states", () => {
@@ -294,7 +329,6 @@ test.describe("worker detail states", () => {
   });
 
   test("401 mid-session on a worker page -> user is sent to login (session cleared)", async ({ page }) => {
-    test.fail(true, "api client never handles 401: session cache stays 'signed in', page shows 'Please sign in again.' with no redirect (api/client.ts, session-context.tsx)");
     await apiLogin(page, DEMO.root);
     const w = await mkWorker(page);
     await page.goto(`/workers/${w.id}`);
@@ -750,7 +784,7 @@ test.describe("worker panels", () => {
     await apiLogin(page, DEMO.recruiter);
     const w = await mkWorker(page, { active: true });
     await moreTab(page, w.id, "Background check");
-    await expect(page.getByText(/permission|not available|no access/i)).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText(/permission|not available|no access|don't have access/i)).toBeVisible({ timeout: 3000 });
   });
 
   test("consent tab: shows 'No consent captured yet.' then the captured consent (staff API POST /consent/)", async ({ page }) => {
@@ -777,12 +811,61 @@ test.describe("worker panels", () => {
     expect(await b.json()).toEqual({ detail: [expect.stringMatching(/no verification code is pending/)] });
   });
 
-  test("BUG: staff UI has no way to request/confirm a worker's phone verification code or capture consent", async ({ page }) => {
-    test.fail(true, "endpoints POST /workers/{id}/phone/request-code|confirm/ and POST /workers/{id}/consent/ are not wired in any staff component (grep 'request-code' src -> 0 hits)");
+  test("phone verification + consent: staff send code, wrong code refused inline, confirm, record consent (persisted via API)", async ({ page }) => {
+    await apiLogin(page, DEMO.root);
+    const w = await mkWorker(page, { active: true });
+    // A unique mobile per run, so the code is found by its To: header in the local outbox.
+    const phone = `604555${Math.floor(1000 + Math.random() * 9000)}`;
+    await api(page, "PATCH", `workers/${w.id}/`, { phone });
+    await page.goto(`/workers/${w.id}`);
+    await expect(page.getByText("Unverified", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /send.*code|request.*code|verify phone/i }).click();
+    const d = dlg(page);
+    await d.getByRole("button", { name: "Send verification code" }).click();
+    const codeInput = d.getByLabel("Verification code");
+    await expect(codeInput).toBeVisible();
+    const afterSend = await api(page, "GET", `workers/${w.id}/`);
+    expect(afterSend.phone_verified_at).toBeNull();
+    expect(afterSend.phone_code_expires_at).toBeTruthy();
+
+    // The backend never returns the code; dev's LocalSms writes it to Backend/.data/sms/*.sms.
+    const code = await readSmsCode(`+1${phone}`);
+    const wrong = code === "000000" ? "111111" : "000000";
+    await codeInput.fill(wrong);
+    await d.getByRole("button", { name: "Confirm" }).click();
+    await expect(d.getByRole("alert")).toHaveText(/does not match/);
+    expect((await api(page, "GET", `workers/${w.id}/`)).phone_verified_at).toBeNull();
+    if (!code) {
+      test.info().annotations.push({ type: "note", description: `no LocalSms outbox at ${SMS_ROOT}; stopped after the wrong-code 400` });
+      return;
+    }
+    await codeInput.fill(code);
+    await d.getByRole("button", { name: "Confirm" }).click();
+    await expect(dlg(page)).toHaveCount(0);
+    await expect(page.getByText("Verified", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /verify phone/i })).toHaveCount(0);
+    expect((await api(page, "GET", `workers/${w.id}/`)).phone_verified_at).toBeTruthy();
+
+    // Consent collected offline -> recorded by staff, confirmed in a dialog.
+    await page.getByRole("tab", { name: "More" }).click();
+    await page.getByRole("button", { name: "Consent", exact: true }).click();
+    await expect(page.getByText("No consent captured yet.")).toBeVisible();
+    await page.getByRole("button", { name: "Record consent" }).click();
+    await expect(dlg(page).getByRole("heading", { name: "Record consent" })).toBeVisible();
+    await dlg(page).getByRole("button", { name: "Record consent" }).click();
+    await expect(dlg(page)).toHaveCount(0);
+    await expect(page.getByText("No consent captured yet.")).toHaveCount(0);
+    await expect(page.getByText("Version")).toBeVisible();
+    const after = await api(page, "GET", `workers/${w.id}/`);
+    expect(after.consent).toEqual(expect.objectContaining({ source: "staff", version: expect.any(Number) }));
+  });
+
+  test("phone verification: worker with no mobile gets a hint, not a dead button", async ({ page }) => {
     await apiLogin(page, DEMO.root);
     const w = await mkWorker(page, { active: true });
     await page.goto(`/workers/${w.id}`);
-    await expect(page.getByRole("button", { name: /send.*code|request.*code|verify phone/i })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText(/Add a mobile number/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /verify phone/i })).toHaveCount(0);
   });
 
   test("documents: upload+attach, verify, remove(confirm); persisted via API", async ({ page }) => {
@@ -1175,7 +1258,8 @@ test.describe("e-sign", () => {
     const pending = list.results.find((r: any) => r.status === "pending");
     test.skip(!pending, "no pending request seeded");
     await page.goto("/esign");
-    await page.getByRole("button", { name: "Revoke" }).first().click();
+    // exact + scoped to table rows: the "Revoked" status filter chip also matches a loose "Revoke".
+    await page.getByRole("row").getByRole("button", { name: "Revoke", exact: true }).first().click();
     await dlg(page).getByRole("button", { name: "Cancel" }).click();
     expect((await api(page, "GET", `esign/requests/${pending.id}/`)).status).toBe("pending");
   });
@@ -1186,16 +1270,102 @@ test.describe("e-sign", () => {
     test.skip(!list.results.some((r: any) => r.status === "pending"), "no pending");
     await page.goto("/esign");
     await fulfill(page, /\/revoke\/$/, 500, { detail: "Revoke blew up" }, "POST");
-    await page.getByRole("button", { name: "Revoke" }).first().click();
+    await page.getByRole("row").getByRole("button", { name: "Revoke", exact: true }).first().click();
     await confirmDialog(page, "Revoke");
     await expect(page.getByText(/Revoke blew up/)).toBeVisible({ timeout: 3000 });
   });
 
-  test("BUG: no UI to create an e-sign request or open a request's detail/document", async ({ page }) => {
-    test.fail(true, "esign/page.tsx is list+revoke only; POST /esign/requests/, GET /esign/requests/{id}/ and /document/ have no frontend integration; rows are not clickable");
+  test("request signature: modal sends one worker; 400 shown verbatim; list untouched", async ({ page }) => {
+    await apiLogin(page, DEMO.root);
+    const list = await api(page, "GET", "esign/requests/");
+    await page.goto("/esign");
+    // wait for the table to load (header + one row per request) before taking the baseline
+    const rowsBefore = list.results.length + 1;
+    await expect(page.getByRole("row")).toHaveCount(rowsBefore);
+    await page.getByRole("button", { name: "Request signature" }).click();
+    const d = dlg(page);
+    await d.locator('input[type="file"]').setInputFiles({ name: "form.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n") });
+    await d.getByRole("radio").first().check();
+    let body = "";
+    await page.route((u) => isApi(u.toString(), /^\/api\/v1\/esign\/requests\/$/), (route: Route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      body = route.request().postData() ?? "";
+      return route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ detail: ["Invite Test Worker to the Cadence portal — a signature request is waiting for their signature"] }) });
+    });
+    await d.getByRole("button", { name: "Send request" }).click();
+    await expect(d.getByRole("alert")).toHaveText(/Invite Test Worker to the Cadence portal/);
+    expect(body).toContain('name="employee_id"');
+    expect(body).not.toContain('name="employee_ids"');
+    await expect(page.getByRole("row")).toHaveCount(rowsBefore);
+  });
+
+  test("request signature: bulk sends employee_ids and lists what was created", async ({ page }) => {
     await apiLogin(page, DEMO.root);
     await page.goto("/esign");
-    await expect(page.getByRole("button", { name: /new|create|send.*request/i })).toBeVisible({ timeout: 3000 });
+    await page.getByRole("button", { name: "Request signature" }).click();
+    const d = dlg(page);
+    await d.locator('input[type="file"]').setInputFiles({ name: "policy.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n") });
+    await d.getByLabel("Send to several workers").check();
+    await d.getByRole("checkbox").nth(1).check();
+    await d.getByRole("checkbox").nth(2).check();
+    let body = "";
+    const row = (n: number) => ({ id: `00000000-0000-0000-0000-00000000000${n}`, purpose: "general", status: "pending", signer_email: `w${n}@example.com` });
+    await page.route((u) => isApi(u.toString(), /^\/api\/v1\/esign\/requests\/$/), (route: Route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      body = route.request().postData() ?? "";
+      return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify([row(1), row(2)]) });
+    });
+    await d.getByRole("button", { name: "Send to 2 workers" }).click();
+    await expect(dlg(page).getByText("w1@example.com")).toBeVisible();
+    await expect(dlg(page).getByText("w2@example.com")).toBeVisible();
+    expect(body.match(/name="employee_ids"/g)?.length).toBe(2);
+    expect(body).not.toContain('name="employee_id"');
+  });
+
+  test("document label: stored on the request, shown in the list's Document column and in the detail dialog", async ({ page }) => {
+    await apiLogin(page, DEMO.root);
+    const found = await api<{ results: { id: string; first_name: string; last_name: string }[] }>(
+      page, "GET", "workers/search/?q=Maya%20Reyes&page_size=50");
+    const maya = found.results.find((w) => w.first_name === "Maya" && w.last_name === "Reyes");
+    test.skip(!maya, "demo worker Maya Reyes (portal account) not seeded");
+    if (!maya) return;
+    const label = `Contract ${RUN}`;
+    const r = await page.request.fetch("/api/v1/esign/requests/", {
+      method: "POST",
+      headers: { "X-CSRFToken": await csrf(page) },
+      multipart: {
+        file: { name: "contract.pdf", mimeType: "application/pdf", buffer: onePagePdf(label) },
+        employee_id: maya.id,
+        label,
+      },
+    });
+    expect(r.status(), await r.text()).toBe(201);
+    const created = await r.json();
+    try {
+      expect(created.label).toBe(label);
+      expect((await api(page, "GET", `esign/requests/${created.id}/`)).label).toBe(label);
+      await page.goto("/esign?status=pending&purpose=general");
+      await expect(page.getByRole("columnheader", { name: "Document" })).toBeVisible();
+      const row = page.getByRole("row").filter({ hasText: label });
+      await expect(row).toHaveCount(1);
+      await row.getByRole("button", { name: "View" }).click();
+      await expect(dlg(page).getByText(label)).toBeVisible();
+    } finally {
+      // Don't leave a pending request on the shared demo worker's portal.
+      await api(page, "POST", `esign/requests/${created.id}/revoke/`);
+    }
+  });
+
+  test("filters + detail: chips filter by status/purpose; View opens detail with Download", async ({ page }) => {
+    await apiLogin(page, DEMO.root);
+    await page.goto("/esign");
+    await page.getByRole("button", { name: "General", exact: true }).click();
+    await expect(page).toHaveURL(/purpose=general/);
+    await page.getByRole("button", { name: "All purposes" }).click();
+    const list = await api(page, "GET", "esign/requests/");
+    test.skip(!list.results.length, "no requests seeded");
+    await page.getByRole("button", { name: "View" }).first().click();
+    await expect(dlg(page).getByRole("button", { name: /Download/ })).toBeVisible();
   });
 });
 
@@ -1242,8 +1412,7 @@ test.describe("candidate imports", () => {
   });
 
   test("BUG(env): sample package: create -> upload -> validated -> rows/docs listed -> commit -> committed (persisted)", async ({ page }) => {
-    test.fail(true, "local validator cannot unwrap the package key built from GET /candidate-imports/public-key/ (batch fails: could not unwrap the package key) - Backend core/kms.py LocalKMS keypair differs between web process and validating worker (stale lru_cache / regenerated key file)");
-  test.setTimeout(120_000);
+    test.setTimeout(120_000);
     await apiLogin(page, DEMO.root);
     const buf = await sampleBuffer(page);
     await page.locator("input[type=file]").setInputFiles({ name: `sample-${RUN}.migpkg`, mimeType: "application/octet-stream", buffer: buf });
@@ -1285,7 +1454,6 @@ test.describe("candidate imports", () => {
   });
 
   test("BUG(env): commit 400/500 on a validated batch -> message shown", async ({ page }) => {
-    test.fail(true, "same env issue: sample package never validates locally");
     test.setTimeout(90_000);
     await apiLogin(page, DEMO.root);
     const buf = await sampleBuffer(page);

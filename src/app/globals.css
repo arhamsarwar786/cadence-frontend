@@ -6,34 +6,42 @@
  * Matches the Penpot mobile screens (tasks board, lists, worker profile).
  */
 :root {
-  --color-cadence-yellow: #f7dc7a;
-  --color-cadence-orange: #fa8b4d;
-  --color-cadence-red: #c41e3d;
-  --color-cadence-ink: #242320;
-  --color-cadence-lime: #c9d36a;
+  /* --- Warm canvas (app-cadence.com "Liquid Glass") --- */
+  --color-cadence-yellow: #EBC85C;   /* amber — primary accent */
+  --color-cadence-orange: #EE7A2E;   /* flame-orange */
+  --color-cadence-red: #B5232E;      /* flame-red */
+  --color-cadence-ink: #2B2A26;
+  --color-cadence-ink-strong: #211F1B;
+  --color-cadence-ink-muted: #6E6A5F;
+  --color-cadence-lime: #4FB286;     /* paid green */
+  --color-cadence-blue: #5B8DEF;     /* pending blue */
+  --color-cadence-flame-mid: #D24C2C;
+  --color-cadence-flame-end: #F4963A;
+  --color-cadence-flame-gold: #F2CE6A;
 
-  --background: #f3ebd0;
-  --background-deep: #efe4b8;
-  --surface: #fbf6e4;
-  --surface-muted: #ebe3c4;
+  --background: #F6EFD9;   /* canvas-ivory */
+  --background-deep: #EFD9A8;   /* canvas-gold */
+  --surface: #FBF4DF;
+  --surface-muted: #EFE3BE;
   --foreground: var(--color-cadence-ink);
-  --border: #ddd0a4;
+  --border: #E4D3A6;
 
-  --card: #2f2c27;
-  --card-muted: #3c3933;
-  --on-card: #f6efd4;
-  --on-card-muted: #ddd6bc;
-  /** Text on yellow CTAs — never remapped inside dark surfaces. */
-  --on-accent: #242320;
+  --card: #2A2823;        /* dark glass (solid) */
+  --card-muted: #35322C;
+  --on-card: #EDE8DC;     /* glass-on-dark */
+  --on-card-muted: #B6B0A2;
+  /** Text on amber CTAs — never remapped inside dark surfaces. */
+  --on-accent: #2B2616;
 
   --accent: var(--color-cadence-yellow);
   --accent-strong: var(--color-cadence-red);
 
-  --shadow-card: 0 22px 50px rgba(36, 35, 32, 0.18);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px -18px rgba(33, 31, 27, 0.45);
+  --shadow-soft: 0 8px 24px -8px rgba(33, 31, 27, 0.30);
   --radius-card: 2rem;
   --scrollbar-size: 10px;
-  --scrollbar-thumb: rgb(36 35 32 / 0.28);
-  --scrollbar-thumb-hover: rgb(36 35 32 / 0.5);
+  --scrollbar-thumb: rgb(43 42 38 / 0.28);
+  --scrollbar-thumb-hover: rgb(43 42 38 / 0.5);
   --dock-clearance: calc(5.75rem + env(safe-area-inset-bottom, 0px));
 }
 
@@ -55,14 +63,21 @@
   --color-cadence-orange: var(--color-cadence-orange);
   --color-cadence-red: var(--color-cadence-red);
   --color-cadence-ink: var(--color-cadence-ink);
+  --color-cadence-ink-strong: var(--color-cadence-ink-strong);
+  --color-cadence-ink-muted: var(--color-cadence-ink-muted);
   --color-cadence-lime: var(--color-cadence-lime);
+  --color-cadence-blue: var(--color-cadence-blue);
+  --color-cadence-flame-mid: var(--color-cadence-flame-mid);
+  --color-cadence-flame-end: var(--color-cadence-flame-end);
+  --color-cadence-flame-gold: var(--color-cadence-flame-gold);
 
-  --font-heading: var(--font-bona-nova-sc);
-  --font-subheading: var(--font-chivo-mono);
-  --font-body: var(--font-catamaran);
-  --font-fine: var(--font-chivo-mono);
+  --font-heading: var(--font-cormorant-garamond);
+  --font-subheading: var(--font-source-sans-3);
+  --font-body: var(--font-source-sans-3);
+  --font-fine: var(--font-source-sans-3);
 
-  --shadow-card: 0 22px 50px rgba(36, 35, 32, 0.18);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px -18px rgba(33, 31, 27, 0.45);
+  --shadow-soft: 0 8px 24px -8px rgba(33, 31, 27, 0.30);
   --radius-card: 2rem;
 }
 
@@ -76,8 +91,9 @@ body {
   min-height: 100dvh;
   overflow-x: clip;
   background:
-    radial-gradient(120% 80% at 0% 0%, #fbf6e4 0%, transparent 55%),
-    linear-gradient(180deg, #f7f1d8 0%, var(--background) 42%, var(--background-deep) 100%);
+    radial-gradient(120% 90% at 15% 8%, #f6efd9 0%, rgba(246, 239, 217, 0) 55%),
+    radial-gradient(120% 110% at 88% 16%, #f2d2b0 0%, rgba(242, 210, 176, 0) 60%),
+    linear-gradient(135deg, #f6efd9 0%, #efd9a8 55%, #f2d2b0 100%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-body);
@@ -135,14 +151,37 @@ body {
   }
 }
 
+/*
+ * Focus — matches app-cadence.com: a flame-orange outline sitting just off the
+ * control. Text fields match :focus-visible on click as well as keyboard, so
+ * clicking any input shows it; buttons and links only show it for keyboard.
+ * Kept in the base layer so per-component focus-visible:* utilities still win.
+ */
+@layer base {
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-cadence-orange);
+    outline-offset: 3px;
+  }
+
+  :where(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea) {
+    transition:
+      border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  :where(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea):focus {
+    border-color: rgb(238 122 46 / 0.6);
+  }
+}
+
 /* Charcoal dialogs: light copy on dark fill. Ink-toned Tailwind classes remap here;
  * yellow CTAs use text-on-accent so they keep dark type on yellow fill. */
 .dark-card {
-  --scrollbar-thumb: rgb(246 239 212 / 0.32);
-  --scrollbar-thumb-hover: rgb(246 239 212 / 0.55);
-  --color-cadence-red: #e87890;
+  --scrollbar-thumb: rgb(237 232 220 / 0.32);
+  --scrollbar-thumb-hover: rgb(237 232 220 / 0.55);
+  --color-cadence-red: #f08c7e;
   --color-cadence-ink: var(--on-card);
-  --color-border: rgb(246 239 212 / 0.22);
+  --color-border: rgb(237 232 220 / 0.22);
   color: var(--on-card);
 }
 

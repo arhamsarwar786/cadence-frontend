@@ -88,3 +88,54 @@ export const placementCreateSchema = z.object({
 });
 
 export type PlacementCreateFormValues = z.infer<typeof placementCreateSchema>;
+
+/** A positive amount in dollars — the API's rate field (8 whole digits, 2 decimals, at least 0.01). */
+const positiveAmount = z
+  .string()
+  .trim()
+  .min(1, "Enter an amount.")
+  .regex(/^\d{1,8}(?:\.\d{1,2})?$/, "Enter an amount like 25 or 25.50.")
+  .refine((value) => !/^0+(?:\.0*)?$/.test(value), "The amount must be more than zero.");
+
+export const creditNoteLineSchema = z.object({
+  description: z.string().trim().min(1, "Describe what is being credited."),
+  amount: positiveAmount,
+  tax_exempt: z.boolean(),
+});
+
+export const creditNoteCreateSchema = z.object({
+  invoice_id: z.string().min(1, "Pick the invoice to credit."),
+  reason: z.string().trim().min(1, "Say why the client is being credited."),
+  issue_date: z.string().optional().or(z.literal("")),
+  lines: z.array(creditNoteLineSchema).min(1, "Add at least one line."),
+});
+
+export type CreditNoteCreateFormValues = z.infer<typeof creditNoteCreateSchema>;
+
+export const payCycleSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required.").max(120, "Keep the name under 120 characters."),
+    period_kind: z.enum(["fixed", "monthly"]),
+    period_days: z.string().trim().optional().or(z.literal("")),
+    anchor_date: z.string().min(1, "Pick the first day of a pay period."),
+    payday_offset_days: z
+      .string()
+      .trim()
+      .min(1, "Required.")
+      .regex(/^\d{1,2}$/, "Enter whole days, 0 to 60.")
+      .refine((value) => Number(value) <= 60, "Enter whole days, 0 to 60."),
+    active: z.boolean(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.period_kind !== "fixed") return;
+    const days = values.period_days ?? "";
+    if (!/^\d{1,3}$/.test(days) || Number(days) < 1 || Number(days) > 365) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["period_days"],
+        message: "Enter the period length in days, 1 to 365.",
+      });
+    }
+  });
+
+export type PayCycleFormValues = z.infer<typeof payCycleSchema>;

@@ -5,11 +5,11 @@ import { cn } from "@/shared/lib/cn";
 import { Tooltip } from "@/shared/ui/Tooltip";
 
 const TONE_CLASSES = {
-  neutral: "bg-[#e8dfc2] text-cadence-ink",
+  neutral: "bg-[#EFE3BE] text-cadence-ink",
   positive: "bg-cadence-lime text-cadence-ink",
   warning: "bg-cadence-yellow text-cadence-ink",
   negative: "bg-cadence-red text-white",
-  info: "bg-cadence-orange text-cadence-ink",
+  info: "bg-cadence-blue text-cadence-ink",
 } as const;
 
 export type BadgeTone = keyof typeof TONE_CLASSES;

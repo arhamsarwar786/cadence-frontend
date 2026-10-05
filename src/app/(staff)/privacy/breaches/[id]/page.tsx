@@ -38,7 +38,6 @@ export default function BreachDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title="Breach record"
         actions={
@@ -47,6 +46,7 @@ export default function BreachDetailPage() {
           </Chip>
         }
       />
+      <PageScrollRegion className="flex flex-col gap-6">
       <p className="text-sm text-cadence-ink/55">Write-once — no edit.</p>
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <div>

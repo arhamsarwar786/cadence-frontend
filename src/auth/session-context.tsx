@@ -55,7 +55,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    setUnauthorizedHandler(() => queryClient.setQueryData(SESSION_QUERY_KEY, null));
+    // Any data call answering "not authenticated" mid-session (expired or
+    // cleared cookie) marks the session confirmed-absent; RequireStaff /
+    // RequirePortal then redirect to /login. Never on the sign-in page
+    // itself — there is no session to lose and nothing to redirect from.
+    setUnauthorizedHandler(() => {
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/login")) return;
+      if (queryClient.getQueryData(SESSION_QUERY_KEY) === null) return;
+      void queryClient.cancelQueries({ predicate: (q) => q.queryKey[0] !== SESSION_QUERY_KEY[0] });
+      queryClient.setQueryData(SESSION_QUERY_KEY, null);
+    });
     return () => setUnauthorizedHandler(null);
   }, [queryClient]);
 

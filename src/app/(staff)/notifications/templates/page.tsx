@@ -10,7 +10,7 @@ import type { NotificationTemplate } from "@/features/notifications/types";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { NOTIFICATION_TYPE_LABELS, type NotificationType } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Button, Dialog, Field, Input, ListSkeleton, PermGate, QueryError, Select, useConfirm, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Button, Dialog, Field, Input, ListSkeleton, PermGate, QueryError, Select, useConfirm, PageFrame, PageHeader, PageScrollRegion } from "@/shared/ui";
 
 const templateSchema = z
   .object({
@@ -108,14 +108,15 @@ export default function NotificationTemplatesPage() {
 
   return (
     <PageFrame>
+      <PageHeader
+        title="Notification templates"
+        actions={
+          <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
+            <Button onClick={openCreate}>New template</Button>
+          </PermGate>
+        }
+      />
       <PageScrollRegion className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-3xl text-cadence-ink">Notification templates</h1>
-        <PermGate anyOf={PERM.NOTIFICATIONS_TEMPLATES_MANAGE}>
-          <Button onClick={openCreate}>New template</Button>
-        </PermGate>
-      </div>
-
       {deleteError ? (
         <p role="alert" className="font-body text-sm text-cadence-red">
           {deleteError}

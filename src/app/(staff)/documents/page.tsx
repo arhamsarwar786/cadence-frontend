@@ -194,7 +194,7 @@ export default function DocumentsPage() {
         <QueryError error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <ListLayout>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4">
             <Table columns={columns} rows={rows} rowKey={(d) => d.id} emptyMessage="No documents yet." />
             {query.data ? (
               <Pagination page={page} pageSize={PAGE_SIZE} count={query.data.count} onPageChange={goToPage} />

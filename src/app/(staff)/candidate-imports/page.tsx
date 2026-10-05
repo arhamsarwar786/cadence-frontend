@@ -31,6 +31,7 @@ import {
   type Column,
   PageFrame,
   PageBody,
+  PageHeader,
 } from "@/shared/ui";
 
 const migrationPublicKeyQueryKey = ["candidate-imports", "public-key"] as const;
@@ -109,48 +110,50 @@ export default function CandidateImportsPage() {
 
   return (
     <PageFrame>
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-3xl text-cadence-ink">Candidate imports</h1>
-        <PermGate anyOf={PERM.CANDIDATE_IMPORTS_CREATE}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={buildingSample || !orgId || publicKeyQuery.isError}
-              onClick={async () => {
-                if (!orgId) return;
-                setBuildingSample(true);
-                setError(null);
-                try {
-                  const blob = await buildSampleImportPackage(orgId);
-                  downloadBlob(blob, "sample-candidates.migpkg");
-                } catch (err) {
-                  setError(messageFrom(err));
-                } finally {
-                  setBuildingSample(false);
-                }
-              }}
-            >
-              {buildingSample ? "Creating…" : "Create sample package"}
-            </Button>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-cadence-yellow px-4 py-2 font-body text-sm text-cadence-ink hover:bg-cadence-yellow/90">
-              {uploading ? "Uploading…" : "Upload package"}
-              <input
-                type="file"
-                className="hidden"
-                accept=".migpkg,.pkg,application/octet-stream"
-                disabled={uploading}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleFile(file);
-                  e.target.value = "";
+      <PageHeader
+        title="Candidate imports"
+        actions={
+          <PermGate anyOf={PERM.CANDIDATE_IMPORTS_CREATE}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={buildingSample || !orgId || publicKeyQuery.isError}
+                onClick={async () => {
+                  if (!orgId) return;
+                  setBuildingSample(true);
+                  setError(null);
+                  try {
+                    const blob = await buildSampleImportPackage(orgId);
+                    downloadBlob(blob, "sample-candidates.migpkg");
+                  } catch (err) {
+                    setError(messageFrom(err));
+                  } finally {
+                    setBuildingSample(false);
+                  }
                 }}
-              />
-            </label>
-          </div>
-        </PermGate>
-      </div>
+              >
+                {buildingSample ? "Creating…" : "Create sample package"}
+              </Button>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-cadence-yellow px-4 py-2 font-body text-sm text-cadence-ink hover:bg-cadence-yellow/90">
+                {uploading ? "Uploading…" : "Upload package"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".migpkg,.pkg,application/octet-stream"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleFile(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          </PermGate>
+        }
+      />
       <p className="font-body text-xs text-cadence-ink/60">
         Packages must be encrypted for your organization before upload. Use{" "}
         <strong className="font-medium">Create sample package</strong> to download a valid test file for this

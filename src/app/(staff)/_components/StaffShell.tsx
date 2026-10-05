@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSession } from "@/auth/session-context";
 import { logout as logoutAction } from "@/features/accounts/actions";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import {
   dockStaffNavItems,
   moreStaffNavItems,
@@ -71,6 +72,7 @@ export function StaffShell({ children }: { children: ReactNode }) {
           icon: DOCK_ICONS[href] ?? "home",
         }))}
         overflowGroups={overflowGroups}
+        trailing={<NotificationBell />}
         footer={
           <div>
             <p className="mb-2 truncate px-2 font-fine text-[11px] text-on-card-muted">

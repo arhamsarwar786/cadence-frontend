@@ -199,8 +199,8 @@ export default function DisposalSchedulePage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-4">
       <PageHeader title="Disposal schedule" />
+      <PageScrollRegion className="flex flex-col gap-4">
       <p className="font-body text-sm text-cadence-ink/60">
         Scheduled destruction of departed worker personal records. Rows show identifiers and dates
         only — never names.

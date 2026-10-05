@@ -23,6 +23,7 @@ import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import { PERM } from "@/permissions/keys";
 import { Button, Chip, Dialog, Field, Input, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Select, Table, useConfirm, type Column, PageFrame, PageBody } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const PAGE_SIZE = 50;
 
@@ -31,15 +32,15 @@ const FIELD_NAMES = Object.keys(placementCreateSchema.shape);
 function NewPlacementForm({ onCreated }: { onCreated: (id: string) => Promise<void> }) {
   const clientsQuery = useQuery({
     queryKey: ["clients-picker"],
-    queryFn: () => listClients({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listClients({ pageSize: 200, page })),
   });
   const workersQuery = useQuery({
     queryKey: ["workers-picker"],
-    queryFn: () => listWorkers({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listWorkers({ pageSize: 200, page })),
   });
   const jobsQuery = useQuery({
     queryKey: ["jobs-picker"],
-    queryFn: () => listJobs({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listJobs({ pageSize: 200, page })),
   });
   const [formError, setFormError] = useState<string | null>(null);
   const {

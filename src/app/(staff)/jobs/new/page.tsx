@@ -10,7 +10,7 @@ import type { JobWrite } from "@/features/jobs/types";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
 import { PERM } from "@/permissions/keys";
 import { orgLocalToUtcIso } from "@/shared/lib/datetime";
-import { PageFrame, PageScrollRegion, useHasPerm } from "@/shared/ui";
+import { PageFrame, PageHeader, PageScrollRegion, useHasPerm } from "@/shared/ui";
 
 export default function NewJobPage() {
   const router = useRouter();
@@ -41,8 +41,8 @@ export default function NewJobPage() {
 
   return (
     <PageFrame>
+      <PageHeader title="New job" />
       <PageScrollRegion className="flex flex-col gap-4">
-        <h1 className="font-heading text-3xl text-cadence-ink">New job</h1>
         <JobForm mode="create" onSubmit={handleSubmit} submitLabel="Create job" />
       </PageScrollRegion>
     </PageFrame>

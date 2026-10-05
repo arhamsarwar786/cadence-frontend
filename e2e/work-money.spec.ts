@@ -78,11 +78,25 @@ async function base(api: Api): Promise<Base> {
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-/** A Monday in the far past that is unique per spec run (so payroll "unsettled worked shifts" never collide). */
+/**
+ * A past Monday that is unique per CALL - across parallel workers as well as
+ * within one worker - so payroll "unsettled worked shifts" never collide: a
+ * run any test creates sweeps every unsettled shift in its period, so two
+ * concurrent tests sharing a week steal each other's pay evidence.
+ * Slots are two weeks apart (a test run covers monday..monday+13) and each
+ * worker owns a 16-slot band, so concurrent tests never share a period. Data
+ * an earlier spec run left in a slot is harmless (it only adds lines; it never
+ * blocks a new run). The span is 20..318 weeks back from the current week:
+ * always inside the 7-year payroll retention span the approve door enforces,
+ * and clear of the 2001 "nothing to pay" probe below.
+ */
+let mondayCalls = 0;
 function uniqueMonday(): Date {
-  const weeksBack = 20 + (Math.floor(Date.now() / 60_000) % 400);
-  const d = new Date(Date.UTC(2026, 8, 7)); // Mon 2026-09-07
-  d.setUTCDate(d.getUTCDate() - weeksBack * 7);
+  const slot = (test.info().parallelIndex * 16 + mondayCalls++) % 150;
+  const weeksBack = 20 + slot * 2;
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) - weeksBack * 7); // this week's Monday, then back
   return d;
 }
 function addDays(d: Date, n: number) {
@@ -187,6 +201,9 @@ async function invoiceTo(api: Api, id: string, target: "pending_approval" | "app
   }
 }
 
+/** A credit note line as the API reads it back (the fields the UI tests check). */
+type CnLine = { description: string; unit: string; quantity: string; rate: string };
+
 async function mkCreditNote(api: Api, invoiceId: string, withLine = true) {
   const r = await api.post("/api/v1/credit-notes/", { invoice_id: invoiceId, reason: `QA ${RUN}` });
   expect(r.status, JSON.stringify(r.body)).toBe(201);
@@ -247,6 +264,24 @@ function wantNotFoundPage(page: Page) {
 async function jsClick(l: Locator) {
   await l.evaluate((el) => (el as HTMLElement).click());
 }
+/** A hand-made shift on the job's last day - after today for the current-week fixture job. */
+async function addFutureShift(api: Api, fx: JobFx) {
+  const date = iso(addDays(fx.monday, 4));
+  expect(date > iso(addDays(new Date(), 1)), `fixture job's last day ${date} must be in the future`).toBe(true);
+  const r = await api.post(`/api/v1/assignments/${fx.assignmentId}/shifts/`, {
+    shift_date: date,
+    start_time: "09:00",
+    end_time: "17:00",
+    break_minutes: 0,
+  });
+  expect(r.status, JSON.stringify(r.body)).toBe(201);
+  return r.body as { id: string; shift_date: string };
+}
+/** The /shifts table row for one shift (rows are keyed by date within a single-job filter). */
+function shiftRow(page: Page, shift: { shift_date: string }): Locator {
+  return page.getByRole("row").filter({ hasText: shift.shift_date });
+}
+
 async function cleanJob(api: Api, id: string) {
   // root-only soft delete; best effort so the local list does not grow forever
   await api.del(`/api/v1/jobs/${id}/`);
@@ -323,8 +358,7 @@ test.describe("Jobs list", () => {
     await expect(page.getByRole("button", { name: /retry|try again|reload/i })).toBeVisible({ timeout: 3000 });
   });
 
-  test("BUG: 401 mid-session on a list clears the session and sends the user to /login", async ({ page }) => {
-    test.fail();
+  test("401 mid-session on a list clears the session and sends the user to /login", async ({ page }) => {
     await loginAs(page);
     await page.goto("/jobs");
     await expect(page.getByRole("row").nth(1)).toBeVisible();
@@ -522,7 +556,7 @@ test.describe("Job create / edit / lifecycle", () => {
     await page.goto(`/jobs/${fx.jobId}`);
     await page.getByRole("button", { name: "Cancel job" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Cancel job" }).click();
-    await expectText(page, "missing permission: jobs.cancel", 4000);
+    await expectText(page, /don't have access|jobs\.cancel/i, 4000);
     await cleanJob(api, fx.jobId);
   });
 
@@ -803,19 +837,37 @@ test.describe("Assignment detail", () => {
     const b = await base(api);
     const fx = await mkJob(api, b, { tag: "asg-notify2", assign: true, confirm: true });
     await page.goto(`/assignments/${fx.assignmentId}`);
+    const posts: number[] = [];
+    page.on("response", (r) => r.request().method() === "POST" && /notify-client\/$/.test(r.url()) && posts.push(r.status()));
     await page.getByRole("button", { name: /Approve & send client notice/ }).click();
-    await expect.poll(async () => (await api.get(`/api/v1/assignments/${fx.assignmentId}/`)).body.client_notified_at).not.toBeNull();
+    // the local approve can take several seconds (it enqueues the email on commit)
+    await expect.poll(() => posts, { timeout: 30000 }).toEqual([200]);
+    // approval queues the email (client_notified_at is stamped by the send drain), so the UI shows the sent state
     await expect(page.getByRole("button", { name: /Approve & send client notice/ })).toHaveCount(0, { timeout: 5000 });
+    await expectText(page, /Client notice approved/);
+    // the parked notice really was released: a second approval has nothing left to approve
+    const again = await api.post(`/api/v1/assignments/${fx.assignmentId}/notify-client/`);
+    expect(again.status).toBe(400);
+    expect(JSON.stringify(again.body)).toContain("no client notice is waiting for approval");
     await cleanJob(api, fx.jobId);
   });
 
-  test("notify-client before confirm: API 400 words are shown", async ({ page }) => {
+  test("notify-client in an invalid state: API 400 words are shown", async ({ page }) => {
     const api = await loginAs(page);
     const b = await base(api);
-    const fx = await mkJob(api, b, { tag: "asg-notify3", assign: true });
+    // before confirm the UI never offers the action (see the panel test above); the API refuses with these words
+    const offered = await mkJob(api, b, { tag: "asg-notify3", assign: true });
+    const early = await api.post(`/api/v1/assignments/${offered.assignmentId}/notify-client/`);
+    expect(early.status).toBe(400);
+    expect(JSON.stringify(early.body)).toContain("only a confirmed placement has a client notice to approve");
+    await cleanJob(api, offered.jobId);
+    // a stale page: the notice is approved elsewhere after the page loaded -> the API's 400 words reach the user
+    const fx = await mkJob(api, b, { tag: "asg-notify4", assign: true, confirm: true });
     await page.goto(`/assignments/${fx.assignmentId}`);
+    await expect(page.getByRole("button", { name: /Approve & send client notice/ })).toBeVisible();
+    expect((await api.post(`/api/v1/assignments/${fx.assignmentId}/notify-client/`)).status).toBe(200);
     await page.getByRole("button", { name: /Approve & send client notice/ }).click();
-    await expectText(page, "only a confirmed placement has a client notice to approve");
+    await expectText(page, "no client notice is waiting for approval on this placement");
     await cleanJob(api, fx.jobId);
   });
 
@@ -932,10 +984,13 @@ test.describe("Shifts", () => {
     const api = await loginAs(page);
     const b = await base(api);
     const fx = await mkJob(api, b, { tag: "shift-future", assign: true, confirm: true });
+    // the job starts this week, so its first pattern shift may be today (markable) - mark one clearly in the future
+    const future = await addFutureShift(api, fx);
     await page.goto(`/shifts?job=${fx.jobId}`);
-    await page.getByRole("button", { name: "Mark not worked" }).first().click();
+    await shiftRow(page, future).getByRole("button", { name: "Mark not worked" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("dialog")).toContainText(/future shift cannot be marked/, { timeout: 8000 });
+    expect((await api.get(`/api/v1/shifts/${future.id}/`)).body.status).toBe("scheduled");
     await cleanJob(api, fx.jobId);
   });
 
@@ -943,12 +998,15 @@ test.describe("Shifts", () => {
     const api = await loginAs(page);
     const b = await base(api);
     const fx = await mkJob(api, b, { tag: "shift-lingering", assign: true, confirm: true });
+    const future = await addFutureShift(api, fx);
     await page.goto(`/shifts?job=${fx.jobId}`);
-    await page.getByRole("button", { name: "Mark not worked" }).first().click();
+    await shiftRow(page, future).getByRole("button", { name: "Mark not worked" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("dialog")).toContainText(/future shift/, { timeout: 8000 });
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
-    await page.getByRole("button", { name: "Mark not worked" }).nth(1).click();
+    const other = fx.shifts.find((s: { id: string }) => s.id !== future.id)!;
+    await shiftRow(page, other).getByRole("button", { name: "Mark not worked" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("dialog")).not.toContainText(/future shift/);
     await cleanJob(api, fx.jobId);
   });
@@ -961,7 +1019,7 @@ test.describe("Shifts", () => {
     await stub(page, /clear-mark\//, { status: 403, body: { detail: "missing permission: shifts.edit" } });
     await page.goto(`/shifts?job=${fx.jobId}`);
     await page.getByRole("button", { name: "Clear mark" }).click();
-    await expectText(page, "missing permission: shifts.edit", 4000);
+    await expectText(page, /don't have access|shifts\.edit/i, 4000);
     await cleanJob(api, fx.jobId);
   });
 
@@ -978,14 +1036,30 @@ test.describe("Shifts", () => {
     await cleanJob(api, fx.jobId);
   });
 
-  test("BUG: a shift can be opened/edited/deleted from the UI (shift detail route)", async ({ page }) => {
-    test.fail();
+  test("a shift can be opened/edited/deleted from the UI (shift detail route)", async ({ page }) => {
     const api = await loginAs(page);
     const b = await base(api);
     const fx = await mkJob(api, b, { tag: "shift-ui-gap", assign: true, confirm: true });
     await page.goto(`/shifts?job=${fx.jobId}`);
     await page.getByRole("row").nth(1).click();
-    await expect(page).toHaveURL(/\/shifts\/[0-9a-f-]{36}/, { timeout: 3000 });
+    await expect(page).toHaveURL(/\/shifts\/[0-9a-f-]{36}$/, { timeout: 10000 });
+    const shiftId = page.url().split("/").pop()!;
+    await expect(page.getByRole("heading", { level: 1, name: fx.title })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+    // Edit: break 30 -> 45, persisted.
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    const form = page.getByRole("form", { name: "Edit shift" });
+    await form.getByLabel("Break (minutes)").fill("45");
+    await form.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("form", { name: "Edit shift" })).toHaveCount(0, { timeout: 8000 });
+    await expect(page.getByText("45 min")).toBeVisible();
+    expect((await api.get(`/api/v1/shifts/${shiftId}/`)).body.break_minutes).toBe(45);
+    // Delete: confirm -> back on the list, gone via API.
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete shift" }).click();
+    await expect(page).toHaveURL(/\/shifts\?job=/, { timeout: 10000 });
+    await expectText(page, /Shift deleted/);
+    expect((await api.get(`/api/v1/shifts/${shiftId}/`)).status).toBe(404);
     await cleanJob(api, fx.jobId);
   });
 
@@ -1015,11 +1089,41 @@ test.describe("Hour sheets", () => {
     await expectText(page, /Invalid page|No hour sheets/i);
   });
 
-  test("BUG: hour sheets list has search / status filter (only pagination exists)", async ({ page }) => {
-    test.fail();
-    await loginAs(page);
-    await page.goto("/hour-sheets");
-    await expect(page.getByRole("searchbox").or(page.getByRole("button", { name: /^received$/i }))).toBeVisible({ timeout: 3000 });
+  test("hour sheets list has search + status filter (URL-driven, narrows rows like the API)", async ({ page }) => {
+    const api = await loginAs(page);
+    const b = await base(api);
+    // At least one received sheet for this client so the filter has rows.
+    const hs = await api.post("/api/v1/hour-sheets/", { client_id: b.clientId, period_start: "2026-11-02", period_end: "2026-11-08" });
+    expect(hs.status, JSON.stringify(hs.body)).toBe(201);
+    await page.goto("/hour-sheets?page=2");
+    await expect(page.getByRole("searchbox", { name: "Find hour sheets" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "All", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: /^received$/i }).click();
+    await expect(page).toHaveURL(/status=received/);
+    await expect(page).toHaveURL(/page=1/);
+    await expect(page.getByRole("button", { name: /^received$/i })).toHaveAttribute("aria-pressed", "true");
+    const received = (await api.get("/api/v1/hour-sheets/?status=received&page_size=50")).body;
+    const dataRows = page.getByRole("row").filter({ hasNot: page.getByRole("columnheader") });
+    await expect(dataRows).toHaveCount(received.results.length, { timeout: 10000 });
+    await expect(dataRows.filter({ hasText: /Approved/ })).toHaveCount(0);
+    // Approved narrows to approved only.
+    await page.getByRole("button", { name: /^approved$/i }).click();
+    await expect(page).toHaveURL(/status=approved/);
+    const approved = (await api.get("/api/v1/hour-sheets/?status=approved&page_size=50")).body;
+    if (approved.results.length) {
+      await expect(dataRows).toHaveCount(approved.results.length, { timeout: 10000 });
+      await expect(dataRows.filter({ hasText: /Received/ })).toHaveCount(0);
+    } else {
+      await expectText(page, /No approved hour sheets/);
+    }
+    // Text find over the client name keeps only that client's rows.
+    await page.getByRole("button", { name: "All", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Find hour sheets" }).fill(b.clientName);
+    await expect(page).toHaveURL(/q=/, { timeout: 5000 });
+    await expect(dataRows.first()).toBeVisible({ timeout: 10000 });
+    const n = await dataRows.count();
+    for (let i = 0; i < n; i++) await expect(dataRows.nth(i)).toContainText(b.clientName);
+    await api.del(`/api/v1/hour-sheets/${hs.body.id}/`);
   });
 
   test("create: required errors, server 400 (end<start) pinned to Period end, success -> detail", async ({ page }) => {
@@ -1242,6 +1346,7 @@ test.describe("Perm placements", () => {
     const pl = await api.post("/api/v1/perm-placements/", { client_id: b.clientId, employee_id: b.mayaId, annual_salary: "50000", fee_pct: "10" });
     await page.goto(`/perm-placements/${pl.body.id}`);
     await page.getByRole("button", { name: "Void" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Void placement" }).click();
     await expect(page.getByRole("button", { name: "Void" })).toHaveCount(0, { timeout: 8000 });
     expect((await api.get(`/api/v1/perm-placements/${pl.body.id}/`)).body.status).toBe("voided");
   });
@@ -1250,11 +1355,21 @@ test.describe("Perm placements", () => {
     const root = await loginAs(page);
     const b = await base(root);
     const pl = await root.post("/api/v1/perm-placements/", { client_id: b.clientId, employee_id: b.mayaId, annual_salary: "50000", fee_pct: "10" });
+    // a coordinator lacks clients.invoice.edit: the actions are not offered at all
     await loginAs(page, "recruiter");
     await page.goto(`/perm-placements/${pl.body.id}`);
     await expect(page.getByRole("heading", { name: "Maya Reyes" })).toBeVisible();
-    await page.getByRole("button", { name: "Confirm" }).click().catch(() => {});
-    await expectText(page, /don't have access|clients\.invoice\.edit|permission/i, 4000);
+    await expect(page.getByRole("button", { name: "Confirm" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Void" })).toHaveCount(0);
+    const recruiter = mkApi(page);
+    expect((await recruiter.post(`/api/v1/perm-placements/${pl.body.id}/confirm/`)).status).toBe(403);
+    // if the API ever refuses a shown action (permission revoked mid-session), its 403 words are shown
+    await loginAs(page);
+    await stub(page, /perm-placements\/[0-9a-f-]+\/confirm\/$/, { method: "POST", status: 403, body: { detail: "missing permission: clients.invoice.edit" } });
+    await page.goto(`/perm-placements/${pl.body.id}`);
+    await page.getByRole("button", { name: "Confirm" }).click();
+    await expectText(page, /don't have access|clients\.invoice\.edit/i, 4000);
+    expect((await root.get(`/api/v1/perm-placements/${pl.body.id}/`)).body.status).toBe("offered");
   });
 
   test("bad ids -> 404 page; list 500 readable", async ({ page }) => {
@@ -1493,14 +1608,57 @@ test.describe("Invoices", () => {
     await expect(page.getByRole("link", { name: "View PDF" })).toHaveCount(0);
   });
 
-  test("BUG: no UI for attach-flat-coverage / credit-note creation from a paid invoice (API says 'the correction is a credit note')", async ({ page }) => {
-    test.fail();
+  test("paid invoice offers a credit note (API says 'the correction is a credit note'): prefilled form validates, creates a draft with lines", async ({ page }) => {
     const api = await loginAs(page);
     const b = await base(api);
     const id = await mkInvoice(api, b);
     await invoiceTo(api, id, "paid");
+    // a draft invoice is corrected in place - no credit note offered
+    const draft = await mkInvoice(api, b);
+    await page.goto(`/invoices/${draft}`);
+    await expect(page.getByRole("button", { name: "Submit for approval" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /credit note/i })).toHaveCount(0);
+
     await page.goto(`/invoices/${id}`);
-    await expect(page.getByRole("button", { name: /credit note/i }).or(page.getByRole("link", { name: /credit note/i }))).toBeVisible({ timeout: 3000 });
+    await page.getByRole("button", { name: "New credit note" }).click();
+    await expect(page).toHaveURL(new RegExp(`/credit-notes/new\\?invoice=${id}$`));
+    await expect(page.getByLabel("Invoice", { exact: true })).toHaveValue(id);
+    // client-side validation, field-level
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(fieldError(page, "Reason", true)).toHaveText("Say why the client is being credited.");
+    const line1 = page.getByRole("group", { name: "Line 1" });
+    await expect(line1.getByText("Describe what is being credited.")).toBeVisible();
+    await expect(line1.getByText("Enter an amount.")).toBeVisible();
+    await line1.getByLabel("Amount").fill("12.345");
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(line1.getByText("Enter an amount like 25 or 25.50.")).toBeVisible();
+    await line1.getByLabel("Amount").fill("0");
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(line1.getByText("The amount must be more than zero.")).toBeVisible();
+    // fill, add two lines, remove the third
+    await page.getByLabel("Reason").fill(`QA paid correction ${RUN}`);
+    await line1.getByLabel("Description").fill("QA overbilled hours");
+    await line1.getByLabel("Amount").fill("12.50");
+    await page.getByRole("button", { name: "Add line" }).click();
+    const line2 = page.getByRole("group", { name: "Line 2" });
+    await line2.getByLabel("Description").fill("QA goodwill");
+    await line2.getByLabel("Amount").fill("3");
+    await page.getByRole("button", { name: "Add line" }).click();
+    await page.getByRole("button", { name: "Remove line 3" }).click();
+    await expect(page.getByRole("group", { name: "Line 3" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(page).toHaveURL(/\/credit-notes\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    const cnId = page.url().split("/").pop()!;
+    await expectText(page, /saved as a draft/);
+    await expect(page.getByText("QA overbilled hours")).toBeVisible();
+    const cn = (await api.get(`/api/v1/credit-notes/${cnId}/`)).body;
+    expect(cn.status).toBe("draft");
+    expect(cn.invoice_id).toBe(id);
+    expect(cn.reason).toBe(`QA paid correction ${RUN}`);
+    expect((cn.lines as CnLine[]).map((l) => [l.description, l.unit, l.quantity, l.rate])).toEqual([
+      ["QA overbilled hours", "flat", "1.00", "12.50"],
+      ["QA goodwill", "flat", "1.00", "3.00"],
+    ]);
   });
 
   test("bad ids -> 404 page; detail 500 readable; coordinator can open list via URL but not act", async ({ page }) => {
@@ -1554,11 +1712,49 @@ test.describe("Credit notes", () => {
     await wantNotFoundPage(page);
   });
 
-  test("BUG: credit notes can be created from the UI (button on list / invoice) with lines", async ({ page }) => {
-    test.fail();
-    await loginAs(page);
+  test("credit notes can be created from the list: picker offers only creditable invoices, server 400 pinned to the field, draft with lines", async ({ page }) => {
+    const api = await loginAs(page);
+    const b = await base(api);
+    const sent = await mkInvoice(api, b);
+    await invoiceTo(api, sent, "sent");
+    const draft = await mkInvoice(api, b);
+    const voided = await mkInvoice(api, b);
+    await invoiceTo(api, voided, "sent");
+    expect((await api.post(`/api/v1/invoices/${voided}/void/`)).status).toBe(200);
     await page.goto("/credit-notes");
-    await expect(page.getByRole("button", { name: /new credit note|create/i }).or(page.getByRole("link", { name: /new credit note/i }))).toBeVisible({ timeout: 3000 });
+    await page.getByRole("button", { name: "New credit note" }).click();
+    await expect(page).toHaveURL(/\/credit-notes\/new$/);
+    const picker = page.getByLabel("Invoice", { exact: true });
+    await expect(picker.locator(`option[value="${sent}"]`)).toHaveCount(1, { timeout: 15000 });
+    await expect(picker.locator(`option[value="${draft}"]`)).toHaveCount(0);
+    await expect(picker.locator(`option[value="${voided}"]`)).toHaveCount(0);
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(fieldError(page, "Invoice", true)).toHaveText("Pick the invoice to credit.");
+    await picker.selectOption(sent);
+    await page.getByLabel("Reason").fill(`QA list ${RUN}`);
+    const line1 = page.getByRole("group", { name: "Line 1" });
+    await line1.getByLabel("Description").fill("QA list credit");
+    await line1.getByLabel("Amount").fill("7.25");
+    // the API's own words land next to the field it names
+    const bad = await stub(page, /\/api\/v1\/credit-notes\/$/, { method: "POST", status: 400, body: { reason: ["QA server says the reason is wrong."] }, once: true });
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(fieldError(page, "Reason", true)).toHaveText("QA server says the reason is wrong.");
+    expect(bad.hits).toBe(1);
+    await page.unroute(/\/api\/v1\/credit-notes\/$/);
+    await page.getByRole("button", { name: "Create credit note" }).click();
+    await expect(page).toHaveURL(/\/credit-notes\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    const cnId = page.url().split("/").pop()!;
+    const cn = (await api.get(`/api/v1/credit-notes/${cnId}/`)).body;
+    expect(cn.status).toBe("draft");
+    expect(cn.invoice_id).toBe(sent);
+    expect((cn.lines as CnLine[]).map((l) => [l.description, l.rate])).toEqual([["QA list credit", "7.25"]]);
+    // exactly one note against this invoice (no double create)
+    expect((await api.get(`/api/v1/credit-notes/?invoice=${sent}`)).body.count).toBe(1);
+    // coordinator (no clients.invoice.edit) is not offered the button
+    await loginAs(page, "recruiter");
+    await page.goto("/credit-notes");
+    await expect(page.getByRole("heading", { name: "Credit notes" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "New credit note" })).toHaveCount(0);
   });
 
   test("detail lifecycle: approve -> issue -> send; unapprove path; persisted", async ({ page }) => {
@@ -1575,8 +1771,13 @@ test.describe("Credit notes", () => {
     await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible({ timeout: 8000 });
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await page.getByRole("button", { name: "Issue" }).click();
-    await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 8000 });
+    // the send emails only a generated PDF, so an issued note offers Generate PDF first
+    await expect(page.getByRole("button", { name: "Generate PDF" })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole("button", { name: "Send" })).toHaveCount(0);
     expect((await api.get(`/api/v1/credit-notes/${cn}/`)).body.status).toBe("issued");
+    await page.getByRole("button", { name: "Generate PDF" }).click();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 8000 });
+    expect((await api.get(`/api/v1/credit-notes/${cn}/`)).body.document_id).toBeTruthy();
     await page.getByRole("button", { name: "Send" }).click();
     await expect.poll(async () => (await api.get(`/api/v1/credit-notes/${cn}/`)).body.status).toBe("issued");
     await expect(body(page)).not.toContainText(/Something went wrong|Request failed/);
@@ -1590,9 +1791,15 @@ test.describe("Credit notes", () => {
     const cn = await mkCreditNote(api, inv);
     await api.post(`/api/v1/credit-notes/${cn}/approve/`);
     await api.post(`/api/v1/credit-notes/${cn}/issue/`);
+    expect((await api.post(`/api/v1/credit-notes/${cn}/pdf/`)).status).toBe(200);
     await page.goto(`/credit-notes/${cn}`);
+    const sends: number[] = [];
+    page.on("response", (r) => r.request().method() === "POST" && /\/send\/$/.test(r.url()) && sends.push(r.status()));
     await page.getByRole("button", { name: "Send" }).click();
+    // the local send can take several seconds (it enqueues the email on commit)
+    await expect.poll(() => sends, { timeout: 30000 }).toEqual([200]);
     await expectText(page, /sent|emailed/i, 3000);
+    await expect(body(page)).not.toContainText(/no PDF has been generated/);
   });
 
   test("approve empty draft -> API words; void needs confirm (BUG below); voided state persists", async ({ page }) => {
@@ -1605,6 +1812,7 @@ test.describe("Credit notes", () => {
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await expectText(page, "nothing to approve — the credit note has no lines");
     await page.getByRole("button", { name: "Void" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Void credit note" }).click();
     await expect.poll(async () => (await api.get(`/api/v1/credit-notes/${cn}/`)).body.voided_at, { timeout: 8000 }).not.toBeNull();
     await expect(page.getByRole("button", { name: "Void" })).toHaveCount(0, { timeout: 8000 });
   });
@@ -1662,11 +1870,70 @@ test.describe("Payroll", () => {
     }
   });
 
-  test("BUG: pay cycles can be created/edited/deleted from the UI (list is read-only)", async ({ page }) => {
-    test.fail();
-    await loginAs(page);
-    await page.goto("/payroll");
-    await expect(page.getByRole("button", { name: /new cycle|add cycle|create cycle/i })).toBeVisible({ timeout: 3000 });
+  test("pay cycles can be created/edited/deleted from the UI (inactive QA cycle; live cycle untouched)", async ({ page }) => {
+    const api = await loginAs(page);
+    const name = `QA cycle ${RUN}${Math.random().toString(36).slice(2, 5)}`;
+    type Cycle = { id: string; name: string; active: boolean };
+    const allCycles = async () => (await api.get<{ results: Cycle[] }>("/api/v1/payroll/cycles/?page_size=100")).body.results;
+    const findCycle = async (n: string) => (await allCycles()).find((c) => c.name === n);
+    const liveBefore = (await allCycles()).find((c) => c.active);
+    try {
+      await page.goto("/payroll");
+      await page.getByRole("button", { name: "New cycle" }).click();
+      const dlg = page.getByRole("dialog", { name: "New pay cycle" });
+      await dlg.getByLabel("Period length (days)").fill("0");
+      await dlg.getByRole("button", { name: "Create cycle" }).click();
+      await expect(fieldError(page, "Name", true)).toHaveText("Name is required.");
+      await expect(fieldError(page, "Period length (days)", true)).toHaveText("Enter the period length in days, 1 to 365.");
+      await expect(fieldError(page, "Anchor date", true)).toHaveText("Pick the first day of a pay period.");
+      await expect(fieldError(page, "Payday offset (days)", true)).toHaveText("Required.");
+      await dlg.getByLabel("Name").fill(name);
+      await dlg.getByLabel("Period length (days)").fill("14");
+      await dlg.getByLabel("Anchor date").fill("2020-01-06");
+      await dlg.getByLabel("Payday offset (days)").fill("61");
+      await dlg.getByRole("button", { name: "Create cycle" }).click();
+      await expect(fieldError(page, "Payday offset (days)", true)).toHaveText("Enter whole days, 0 to 60.");
+      await dlg.getByLabel("Payday offset (days)").fill("5");
+      await dlg.getByRole("checkbox", { name: /Active/ }).uncheck(); // never compete with a live cycle
+      // the API's field error lands next to its field
+      const bad = await stub(page, /\/api\/v1\/payroll\/cycles\/$/, { method: "POST", status: 400, body: { anchor_date: ["QA server says no anchor."] }, once: true });
+      await dlg.getByRole("button", { name: "Create cycle" }).click();
+      await expect(fieldError(page, "Anchor date", true)).toHaveText("QA server says no anchor.");
+      expect(bad.hits).toBe(1);
+      await page.unroute(/\/api\/v1\/payroll\/cycles\/$/);
+      await dlg.getByRole("button", { name: "Create cycle" }).click();
+      await expect(dlg).toBeHidden({ timeout: 8000 });
+      await expect(page.getByText(name, { exact: true })).toBeVisible();
+      const created = (await findCycle(name))!;
+      expect(created).toMatchObject({ period_kind: "fixed", period_days: 14, anchor_date: "2020-01-06", payday_offset_days: 5, active: false });
+
+      // edit: rename + switch to monthly (the day-count clears)
+      await page.getByRole("button", { name: `Edit ${name}` }).click();
+      const edit = page.getByRole("dialog", { name: "Edit pay cycle" });
+      await expect(edit.getByLabel("Name")).toHaveValue(name);
+      await edit.getByLabel("Name").fill(`${name} v2`);
+      await edit.getByLabel("Period", { exact: true }).selectOption("monthly");
+      await expect(edit.getByLabel("Period length (days)")).toHaveCount(0);
+      await edit.getByRole("button", { name: "Save cycle" }).click();
+      await expect(edit).toBeHidden({ timeout: 8000 });
+      await expect(page.getByText(`${name} v2`, { exact: true })).toBeVisible();
+      const edited = (await api.get(`/api/v1/payroll/cycles/${created.id}/`)).body;
+      expect(edited).toMatchObject({ name: `${name} v2`, period_kind: "monthly", period_days: null, active: false });
+
+      // delete: confirm first, then gone
+      await page.getByRole("button", { name: `Delete ${name} v2` }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Delete cycle" }).click();
+      await expect(page.getByText(`${name} v2`, { exact: true })).toHaveCount(0, { timeout: 8000 });
+      expect((await api.get(`/api/v1/payroll/cycles/${created.id}/`)).status).toBe(404);
+      // the live cycle (if any) was never touched
+      const liveAfter = (await allCycles()).find((c) => c.active);
+      expect(liveAfter?.id).toBe(liveBefore?.id);
+    } finally {
+      for (const n of [name, `${name} v2`]) {
+        const left = await findCycle(n);
+        if (left) await api.del(`/api/v1/payroll/cycles/${left.id}/`);
+      }
+    }
   });
 
   test("API-level: pay cycle CRUD + validation words", async ({ page }) => {
@@ -1716,7 +1983,10 @@ test.describe("Payroll", () => {
     await expect(page.getByText("Maya Reyes").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
     // approve -> release
+    const approved = page.waitForResponse((r) => r.request().method() === "POST" && /\/payroll\/runs\/[^/]+\/approve\/$/.test(r.url()), { timeout: 30000 });
     await page.getByRole("button", { name: "Approve" }).click();
+    const ar = await approved;
+    expect(ar.status(), await ar.text()).toBe(200);
     await expect(page.getByRole("button", { name: "Release pay statements" })).toBeVisible({ timeout: 8000 });
     await page.getByRole("button", { name: "Release pay statements" }).click();
     await expect(page.getByRole("button", { name: "Release pay statements" })).toHaveCount(0, { timeout: 8000 });
@@ -1765,7 +2035,10 @@ test.describe("Payroll", () => {
     await page.getByLabel("Amount").first().fill("10.00");
     await page.getByRole("button", { name: "Add earning" }).click();
     await expect(page.getByText(/QA bonus/)).toBeVisible({ timeout: 8000 });
-    // deduction
+    // deduction: the server's 400 (min 0.01 - the client schema allows 0) lands next to the deduction Amount
+    await page.locator("#ded-amt").fill("0");
+    await page.getByRole("button", { name: "Add deduction" }).click();
+    await expect(fieldError(page, "Amount", true).last()).toContainText(/greater than or equal to 0\.01/, { timeout: 8000 });
     await page.locator("#ded-amt").fill("5.00");
     await page.getByRole("button", { name: "Add deduction" }).click();
     await expect(page.getByText("cpp").first()).toBeVisible({ timeout: 8000 });
@@ -1774,9 +2047,31 @@ test.describe("Payroll", () => {
     expect(got.deduction_lines ?? got.deductions).toBeTruthy();
     // delete deduction
     await page.getByRole("button", { name: "Remove" }).last().click();
+    await page.getByRole("dialog").getByRole("button", { name: "Remove" }).click(); // removal is confirmed first
     await expect.poll(async () => ((await api.get(`/api/v1/payroll/pay-statements/${stmt.id}/`)).body.deduction_lines ?? []).length).toBe(0);
-    // pdf link
-    expect(await page.getByRole("link", { name: "PDF" }).getAttribute("href")).toBe(`/api/v1/payroll/pay-statements/${stmt.id}/pdf/`);
+    // a draft has no PDF yet: no dead link, a hint instead
+    await expect(page.getByRole("link", { name: /PDF/ })).toHaveCount(0);
+    await expect(page.getByText("The PDF can be generated once the run is approved.")).toBeVisible();
+  });
+
+  test("approved statement: Generate PDF -> success toast -> Download PDF link serves the file", async ({ page }) => {
+    test.setTimeout(90_000);
+    const api = await loginAs(page);
+    const b = await base(api);
+    const w = await mkWorked(api, b, "payroll-pdf");
+    const run = await api.post("/api/v1/payroll/runs/", { period_start: iso(w.monday), period_end: iso(addDays(w.monday, 13)), payday: iso(addDays(w.monday, 20)) });
+    const ap = await api.post(`/api/v1/payroll/runs/${run.body.id}/approve/`);
+    expect(ap.status, JSON.stringify(ap.body)).toBe(200);
+    const stmt = (await api.get(`/api/v1/payroll/runs/${run.body.id}/`)).body.pay_statements[0];
+    await page.goto(`/payroll/pay-statements/${stmt.id}`);
+    await expect(page.getByRole("link", { name: "Download PDF" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Generate PDF" }).click();
+    await expect(page.getByText(/PDF generated/)).toBeVisible({ timeout: 30_000 });
+    const link = page.getByRole("link", { name: "Download PDF" });
+    await expect(link).toHaveAttribute("href", `/api/v1/payroll/pay-statements/${stmt.id}/pdf/`, { timeout: 10_000 });
+    const pdf = await page.request.get(`/api/v1/payroll/pay-statements/${stmt.id}/pdf/`);
+    expect(pdf.status()).toBe(200);
+    expect(pdf.headers()["content-type"]).toContain("pdf");
   });
 
   test("BUG: statement forms show API validation errors next to the field (invalid amount)", async ({ page }) => {

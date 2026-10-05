@@ -2,7 +2,6 @@
 
 import { Loading } from "@/shared/ui/Loading";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "@/auth/session-context";
@@ -48,16 +47,11 @@ export default function TaskDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-4">
       <PageHeader title={task.title} />
+      <PageScrollRegion className="flex flex-col gap-4">
       <p className="text-sm text-cadence-ink/60">
         {task.status} · {TASK_TYPE_LABELS[task.type as TaskType] ?? task.type}
         {task.due_date ? ` · due ${task.due_date}` : ""}
-      </p>
-      <p className="text-sm">
-        <Link href="/tasks" className="underline">
-          Back to tasks
-        </Link>
       </p>
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div>

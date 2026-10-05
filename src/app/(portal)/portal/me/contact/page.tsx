@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { updateMe } from "@/features/portal/actions";
@@ -77,9 +76,6 @@ export default function PortalContactPage() {
 
   return (
     <PortalFrame title="Contact information" subtitle="Keep your details current for shift offers.">
-      <Link href="/portal/me" className="mb-4 inline-block text-sm underline">
-        ← My profile
-      </Link>
       <PortalCard>
         <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-4" noValidate>
           <Field label="Email" htmlFor="email" error={errors.email?.message}>

@@ -9,6 +9,7 @@ import { jobFormSchema, type JobFormValues } from "@/features/jobs/schemas";
 import { PERM } from "@/permissions/keys";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { Button, Field, Input, Select, useHasPerm } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const FIELD_NAMES = Object.keys(jobFormSchema(true).shape);
 
@@ -34,7 +35,7 @@ export function JobForm({
   const schema = useMemo(() => jobFormSchema(canEditBillRate), [canEditBillRate]);
   const clientsQuery = useQuery({
     queryKey: ["clients-picker"],
-    queryFn: () => listClients({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listClients({ pageSize: 200, page })),
   });
   const [formError, setFormError] = useState<string | null>(null);
   const {

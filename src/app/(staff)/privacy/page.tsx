@@ -17,7 +17,8 @@ import {
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, QueryError, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, ListSkeleton, Pagination, PermGate, QueryError, Select, Table, type Column, PageFrame, PageHeader, PageScrollRegion } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const PAGE_SIZE = 50;
 const createSchema = z.object({
@@ -40,7 +41,7 @@ export default function PrivacyRequestsPage() {
     queryKey: privacyRequestKeys.list({ page }),
     queryFn: () => listPrivacyRequests(page),
   });
-  const workersQuery = useQuery({ queryKey: ["workers-picker"], queryFn: () => listWorkers({ pageSize: 200 }) });
+  const workersQuery = useQuery({ queryKey: ["workers-picker"], queryFn: () => fetchAllPages((page) => listWorkers({ pageSize: 200, page })) });
 
   // Names come from the picker list; anyone beyond it is fetched by id.
   const pickerNames = new Map(
@@ -118,14 +119,15 @@ export default function PrivacyRequestsPage() {
 
   return (
     <PageFrame>
+      <PageHeader
+        title="Privacy requests"
+        actions={
+          <PermGate anyOf={PERM.PRIVACY_REQUESTS_MANAGE}>
+            <Button onClick={() => setOpen(true)}>New request</Button>
+          </PermGate>
+        }
+      />
       <PageScrollRegion className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-3xl text-cadence-ink">Privacy requests</h1>
-        <PermGate anyOf={PERM.PRIVACY_REQUESTS_MANAGE}>
-          <Button onClick={() => setOpen(true)}>New request</Button>
-        </PermGate>
-      </div>
-
       {query.isLoading ? (
         <ListSkeleton />
       ) : query.isError ? (

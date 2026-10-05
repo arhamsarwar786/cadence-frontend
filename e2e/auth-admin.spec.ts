@@ -347,15 +347,48 @@ test.describe("auth: logout & session expiry", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test.fail("BUG: session expiring mid-session (401 on an action) redirects to login instead of a raw error", async ({ page }) => {
+  test("session expiring mid-session (401 on an action) redirects to login instead of a raw error", async ({ page }) => {
     await apiLogin(page, DEMO.root);
     await page.goto("/tasks");
     await expect(page.getByText("To-do list").first()).toBeVisible();
     await page.context().clearCookies(); // simulate expiry server-side
-    await page.getByRole("button", { name: "Add task" }).click();
-    await page.getByLabel("Task title").fill(`expired ${RUN}`);
-    await page.getByRole("button", { name: "Add task" }).last().click();
+    // A background poll (bell, focus refetch) may notice the dead session first and redirect
+    // mid-way; either way the user must land on login, never on a raw error.
+    try {
+      await page.getByRole("button", { name: "Add task" }).click({ timeout: 5_000 });
+      await page.getByLabel("Task title").fill(`expired ${RUN}`, { timeout: 5_000 });
+      await page.getByRole("button", { name: "Add task" }).last().click({ timeout: 5_000 });
+    } catch {
+      /* already redirected */
+    }
     await expect(page).toHaveURL(/\/login/, { timeout: 8_000 });
+  });
+
+  test("a 401 on a read mid-session signs the staff user out, keeping where they were", async ({ page }) => {
+    await apiLogin(page, DEMO.root);
+    await page.goto("/tasks");
+    await expect(page.getByText("To-do list").first()).toBeVisible();
+    await page.route(/\/api\/v1\/(?!auth\/)/, (r) => r.fulfill({ status: 401, json: { detail: "Authentication credentials were not provided." } }));
+    await page.getByRole("button", { name: "Add task" }).click();
+    await page.getByLabel("Task title").fill(`expired-401 ${RUN}`);
+    await page.getByRole("button", { name: "Add task" }).last().click();
+    await expect(page).toHaveURL(/\/login.*next=%2Ftasks/, { timeout: 8_000 });
+  });
+
+  test("a permission 403 (signed in, not allowed) does NOT sign the user out", async ({ page }) => {
+    await apiLogin(page, DEMO.root);
+    await page.goto("/tasks");
+    await expect(page.getByText("To-do list").first()).toBeVisible();
+    await page.route(/\/api\/v1\/tasks\/$/, (r) =>
+      r.request().method() === "POST"
+        ? r.fulfill({ status: 403, json: { detail: "You do not have permission to perform this action." } })
+        : r.continue(),
+    );
+    await page.getByRole("button", { name: "Add task" }).click();
+    await page.getByLabel("Task title").fill(`forbidden ${RUN}`);
+    await page.getByRole("button", { name: "Add task" }).last().click();
+    await expect(page.getByText(/permission/i).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page).toHaveURL(/\/tasks/);
   });
 
   test("session expiry is noticed on window refocus once stale (or shows a login redirect on reload)", async ({ page }) => {
@@ -380,6 +413,18 @@ test.describe("admin users (root)", () => {
     await page.waitForLoadState("networkidle");
     expect(p.api, p.api.join("\n")).toEqual([]);
     expect(p.pageErrors).toEqual([]);
+  });
+
+  test("deactivated accounts offer no Deactivate action; active ones still do", async ({ page }) => {
+    await page.goto("/admin/users");
+    await expect(page.getByRole("heading", { name: "Users & permissions" })).toBeVisible();
+    const deactivated = page.locator("li", { hasText: /· deactivated/ });
+    const active = page.locator("li", { hasText: /· active/ });
+    await expect(active.first()).toBeVisible();
+    await expect(active.first().getByRole("button", { name: "Deactivate" })).toBeVisible();
+    const n = await deactivated.count();
+    test.skip(n === 0, "no deactivated account seeded");
+    for (let i = 0; i < n; i++) await expect(deactivated.nth(i).getByRole("button", { name: "Deactivate" })).toHaveCount(0);
   });
 
   test("invite happy path: token shown once, row appears with the email, persists on reload", async ({ page }) => {
@@ -540,7 +585,7 @@ test.describe("admin users (root)", () => {
     const dlg = page.getByRole("dialog", { name: "Set user password" });
     await dlg.getByLabel("New password").fill("Brand-new-pw-93!");
     await dlg.getByRole("button", { name: "Save password" }).click();
-    await expect(dlg).toBeHidden({ timeout: 5000 });
+    await expect(dlg).toBeHidden({ timeout: 15_000 }); // password hashing is deliberately slow
     const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL as string });
     const p2 = await ctx.newPage();
     await pickAgencyAndFill(p2, email, "Brand-new-pw-93!");
@@ -944,10 +989,19 @@ test.describe("notification templates (root)", () => {
   });
 
   test("BUG: editing pre-fills the existing template values", async ({ page }) => {
+    // Target the seeded invoice/email template explicitly: the list is ordered by type, so rows left by
+    // other tests (e.g. a subject-less esign/sms template) can sort ahead of it.
+    const all = await api(page, "GET", "/notifications/templates/");
+    type Tpl = { type: string; channel: string; subject: string; body: string };
+    const tpl = ((all.json.results ?? all.json) as Tpl[]).find((t) => t.type === "invoice" && t.channel === "email")!;
+    expect(tpl, "seeded invoice/email template").toBeTruthy();
     await page.goto("/notifications/templates");
-    await page.locator("li").first().getByRole("button", { name: "Edit" }).click();
-    await expect(page.getByLabel("Body")).not.toHaveValue("");
+    await page.locator("li", { hasText: tpl.subject }).first().getByRole("button", { name: "Edit" }).click();
+    await expect(page.getByLabel("Type")).toHaveValue("invoice");
+    await expect(page.getByLabel("Channel")).toHaveValue("email");
+    await expect(page.getByLabel("Subject")).toHaveValue(tpl.subject);
     await expect(page.getByLabel("Subject")).toHaveValue(/Invoice/);
+    await expect(page.getByLabel("Body")).toHaveValue(tpl.body);
   });
 
   test("BUG: in-app/SMS template without subject can be created (API 500s: save_template() missing 'subject')", async ({ page }) => {
@@ -1079,9 +1133,14 @@ test.describe("tasks (root)", () => {
     await page.getByLabel("Related client").selectOption({ index: 1 });
     await page.getByRole("button", { name: "Add task" }).last().click();
     await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5000 });
-    const l = await api(page, "GET", "/tasks/?status=open&page_size=200");
-    const t = l.json.results.find((x: any) => x.title === `follow ${RUN}`);
-    expect(t.related_entity_type).toBe("client");
+    // Page through: the open queue can be longer than one 200-row page.
+    let t: { title: string; related_entity_type: string } | undefined;
+    for (let pg = 1; !t; pg++) {
+      const l = await api(page, "GET", `/tasks/?status=open&page_size=200&page=${pg}`);
+      t = l.json.results.find((x: { title: string }) => x.title === `follow ${RUN}`);
+      if (!l.json.next) break;
+    }
+    expect(t?.related_entity_type).toBe("client");
   });
 
   test("detail panel: assign to user persists, unassign persists", async ({ page }) => {
@@ -1239,8 +1298,13 @@ test.describe("tasks (root)", () => {
   });
 
   test("tasks list: more than one page of open tasks isn't silently truncated (pageSize 200 + count)", async ({ page }) => {
-    const r = await api(page, "GET", "/tasks/?status=open&page_size=200");
-    expect(r.json.count).toBeLessThanOrEqual(200); // guard: UI has no pagination for the board
+    test.setTimeout(120_000);
+    // Make sure the queue spans more than one 200-row page, then the newest task must still show.
+    const count = async () => (await api(page, "GET", "/tasks/?status=open&page_size=1")).json.count as number;
+    while ((await count()) <= 200) await newTaskViaApi(page, `filler ${RUN} ${Date.now()}`);
+    await newTaskViaApi(page, `page-two ${RUN}`);
+    await page.goto("/tasks");
+    await expect(page.getByRole("button", { name: new RegExp(`page-two ${RUN}`) })).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -1335,9 +1399,82 @@ test.describe("reports, staff home, nav (root)", () => {
     }
   });
 
-  test.fail("BUG: staff shell exposes a notifications bell / unread indicator", async ({ page }) => {
+  test("staff shell exposes a notifications bell / unread indicator", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("button", { name: /notifications/i }).or(page.getByLabel("Unread notifications")).first()).toBeVisible({ timeout: 2000 });
+  });
+
+  test("notifications bell: badge matches the API count, panel opens, Escape closes, no console errors", async ({ page }) => {
+    const p = watchProblems(page);
+    const { json } = await api(page, "GET", "/notifications/me/unread-count/");
+    await page.goto("/");
+    const bell = page.getByRole("button", { name: /notifications/i });
+    await expect(bell).toBeVisible();
+    if (json.unread > 0) await expect(bell).toHaveAccessibleName(new RegExp(`${json.unread} unread`));
+    else await expect(bell).toHaveAccessibleName("Notifications");
+    await bell.click();
+    const panel = page.getByRole("dialog", { name: "Notifications" });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText(/No notifications yet|unread|all caught up/i).first()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await page.waitForLoadState("networkidle");
+    expect(p.api, p.api.join("\n")).toEqual([]);
+    expect(p.pageErrors).toEqual([]);
+  });
+
+  test("notifications bell: lists rows, Mark read posts the row ids and the badge clears", async ({ page }) => {
+    const row = {
+      id: "11111111-1111-4111-8111-111111111111",
+      type: "data_disposal",
+      channel: "email",
+      status: "sent",
+      payload: { org_name: "Cadence Demo", record_count: "2", due_on: "2026-11-01", notice_days: "30" },
+      sent_at: "2026-10-01T15:00:00Z",
+      created_at: "2026-10-01T15:00:00Z",
+    };
+    let read = false;
+    let posted: unknown = null;
+    await page.route(/\/api\/v1\/notifications\/me\/unread-count\/$/, (r) => r.fulfill({ json: { unread: read ? 0 : 1 } }));
+    await page.route(/\/api\/v1\/notifications\/me\/\?/, (r) =>
+      r.fulfill({ json: { count: 1, next: null, previous: null, results: [{ ...row, status: read ? "read" : "sent" }] } }),
+    );
+    await page.route(/\/api\/v1\/notifications\/me\/read\/$/, async (r) => {
+      posted = r.request().postDataJSON();
+      read = true;
+      await r.fulfill({ json: { updated: 1 } });
+    });
+    await page.goto("/");
+    const bell = page.getByRole("button", { name: /notifications, 1 unread/i });
+    await expect(bell).toBeVisible();
+    await bell.click();
+    const panel = page.getByRole("dialog", { name: "Notifications" });
+    await expect(panel.getByText("Personal data due for destruction")).toBeVisible();
+    await expect(panel.getByText("2 departed worker records will be destroyed on 2026-11-01.")).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Review disposal" })).toHaveAttribute("href", "/privacy/disposal");
+    await panel.getByRole("button", { name: /Mark .* as read/ }).click();
+    await expect.poll(() => posted).toEqual({ ids: [row.id] });
+    await expect(panel.getByRole("button", { name: /Mark .* as read/ })).toHaveCount(0);
+    await expect(panel.getByText(/all caught up/i)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeVisible();
+  });
+
+  test("notifications bell: a failing list shows the error with a retry", async ({ page }) => {
+    await page.route(/\/api\/v1\/notifications\/me\/\?/, (r) => r.fulfill({ status: 500, json: { detail: "Simulated server failure." } }));
+    await page.goto("/");
+    await page.getByRole("button", { name: /notifications/i }).click();
+    const panel = page.getByRole("dialog", { name: "Notifications" });
+    await expect(panel.getByRole("alert")).toContainText(/simulated|went wrong/i);
+    await expect(panel.getByRole("button", { name: "Try again" })).toBeVisible();
+  });
+
+  test("notifications API: mark-all-read persists (unread count is 0 afterwards)", async ({ page }) => {
+    const r = await api(page, "POST", "/notifications/me/read/", {});
+    expect(r.status).toBe(200);
+    expect(typeof r.json.updated).toBe("number");
+    expect((await api(page, "GET", "/notifications/me/unread-count/")).json).toEqual({ unread: 0 });
+    expect((await api(page, "GET", "/notifications/portal/me/notifications/")).status).toBe(403);
   });
 
   test("all More overlay links resolve without error boundary (root)", async ({ page }) => {

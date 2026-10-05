@@ -89,3 +89,15 @@ export const shiftMarkSchema = z.object({
 });
 
 export type ShiftMarkFormValues = z.infer<typeof shiftMarkSchema>;
+
+/** A scheduled shift's per-row edit (PATCH /shifts/{id}/). Status and hours
+ * are not writable here — the service refuses marked / worked rows. */
+export const shiftEditSchema = z.object({
+  shift_date: z.string().min(1, "Date is required."),
+  start_time: z.string().min(1, "Start time is required."),
+  end_time: z.string().min(1, "End time is required."),
+  // A digit STRING (converted on submit) — keeps the form value type simple.
+  break_minutes: z.string().regex(/^\d{1,4}$/, "Enter whole minutes, like 30."),
+});
+
+export type ShiftEditFormValues = z.infer<typeof shiftEditSchema>;

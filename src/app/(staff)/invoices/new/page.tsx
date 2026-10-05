@@ -15,7 +15,8 @@ import { invoiceCreateSchema, type InvoiceCreateFormValues } from "@/features/mo
 import { getOrgSettings, orgKeys } from "@/features/orgs/api";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
-import { Button, Field, Input, Select, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Button, Field, Input, Select, PageFrame, PageHeader, PageScrollRegion } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const FIELD_NAMES = Object.keys(invoiceCreateSchema.shape);
 
@@ -24,7 +25,7 @@ export default function NewInvoicePage() {
   const queryClient = useQueryClient();
   const clientsQuery = useQuery({
     queryKey: ["clients-picker"],
-    queryFn: () => listClients({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listClients({ pageSize: 200, page })),
   });
   const [step, setStep] = useState(1);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
@@ -67,7 +68,7 @@ export default function NewInvoicePage() {
   });
   const jobsQuery = useQuery({
     queryKey: ["jobs-picker", "client", clientId],
-    queryFn: () => listJobs({ pageSize: 200, client: clientId }),
+    queryFn: () => fetchAllPages((page) => listJobs({ pageSize: 200, page, client: clientId })),
     enabled: Boolean(clientId),
   });
 
@@ -136,18 +137,18 @@ export default function NewInvoicePage() {
 
   return (
     <PageFrame>
+      <PageHeader
+        title="Invoice Creator"
+        meta={<p className="font-body text-sm text-cadence-ink/55">Step {step} of 4</p>}
+        actions={
+          invoice ? (
+            <div className="font-fine text-xs text-cadence-ink/50">
+              {invoice.invoice_number ?? "Draft"} · Issued {invoice.issue_date} · Due {invoice.due_date}
+            </div>
+          ) : null
+        }
+      />
       <PageScrollRegion className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">Invoice Creator</h1>
-          <p className="font-body text-sm text-cadence-ink/55">Step {step} of 4</p>
-        </div>
-        {invoice ? (
-          <div className="font-fine text-xs text-cadence-ink/50">
-            {invoice.invoice_number ?? "Draft"} · Issued {invoice.issue_date} · Due {invoice.due_date}
-          </div>
-        ) : null}
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="flex flex-col gap-4 rounded-[1.5rem] bg-surface p-5">

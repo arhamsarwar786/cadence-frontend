@@ -8,7 +8,7 @@ import { createClient } from "@/features/clients/actions";
 import type { ClientFormValues } from "@/features/clients/schemas";
 import type { ClientWrite } from "@/features/clients/types";
 import { PERM } from "@/permissions/keys";
-import { EmptyState, PageFrame, PageScrollRegion, useHasPerm } from "@/shared/ui";
+import { EmptyState, PageFrame, PageHeader, PageScrollRegion, useHasPerm } from "@/shared/ui";
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -32,8 +32,8 @@ export default function NewClientPage() {
 
   return (
     <PageFrame>
+      <PageHeader title="New client" />
       <PageScrollRegion className="flex flex-col gap-4">
-        <h1 className="font-heading text-3xl text-cadence-ink">New client</h1>
         {canCreate ? (
           <ClientForm onSubmit={handleSubmit} submitLabel="Create client" requireMarkup />
         ) : (

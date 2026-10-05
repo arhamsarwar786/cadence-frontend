@@ -6,7 +6,7 @@ import { Tooltip } from "@/shared/ui/Tooltip";
 
 const VARIANT_CLASSES = {
   primary:
-    "bg-cadence-yellow text-on-accent hover:bg-cadence-yellow/90 focus-visible:outline-cadence-yellow",
+    "bg-[linear-gradient(100deg,#B5232E_0%,#D24C2C_34%,#EE7A2E_70%,#F4963A_100%)] text-white shadow-[0_12px_28px_-10px_rgba(181,35,46,0.6),inset_0_1px_0_rgba(255,255,255,0.35)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-10px_rgba(181,35,46,0.7),inset_0_1px_0_rgba(255,255,255,0.4)] hover:brightness-[1.04] active:translate-y-0 active:brightness-95 focus-visible:outline-cadence-orange",
   secondary:
     "bg-transparent text-inherit border border-current/20 hover:bg-current/5 focus-visible:outline-current",
   ghost: "bg-transparent text-inherit hover:bg-current/5 focus-visible:outline-current",
@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       title={tip ? undefined : title}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-medium font-body transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-full font-body font-semibold transition-all duration-200",
         "disabled:pointer-events-none disabled:opacity-50",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
         VARIANT_CLASSES[variant],

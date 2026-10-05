@@ -16,11 +16,12 @@ import { ShiftPatternsPanel } from "@/features/jobs/components/ShiftPatternsPane
 import type { JobFormValues } from "@/features/jobs/schemas";
 import type { JobUpdate } from "@/features/jobs/types";
 import { PERM } from "@/permissions/keys";
-import { formatDateTime, orgLocalToUtcIso, utcIsoToOrgLocal } from "@/shared/lib/datetime";
+import { formatDateTime, orgLocalToUtcIso, utcIsoToOrgLocal, formatTimeRange } from "@/shared/lib/datetime";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatMoney } from "@/shared/lib/money";
 import type { JobStatus, ShiftStatus } from "@/shared/lib/status-labels";
-import { Button, PermGate, QueryError, Table, useConfirm, useHasPerm, type Column } from "@/shared/ui";
+import { Button, PageFrame, PageHeader, PageScrollRegion, PermGate, QueryError, Table, useConfirm, useHasPerm, type Column } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 export default function JobDetailPage() {
   const { id: jobId } = useParams<{ id: string }>();
@@ -41,7 +42,7 @@ export default function JobDetailPage() {
   });
   const shiftsQuery = useQuery({
     queryKey: ["jobs", jobId, "shifts"],
-    queryFn: () => listShifts({ job: jobId, pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listShifts({ job: jobId, pageSize: 200, page })),
   });
 
   if (query.isError && isNotFound(query.error)) notFound();
@@ -129,120 +130,123 @@ export default function JobDetailPage() {
   const shiftColumns: Column<NonNullable<typeof shiftsQuery.data>["results"][number]>[] = [
     { header: "Date", cell: (s) => s.shift_date },
     { header: "Employee", cell: (s) => s.employee_name },
-    { header: "Time", cell: (s) => `${s.start_time}–${s.end_time}` },
+    { header: "Time", cell: (s) => formatTimeRange(s.start_time, s.end_time) },
     { header: "Status", cell: (s) => <ShiftStatusBadge status={s.status as ShiftStatus} /> },
   ];
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">{job.title}</h1>
-          <div className="mt-1 flex items-center gap-2">
+    <PageFrame>
+      <PageHeader
+        title={job.title}
+        meta={
+          <>
             <JobStatusBadge status={job.status as JobStatus} />
             <span className="font-body text-sm text-cadence-ink/60">{job.client_name}</span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <PermGate anyOf={PERM.JOBS_EDIT}>
-            <Button variant="secondary" onClick={() => setEditing((v) => !v)}>
-              {editing ? "Cancel edit" : "Edit"}
-            </Button>
-          </PermGate>
-          {job.status === "open" || job.status === "filled" ? (
-            <>
-              <PermGate anyOf={PERM.JOBS_EDIT}>
-                <Button variant="secondary" onClick={handleComplete}>
-                  Mark completed
-                </Button>
-              </PermGate>
-              <PermGate anyOf={PERM.JOBS_CANCEL}>
-                <Button variant="danger" onClick={handleCancel}>
-                  Cancel job
-                </Button>
-              </PermGate>
-            </>
-          ) : null}
-          {session?.user.is_root ? (
-            <Button variant="ghost" onClick={handleArchive}>
-              Archive
-            </Button>
-          ) : null}
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <PermGate anyOf={PERM.JOBS_EDIT}>
+              <Button variant="secondary" onClick={() => setEditing((v) => !v)}>
+                {editing ? "Cancel edit" : "Edit"}
+              </Button>
+            </PermGate>
+            {job.status === "open" || job.status === "filled" ? (
+              <>
+                <PermGate anyOf={PERM.JOBS_EDIT}>
+                  <Button variant="secondary" onClick={handleComplete}>
+                    Mark completed
+                  </Button>
+                </PermGate>
+                <PermGate anyOf={PERM.JOBS_CANCEL}>
+                  <Button variant="danger" onClick={handleCancel}>
+                    Cancel job
+                  </Button>
+                </PermGate>
+              </>
+            ) : null}
+            {session?.user.is_root ? (
+              <Button variant="ghost" onClick={handleArchive}>
+                Archive
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-8">
+        {actionError ? (
+          <p role="alert" className="font-body text-sm text-cadence-red">
+            {actionError}
+          </p>
+        ) : null}
 
-      {actionError ? (
-        <p role="alert" className="font-body text-sm text-cadence-red">
-          {actionError}
-        </p>
-      ) : null}
-
-      {editing ? (
-        <JobForm
-          mode="edit"
-          defaultValues={{
-            title: job.title,
-            client: job.client_id,
-            bill_rate: "bill_rate" in job ? job.bill_rate : undefined,
-            bill_rate_unit: job.bill_rate_unit,
-            markup_pct: "markup_pct" in job ? (job.markup_pct ?? "") : undefined,
-            headcount_needed: job.headcount_needed,
-            start_datetime: timeZone ? utcIsoToOrgLocal(job.start_datetime, timeZone) : "",
-            end_datetime: timeZone ? utcIsoToOrgLocal(job.end_datetime, timeZone) : "",
-            po_number: job.po_number ?? "",
-            invoice_date: job.invoice_date ?? "",
-          }}
-          onSubmit={handleUpdate}
-          submitLabel="Save changes"
-          lockClient
-        />
-      ) : (
-        <dl className="grid max-w-xl grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
-          <div>
-            <dt className="text-cadence-ink/60">Start</dt>
-            <dd className="text-cadence-ink">
-              {session?.organization.timezone
-                ? formatDateTime(job.start_datetime, session.organization.timezone)
-                : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-cadence-ink/60">End</dt>
-            <dd className="text-cadence-ink">
-              {session?.organization.timezone
-                ? formatDateTime(job.end_datetime, session.organization.timezone)
-                : "—"}
-            </dd>
-          </div>
-          <PermGate anyOf={PERM.JOBS_BILL_RATE_VIEW}>
+        {editing ? (
+          <JobForm
+            mode="edit"
+            defaultValues={{
+              title: job.title,
+              client: job.client_id,
+              bill_rate: "bill_rate" in job ? job.bill_rate : undefined,
+              bill_rate_unit: job.bill_rate_unit,
+              markup_pct: "markup_pct" in job ? (job.markup_pct ?? "") : undefined,
+              headcount_needed: job.headcount_needed,
+              start_datetime: timeZone ? utcIsoToOrgLocal(job.start_datetime, timeZone) : "",
+              end_datetime: timeZone ? utcIsoToOrgLocal(job.end_datetime, timeZone) : "",
+              po_number: job.po_number ?? "",
+              invoice_date: job.invoice_date ?? "",
+            }}
+            onSubmit={handleUpdate}
+            submitLabel="Save changes"
+            lockClient
+          />
+        ) : (
+          <dl className="grid max-w-xl grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
             <div>
-              <dt className="text-cadence-ink/60">Bill rate</dt>
+              <dt className="text-cadence-ink/60">Start</dt>
               <dd className="text-cadence-ink">
-                {"bill_rate" in job ? `${formatMoney(job.bill_rate)} / ${job.bill_rate_unit}` : "—"}
+                {session?.organization.timezone
+                  ? formatDateTime(job.start_datetime, session.organization.timezone)
+                  : "—"}
               </dd>
             </div>
-          </PermGate>
-          <div>
-            <dt className="text-cadence-ink/60">Headcount needed</dt>
-            <dd className="text-cadence-ink">{job.headcount_needed ?? "—"}</dd>
-          </div>
-        </dl>
-      )}
+            <div>
+              <dt className="text-cadence-ink/60">End</dt>
+              <dd className="text-cadence-ink">
+                {session?.organization.timezone
+                  ? formatDateTime(job.end_datetime, session.organization.timezone)
+                  : "—"}
+              </dd>
+            </div>
+            <PermGate anyOf={PERM.JOBS_BILL_RATE_VIEW}>
+              <div>
+                <dt className="text-cadence-ink/60">Bill rate</dt>
+                <dd className="text-cadence-ink">
+                  {"bill_rate" in job ? `${formatMoney(job.bill_rate)} / ${job.bill_rate_unit}` : "—"}
+                </dd>
+              </div>
+            </PermGate>
+            <div>
+              <dt className="text-cadence-ink/60">Headcount needed</dt>
+              <dd className="text-cadence-ink">{job.headcount_needed ?? "—"}</dd>
+            </div>
+          </dl>
+        )}
 
-      <RequirementsPanel jobId={jobId} />
-      <ShiftPatternsPanel jobId={jobId} />
-      <AssignmentsPanel jobId={jobId} />
+        <RequirementsPanel jobId={jobId} />
+        <ShiftPatternsPanel jobId={jobId} />
+        <AssignmentsPanel jobId={jobId} />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-subheading text-xl text-cadence-ink">Shifts</h2>
-        <Table
-          columns={shiftColumns}
-          rows={shiftsQuery.data?.results ?? []}
-          rowKey={(s) => s.id}
-          emptyMessage="No shifts generated yet."
-        />
-      </section>
-      {confirmDialog}
-    </div>
+        <section className="flex flex-col gap-3">
+          <h2 className="font-subheading text-xl text-cadence-ink">Shifts</h2>
+          <Table
+            columns={shiftColumns}
+            rows={shiftsQuery.data?.results ?? []}
+            rowKey={(s) => s.id}
+            emptyMessage="No shifts generated yet."
+          />
+        </section>
+        {confirmDialog}
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

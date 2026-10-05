@@ -68,6 +68,8 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
   /** Override the default budget (20s JSON, 120s uploads). */
   timeoutMs?: number;
+  /** "blob" returns the raw body of a 2xx (file doors); errors still parse. */
+  responseType?: "json" | "blob";
 }
 
 /**
@@ -81,6 +83,24 @@ export interface Paginated<T> {
   results: T[];
 }
 
+/** Follow `next` until every row is loaded. For pickers and work queues, where a
+ * row past the first page silently vanishing is worse than one extra request. */
+export async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<Paginated<T> | T[]>,
+): Promise<Paginated<T>> {
+  const first = await fetchPage(1);
+  if (Array.isArray(first)) return { count: first.length, next: null, previous: null, results: first };
+  const results = [...first.results];
+  let next = first.next;
+  for (let page = 2; next && page <= 50; page++) {
+    const more = await fetchPage(page);
+    if (Array.isArray(more)) break;
+    results.push(...more.results);
+    next = more.next;
+  }
+  return { count: first.count, next: null, previous: null, results };
+}
+
 /** DRF list doors return a pagination envelope; a few catalogs return a bare array. */
 export function normalizeList<T>(data: Paginated<T> | T[] | null | undefined): T[] {
   if (data == null) return [];
@@ -89,8 +109,36 @@ export function normalizeList<T>(data: Paginated<T> | T[] | null | undefined): T
   return [];
 }
 
+/** Doors whose 401/403 is NOT "your session expired mid-action": a wrong
+ * password on login, the logout POST itself, and the /auth/me probe (the
+ * session query reads that answer itself — signalling here would loop). */
+const SESSION_PROBE_PATHS = ["/api/v1/auth/login/", "/api/v1/auth/logout/", "/api/v1/auth/me/"];
+
+/** DRF's NotAuthenticated detail. Session auth has no WWW-Authenticate
+ * header, so DRF answers an anonymous caller 403 (not 401) with this text —
+ * the only way to tell "signed out" from "signed in but not allowed". */
+const NOT_AUTHENTICATED_DETAIL = "Authentication credentials were not provided.";
+
+function detailOf(body: unknown): string | null {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const detail = (body as Record<string, unknown>).detail;
+    if (typeof detail === "string") return detail.trim();
+  }
+  return null;
+}
+
+/** True when the response says the caller has no session at all. */
+export function isSessionGone(status: number, body: unknown): boolean {
+  if (status === 401) return true;
+  return status === 403 && detailOf(body) === NOT_AUTHENTICATED_DETAIL;
+}
+
+function isCsrfFailure(body: unknown): boolean {
+  return /^CSRF Failed/i.test(detailOf(body) ?? "");
+}
+
 async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = "GET", body, headers, ...rest } = options;
+  const { method = "GET", body, headers, responseType = "json", ...rest } = options;
   const finalHeaders = new Headers(headers);
   finalHeaders.set("Accept", "application/json");
 
@@ -105,15 +153,12 @@ async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promi
   }
 
   if (!SAFE_METHODS.has(method.toUpperCase())) {
+    // No CSRF cookie usually means the whole cookie jar is gone (session
+    // expired / cleared). Send anyway: Django answers "not authenticated"
+    // for a dead session (-> the sign-out path below) or "CSRF Failed" for
+    // a live one (-> the friendly refresh message), and both are truthful.
     const csrfToken = readCookie(CSRF_COOKIE_NAME);
-    if (csrfToken) {
-      finalHeaders.set(CSRF_HEADER_NAME, csrfToken);
-    } else if (!path.includes("/api/v1/auth/login/") && !path.includes("/api/v1/auth/logout/")) {
-      throw new ApiError(
-        0,
-        "Missing security token. Refresh the page and try again.",
-      );
-    }
+    if (csrfToken) finalHeaders.set(CSRF_HEADER_NAME, csrfToken);
   }
 
   const timeoutMs =
@@ -144,14 +189,22 @@ async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promi
     return undefined as T;
   }
 
+  if (responseType === "blob" && response.ok) {
+    return (await response.blob()) as T;
+  }
+
   const contentType = response.headers.get("content-type") ?? "";
   const data: unknown = contentType.includes("application/json")
     ? await response.json()
     : await response.text();
 
   if (!response.ok) {
-    // A wrong password on the login door is also a 401 — that is not an expired session.
-    if (response.status === 401 && !path.includes("/api/v1/auth/login/")) onUnauthorized?.();
+    if (isSessionGone(response.status, data) && !SESSION_PROBE_PATHS.some((p) => path.includes(p))) {
+      onUnauthorized?.();
+    }
+    if (response.status === 403 && isCsrfFailure(data)) {
+      throw new ApiError(403, "Missing security token. Refresh the page and try again.");
+    }
     throw new ApiError(response.status, data);
   }
 

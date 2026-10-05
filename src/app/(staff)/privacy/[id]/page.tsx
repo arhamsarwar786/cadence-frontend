@@ -16,7 +16,7 @@ import {
   type PrivacyRequestStatus,
   type PrivacyRequestType,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Field, PageFrame, PageScrollRegion, QueryError } from "@/shared/ui";
+import { Badge, Button, Field, PageFrame, PageHeader, PageScrollRegion, QueryError } from "@/shared/ui";
 
 const answerSchema = z.object({ response_note: z.string().min(1, "A response note is required.") });
 type AnswerFormValues = z.infer<typeof answerSchema>;
@@ -73,19 +73,19 @@ export default function PrivacyRequestDetailPage() {
 
   return (
     <PageFrame>
+      <PageHeader
+        title={<>{PRIVACY_REQUEST_TYPE_LABELS[request.type as PrivacyRequestType]} request</>}
+        meta={
+          <>
+            <p className="font-body text-sm text-cadence-ink/70">For {workerName}</p>
+            <Badge tone={request.status === "answered" ? "positive" : "warning"}>
+              {PRIVACY_REQUEST_STATUS_LABELS[request.status as PrivacyRequestStatus]}
+            </Badge>
+            <span className="font-body text-sm text-cadence-ink/60">Received {request.received_on}</span>
+          </>
+        }
+      />
       <PageScrollRegion className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-heading text-3xl text-cadence-ink">
-          {PRIVACY_REQUEST_TYPE_LABELS[request.type as PrivacyRequestType]} request
-        </h1>
-        <p className="mt-1 font-body text-sm text-cadence-ink/70">For {workerName}</p>
-        <div className="mt-1 flex items-center gap-2">
-          <Badge tone={request.status === "answered" ? "positive" : "warning"}>
-            {PRIVACY_REQUEST_STATUS_LABELS[request.status as PrivacyRequestStatus]}
-          </Badge>
-          <span className="font-body text-sm text-cadence-ink/60">Received {request.received_on}</span>
-        </div>
-      </div>
 
       {request.type === "access" ? (
         <a

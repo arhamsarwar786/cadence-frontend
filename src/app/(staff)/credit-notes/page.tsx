@@ -6,7 +6,8 @@ import { listCreditNotes, creditNoteKeys } from "@/features/money/api";
 import type { CreditNote } from "@/features/money/types";
 import { ListError } from "@/features/jobs/components/ListError";
 import { formatMoney } from "@/shared/lib/money";
-import { Chip, ListLayout, ListSkeleton, PageHeader, Pagination, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
+import { PERM } from "@/permissions/keys";
+import { Button, Chip, ListLayout, ListSkeleton, PageHeader, Pagination, PermGate, Table, type Column, PageFrame, PageBody } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 
@@ -37,7 +38,14 @@ export default function CreditNotesPage() {
 
   return (
     <PageFrame>
-      <PageHeader title="Credit notes" />
+      <PageHeader
+        title="Credit notes"
+        actions={
+          <PermGate anyOf={PERM.CLIENTS_INVOICE_EDIT}>
+            <Button onClick={() => router.push("/credit-notes/new")}>New credit note</Button>
+          </PermGate>
+        }
+      />
       <PageBody>
 
         {query.isLoading ? (

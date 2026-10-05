@@ -21,7 +21,7 @@ import {
   reopenTask,
   updateTask,
 } from "@/features/tasks/actions";
-import { getTask, listTasks, taskKeys } from "@/features/tasks/api";
+import { getTask, listAllTasks, taskKeys } from "@/features/tasks/api";
 import type { Task, TaskWrite } from "@/features/tasks/types";
 import { getWorker, listWorkers, workerKeys } from "@/features/workers/api";
 import { useOrgTimeZone } from "@/auth/use-org-timezone";
@@ -50,6 +50,7 @@ import {
   Tabs,
   Tooltip,
 } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const CREATABLE_CATEGORIES = [
   { value: "custom", label: "Custom" },
@@ -166,12 +167,12 @@ export function TaskBoard() {
   const listParams = { pageSize: 200, status: "open", type: typeForTab(tab) };
   const tasksQuery = useQuery({
     queryKey: taskKeys.list(listParams),
-    queryFn: () => listTasks(listParams),
+    queryFn: () => listAllTasks(listParams),
     enabled: tab !== "job",
   });
   const jobsQuery = useQuery({
     queryKey: jobKeys.list({ pageSize: 200, status: jobStatus || undefined }),
-    queryFn: () => listJobs({ pageSize: 200, status: jobStatus || undefined }),
+    queryFn: () => fetchAllPages((page) => listJobs({ pageSize: 200, page, status: jobStatus || undefined })),
     enabled: tab === "job",
   });
   const detailQuery = useQuery({
@@ -199,7 +200,7 @@ export function TaskBoard() {
   });
   const usersQuery = useQuery({
     queryKey: userKeys.list({ pageSize: 200 }),
-    queryFn: () => listUsers({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listUsers({ pageSize: 200, page })),
     enabled: canViewUsers,
   });
   const users = normalizeUsers(usersQuery.data);
@@ -226,17 +227,17 @@ export function TaskBoard() {
 
   const clientsPickerQuery = useQuery({
     queryKey: ["clients-picker", "task-form"],
-    queryFn: () => listClients({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listClients({ pageSize: 200, page })),
     enabled: formOpen && category === "client_followup",
   });
   const workersPickerQuery = useQuery({
     queryKey: workerKeys.list({ pageSize: 200 }),
-    queryFn: () => listWorkers({ page: 1, pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listWorkers({ page, pageSize: 200 })),
     enabled: formOpen && category === "employee_followup",
   });
   const jobsPickerQuery = useQuery({
     queryKey: jobKeys.list({ pageSize: 200, picker: true }),
-    queryFn: () => listJobs({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listJobs({ pageSize: 200, page })),
     enabled: formOpen && category === "job",
   });
 

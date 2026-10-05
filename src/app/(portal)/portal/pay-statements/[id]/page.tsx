@@ -3,7 +3,6 @@
 import { Loading } from "@/shared/ui/Loading";
 import { QueryError } from "@/shared/ui/QueryError";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { use } from "react";
 import { PayStatementStatusBadge } from "@/features/money/components/StatusBadges";
 import { getPayslip } from "@/features/portal/api";
@@ -25,10 +24,7 @@ export default function PortalPayStatementDetailPage({
 
   return (
     <PortalFrame title="Pay statement" subtitle="Your copy of an issued or paid statement.">
-      <Link href="/portal/pay-statements" className="font-body text-sm text-cadence-ink/60 underline">
-        Back to pay statements
-      </Link>
-      <p className="mt-4 rounded-2xl bg-cadence-yellow/40 px-4 py-3 font-body text-sm text-cadence-ink">
+      <p className="rounded-2xl bg-cadence-yellow/40 px-4 py-3 font-body text-sm text-cadence-ink">
         This is a pay statement, not your official pay record. Signing confirms you have received and
         reviewed this pay statement.
       </p>
@@ -57,7 +53,12 @@ export default function PortalPayStatementDetailPage({
               >
                 Download PDF
               </a>
-            ) : null}
+            ) : (
+              <p className="mt-4 font-body text-sm text-cadence-ink/60">
+                A PDF copy isn&apos;t available for this statement yet — the office hasn&apos;t
+                generated one. The details below are your full statement.
+              </p>
+            )}
           </PortalCard>
           <PortalCard>
             <h2 className="mb-3 font-subheading text-sm uppercase tracking-[0.14em] text-cadence-ink/50">

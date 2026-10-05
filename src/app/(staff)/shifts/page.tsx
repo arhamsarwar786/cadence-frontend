@@ -4,7 +4,7 @@ import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { clearShiftMark, getShiftBackfill, markShiftNotWorked } from "@/features/jobs/actions";
 import { listJobs, listShifts, shiftKeys } from "@/features/jobs/api";
@@ -25,12 +25,15 @@ import {
   ListSkeleton,
   PageBody,
   PageFrame,
+  PageHeader,
   Pagination,
   PermGate,
   Select,
   Table,
   type Column,
 } from "@/shared/ui";
+import { formatTimeRange } from "@/shared/lib/datetime";
+import { fetchAllPages } from "@/api/client";
 
 const PAGE_SIZE = 50;
 const FIELD_NAMES = Object.keys(shiftMarkSchema.shape);
@@ -45,17 +48,19 @@ export default function ShiftsListPage() {
   const job = searchParams.get("job") ?? "";
   const employee = searchParams.get("employee") ?? "";
   const [markTarget, setMarkTarget] = useState<Shift | null>(null);
+  /** The shift the mark dialog is open for right now (null when closed). */
+  const openMarkId = useRef<string | null>(null);
   const [backfillTarget, setBackfillTarget] = useState<Shift | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const jobsQuery = useQuery({
     queryKey: ["jobs-picker"],
-    queryFn: () => listJobs({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listJobs({ pageSize: 200, page })),
   });
   const workersQuery = useQuery({
     queryKey: ["workers-picker"],
-    queryFn: () => listWorkers({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listWorkers({ pageSize: 200, page })),
   });
 
   const backfillQuery = useQuery({
@@ -104,25 +109,38 @@ export default function ShiftsListPage() {
 
   async function submitMark(values: ShiftMarkFormValues) {
     if (!markTarget) return;
+    const shiftId = markTarget.id;
     setFormError(null);
     try {
-      await markShiftNotWorked(markTarget.id, values);
+      await markShiftNotWorked(shiftId, values);
       await invalidate();
-      reset();
-      closeMark();
+      if (openMarkId.current === shiftId) closeMark();
     } catch (error) {
+      // The dialog was closed (or reopened for another shift) mid-request:
+      // the refusal must not land in a dialog it does not belong to, so it
+      // goes to the page banner instead.
+      if (openMarkId.current !== shiftId) {
+        setActionError(messageFrom(error));
+        return;
+      }
       const banner = applyFieldErrors(setError, error, FIELD_NAMES);
       if (banner) setFormError(banner);
     }
   }
 
   function openMark(shift: Shift) {
+    // A fresh dialog per shift: the previous shift's server refusal (banner
+    // or field error) and reason pick must not carry over.
     setFormError(null);
+    reset();
+    openMarkId.current = shift.id;
     setMarkTarget(shift);
   }
 
   function closeMark() {
     setFormError(null);
+    reset();
+    openMarkId.current = null;
     setMarkTarget(null);
   }
 
@@ -140,7 +158,7 @@ export default function ShiftsListPage() {
     { header: "Date", cell: (s) => s.shift_date },
     { header: "Job", cell: (s) => s.job_title },
     { header: "Employee", cell: (s) => s.employee_name },
-    { header: "Time", cell: (s) => `${s.start_time}–${s.end_time}` },
+    { header: "Time", cell: (s) => formatTimeRange(s.start_time, s.end_time) },
     { header: "Status", cell: (s) => <ShiftStatusBadge status={s.status as ShiftStatus} /> },
     {
       header: "Actions",
@@ -174,7 +192,7 @@ export default function ShiftsListPage() {
 
   return (
     <PageFrame>
-      <h1 className="mb-0 font-heading text-3xl text-cadence-ink">Shifts</h1>
+      <PageHeader title="Shifts" />
       <div className="flex flex-wrap items-end gap-3">
         <Field label="From" htmlFor="shifts-from">
           <Input
@@ -241,11 +259,12 @@ export default function ShiftsListPage() {
           />
       ) : (
         <ListLayout>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4">
             <Table
               columns={shiftColumns}
               rows={query.data?.results ?? []}
               rowKey={(s) => s.id}
+              onRowClick={(s) => router.push(`/shifts/${s.id}`)}
               emptyMessage="No shifts."
             />
             {query.data ? (

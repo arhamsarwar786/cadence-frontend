@@ -6,6 +6,7 @@ import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 import {
   approveCreditNote,
+  generateCreditNotePdf,
   issueCreditNote,
   sendCreditNote,
   unapproveCreditNote,
@@ -73,7 +74,6 @@ export default function CreditNoteDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title={note.credit_note_number}
         actions={
@@ -82,6 +82,7 @@ export default function CreditNoteDetailPage() {
           </Chip>
         }
       />
+      <PageScrollRegion className="flex flex-col gap-6">
       <p className="text-sm text-cadence-ink/60">
         {note.client_name} · Invoice {note.invoice_number} · {note.reason}
       </p>
@@ -89,6 +90,13 @@ export default function CreditNoteDetailPage() {
         {"total" in note ? formatMoney(note.total) : "—"}
       </p>
       {error ? <p className="text-sm text-cadence-red">{error}</p> : null}
+      {note.status === "issued" && !note.voided_at && !note.document_id ? (
+        <PermGate anyOf={PERM.INVOICES_SEND}>
+          <p className="text-sm text-cadence-ink/60">
+            Generate the PDF before sending — the email attaches the generated document.
+          </p>
+        </PermGate>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         {note.status === "draft" && !note.voided_at ? (
           <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
@@ -117,12 +125,21 @@ export default function CreditNoteDetailPage() {
         ) : null}
         {note.status === "issued" && !note.voided_at ? (
           <PermGate anyOf={PERM.INVOICES_SEND}>
-            <Button
-              disabled={busy}
-              onClick={() => act(() => sendCreditNote(id), "Credit note sent.")}
-            >
-              Send
-            </Button>
+            {note.document_id ? (
+              <Button
+                disabled={busy}
+                onClick={() => act(() => sendCreditNote(id), "Credit note sent to the client.")}
+              >
+                Send
+              </Button>
+            ) : (
+              <Button
+                disabled={busy}
+                onClick={() => act(() => generateCreditNotePdf(id), "PDF generated.")}
+              >
+                Generate PDF
+              </Button>
+            )}
           </PermGate>
         ) : null}
         {!note.voided_at ? (

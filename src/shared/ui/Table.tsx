@@ -28,7 +28,7 @@ export function Table<T>({
 }: TableProps<T>) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-[2rem] bg-card px-6 py-16 text-center text-on-card shadow-card">
+      <div className="rounded-[2rem] border border-white/5 bg-card px-6 py-16 text-center text-on-card shadow-card">
         <p className="font-body text-sm text-on-card-muted">{emptyMessage}</p>
       </div>
     );
@@ -43,8 +43,10 @@ export function Table<T>({
   }
 
   return (
-    <div className="overflow-hidden rounded-[2rem] bg-card text-on-card shadow-card">
-      <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+    // Card stays put; only the rows scroll beneath the sticky header row. Inside a
+    // ListLayout the card shrinks to the height left; elsewhere it keeps full height.
+    <div className="flex flex-col overflow-hidden in-[.list-layout-body]:min-h-0 rounded-[2rem] border border-white/5 bg-card text-on-card shadow-card">
+      <div className="min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
         <table className="min-w-full font-body text-sm">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="text-on-card-muted">

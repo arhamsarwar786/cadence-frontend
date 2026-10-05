@@ -7,6 +7,7 @@ import type { ShiftStatus } from "@/shared/lib/status-labels";
 import { ListSkeleton, QueryError, Table, type Column } from "@/shared/ui";
 import type { PortalShift } from "@/features/portal/types";
 import { PortalFrame } from "../../_components/PortalFrame";
+import { formatTimeRange } from "@/shared/lib/datetime";
 
 export default function PortalShiftsPage() {
   const query = useQuery({ queryKey: ["portal", "shifts"], queryFn: listShifts });
@@ -16,7 +17,7 @@ export default function PortalShiftsPage() {
     { header: "Date", cell: (s) => s.shift_date },
     { header: "Job", cell: (s) => s.job_title },
     { header: "Client", cell: (s) => s.client_name },
-    { header: "Time", cell: (s) => `${s.start_time}–${s.end_time}` },
+    { header: "Time", cell: (s) => formatTimeRange(s.start_time, s.end_time) },
     { header: "Status", cell: (s) => <ShiftStatusBadge status={s.status as ShiftStatus} /> },
   ];
 

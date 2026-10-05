@@ -83,3 +83,9 @@ export function utcIsoToOrgLocal(iso: string | null | undefined, timeZone: strin
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
+
+/** Wall-clock "HH:MM:SS" API times shown as "09:00–17:00" (no seconds). */
+export function formatTimeRange(start: string | null | undefined, end: string | null | undefined): string {
+  const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "—");
+  return `${hhmm(start)}–${hhmm(end)}`;
+}

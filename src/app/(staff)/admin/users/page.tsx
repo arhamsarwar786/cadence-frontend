@@ -200,7 +200,6 @@ export default function AdminUsersPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
       <PageHeader
         title="Users & permissions"
         actions={
@@ -209,7 +208,12 @@ export default function AdminUsersPage() {
           </PermGate>
         }
       />
-      {error ? <p className="text-sm text-cadence-red">{error}</p> : null}
+      <PageScrollRegion className="flex flex-col gap-6">
+      {error ? (
+        <p role="alert" className="text-sm text-cadence-red">
+          {error}
+        </p>
+      ) : null}
       <p className="font-fine text-xs text-cadence-ink/60">
         Staff sign-in addresses are abbreviated in the API (for example{" "}
         <span className="font-mono">d***@yourdomain.com</span>). Permission summaries below identify
@@ -231,8 +235,8 @@ export default function AdminUsersPage() {
             const primary = rosterPrimaryLabel(u, knownLogins, workerName, worker?.email);
             return (
             <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="font-body text-sm font-medium break-all">{primary}</p>
+              <div className="min-w-56 flex-1">
+                <p className="font-body text-sm font-medium [overflow-wrap:anywhere]">{primary}</p>
                 {u.user_type === "worker" && u.login_masked ? (
                   <p className="font-fine text-[11px] text-cadence-ink/70">
                     Portal login: {u.login_masked}
@@ -272,6 +276,9 @@ export default function AdminUsersPage() {
                     Set password
                   </Button>
                 </PermGate>
+                {/* The API has no reactivate endpoint (only POST .../deactivate/), so an
+                    already-deactivated account offers no status action at all. */}
+                {u.status !== "deactivated" ? (
                 <PermGate anyOf={PERM.ADMIN_USERS_DEACTIVATE}>
                   <Button
                     size="sm"
@@ -284,6 +291,7 @@ export default function AdminUsersPage() {
                         danger: true,
                       });
                       if (!ok) return;
+                      setError(null);
                       try {
                         await deactivateUser(u.id);
                         await queryClient.invalidateQueries({ queryKey: userKeys.all });
@@ -295,6 +303,7 @@ export default function AdminUsersPage() {
                     Deactivate
                   </Button>
                 </PermGate>
+                ) : null}
               </div>
             </li>
             );

@@ -185,6 +185,13 @@ export function createCreditNote(body: CreditNoteWrite): Promise<CreditNote> {
   return api.post<CreditNote>("/api/v1/credit-notes/", body);
 }
 
+export function updateCreditNote(
+  id: string,
+  body: Partial<Pick<CreditNoteWrite, "reason" | "issue_date">>,
+): Promise<CreditNote> {
+  return api.patch<CreditNote>(`/api/v1/credit-notes/${id}/`, body);
+}
+
 export function approveCreditNote(id: string): Promise<CreditNote> {
   return api.post<CreditNote>(`/api/v1/credit-notes/${id}/approve/`);
 }
@@ -195,6 +202,15 @@ export function unapproveCreditNote(id: string): Promise<CreditNote> {
 
 export function issueCreditNote(id: string): Promise<CreditNote> {
   return api.post<CreditNote>(`/api/v1/credit-notes/${id}/issue/`);
+}
+
+/** (Re)render the issued credit note's PDF — the send emails only what exists. */
+export function generatePayStatementPdf(id: string): Promise<unknown> {
+  return api.post(`/api/v1/payroll/pay-statements/${id}/pdf/`);
+}
+
+export function generateCreditNotePdf(id: string): Promise<unknown> {
+  return api.post(`/api/v1/credit-notes/${id}/pdf/`);
 }
 
 export function sendCreditNote(id: string): Promise<CreditNote> {

@@ -4,23 +4,9 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useSession } from "@/auth/session-context";
 import { logout as logoutAction } from "@/features/accounts/actions";
+import { PortalNotificationsLink } from "@/features/notifications/components/PortalNotificationsLink";
+import { PORTAL_DOCK, PORTAL_MORE } from "@/permissions/portal-nav";
 import { BottomDock, BrandLink, Button, SkipLink } from "@/shared/ui";
-
-/** Fixed 5-tab portal chrome (A18) — workers hold no catalog grants. */
-const PORTAL_DOCK = [
-  { label: "Home", href: "/portal", tooltip: "Your portal home", icon: "home" as const },
-  { label: "Offers", href: "/portal/offers", tooltip: "Accept or decline a placement", icon: "offers" as const },
-  { label: "Pay", href: "/portal/pay-statements", tooltip: "Pay statements", icon: "pay" as const },
-  { label: "Profile", href: "/portal/me", tooltip: "Your profile", icon: "profile" as const },
-  { label: "Documents", href: "/portal/documents", tooltip: "Your uploads", icon: "docs" as const },
-];
-
-const PORTAL_MORE = [
-  { label: "My shifts", href: "/portal/shifts", tooltip: "Shifts on placements you confirmed" },
-  { label: "Signatures", href: "/portal/signatures", tooltip: "Forms waiting for your signature" },
-  { label: "Availability", href: "/portal/availability", tooltip: "When you can work" },
-  { label: "Onboarding", href: "/portal/onboarding", tooltip: "Submit intake to the office" },
-];
 
 export function PortalShell({ children }: { children: ReactNode }) {
   const { session, clear } = useSession();
@@ -46,9 +32,12 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <SkipLink />
       <header className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
         <BrandLink href="/portal" />
-        <p className="hidden max-w-[40%] truncate font-fine text-[11px] text-cadence-ink/65 sm:block">
-          Worker portal · {session.user.login}
-        </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="hidden max-w-[16rem] truncate font-fine text-[11px] text-cadence-ink/65 sm:block">
+            Worker portal · {session.user.login}
+          </p>
+          <PortalNotificationsLink />
+        </div>
       </header>
       <main
         id="main-content"

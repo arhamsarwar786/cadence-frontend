@@ -16,6 +16,7 @@ import {
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
 import { Button, Dialog, EmptyState, Field, Input, Select, useConfirm } from "@/shared/ui";
+import { formatTimeRange } from "@/shared/lib/datetime";
 
 const FIELD_NAMES = Object.keys(availabilitySchema.shape);
 const DAY_LABEL = new Map(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
@@ -122,7 +123,7 @@ export function AvailabilityPanel({
           {query.data.map((row) => (
             <li key={row.id} className="flex items-center justify-between px-4 py-3">
               <p className="font-body text-sm text-cadence-ink">
-                {DAY_LABEL.get(row.day_of_week)} · {row.start_time}–{row.end_time}
+                {DAY_LABEL.get(row.day_of_week)} · {formatTimeRange(row.start_time, row.end_time)}
               </p>
               <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)}>
                 Remove

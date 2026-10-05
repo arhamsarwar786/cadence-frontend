@@ -37,6 +37,7 @@ import {
   TableSkeleton,
 } from "@/shared/ui";
 import { z } from "zod";
+import { formatTimeRange } from "@/shared/lib/datetime";
 
 const assignSchema = z.object({ employee_id: z.string().min(1, "Pick a worker.") });
 type AssignFormValues = z.infer<typeof assignSchema>;
@@ -352,7 +353,7 @@ function WorkerPickRow({
       <td className="px-3 py-2 align-top text-xs text-cadence-ink/60">
         {(profile?.availability ?? []).slice(0, 2).map((a) => (
           <div key={a.id}>
-            D{a.day_of_week} {a.start_time}–{a.end_time}
+            D{a.day_of_week} {formatTimeRange(a.start_time, a.end_time)}
           </div>
         ))}
         {!profile ? "…" : (profile.availability?.length ?? 0) === 0 ? "—" : null}

@@ -78,6 +78,16 @@ export function listSignatureRequests(): Promise<PortalSignatureRequest[]> {
   return api.get<PortalSignatureRequest[]>("/api/v1/portal/me/signature-requests/");
 }
 
+export function signatureRequestDocumentUrl(requestId: string): string {
+  return `/api/v1/portal/me/signature-requests/${requestId}/document/`;
+}
+
+/** The door answers as an attachment, so an in-page preview needs the
+ * bytes. Pending: the source to sign. Signed: the stamped receipt. */
+export function getSignatureRequestDocument(requestId: string): Promise<Blob> {
+  return api.get<Blob>(signatureRequestDocumentUrl(requestId), { responseType: "blob" });
+}
+
 export function getSignature(): Promise<PortalSignature | null> {
   return api.get<PortalSignature>("/api/v1/portal/me/signature/").catch((err: unknown) => {
     if (err instanceof ApiError && err.status === 404) return null;

@@ -1,4 +1,5 @@
 export { Avatar } from "@/shared/ui/Avatar";
+export { BackButton } from "@/shared/ui/BackButton";
 export { Badge, type BadgeProps, type BadgeTone } from "@/shared/ui/Badge";
 export { BottomDock, type DockItem } from "@/shared/ui/BottomDock";
 export { BrandLink, BrandLockup, BrandMark, BrandWordmark } from "@/shared/ui/Brand";

@@ -3,7 +3,7 @@
 import { Loading } from "@/shared/ui/Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSession } from "@/auth/session-context";
@@ -29,10 +29,12 @@ import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { formatDate } from "@/shared/lib/datetime";
 import { formatMoney } from "@/shared/lib/money";
 import type { InvoiceStatus } from "@/shared/lib/status-labels";
-import { Button, Dialog, Field, Input, PermGate, QueryError, Select, useConfirm, useHasPerm } from "@/shared/ui";
+import { Button, Dialog, Field, Input, PageFrame, PageHeader, PageScrollRegion, PermGate, QueryError, Select, useConfirm, useHasPerm } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 export default function InvoiceDetailPage() {
   const { id: invoiceId } = useParams<{ id: string }>();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { session } = useSession();
   const timeZone = session?.organization.timezone;
@@ -67,7 +69,7 @@ export default function InvoiceDetailPage() {
   });
   const jobsQuery = useQuery({
     queryKey: ["jobs-picker", "client", clientId],
-    queryFn: () => listJobs({ pageSize: 200, client: clientId }),
+    queryFn: () => fetchAllPages((page) => listJobs({ pageSize: 200, page, client: clientId })),
     enabled: Boolean(clientId) && autofillOpen,
   });
 
@@ -129,202 +131,214 @@ export default function InvoiceDetailPage() {
     .join("\n");
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">
-            {invoice.invoice_number ?? "Draft invoice"}
-          </h1>
-          <div className="mt-1 flex items-center gap-2">
+    <PageFrame>
+      <PageHeader
+        title={invoice.invoice_number ?? "Draft invoice"}
+        meta={
+          <>
             <InvoiceStatusBadge
               status={status}
               voidedAt={invoice.voided_at}
               paidAt={invoice.paid_at}
             />
             <span className="font-body text-sm text-cadence-ink/60">{invoice.client_name}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          {status === "draft" ? (
-            <PermGate anyOf={PERM.CLIENTS_INVOICE_EDIT}>
-              <>
-                <Button variant="secondary" onClick={() => setAutofillOpen(true)}>
-                  Autofill
-                </Button>
-                <Button disabled={busy} onClick={() => runAction(() => submitInvoice(invoiceId))}>
-                  Submit for approval
-                </Button>
-              </>
-            </PermGate>
-          ) : null}
-          {status === "pending_approval" ? (
-            <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
-              <>
-                <Button disabled={busy} onClick={() => runAction(() => approveInvoice(invoiceId))}>Approve</Button>
-                <Button variant="secondary" disabled={busy} onClick={() => runAction(() => returnInvoiceToDraft(invoiceId))}>
-                  Return to draft
-                </Button>
-              </>
-            </PermGate>
-          ) : null}
-          {status === "approved" ? (
-            <>
-              <PermGate anyOf={PERM.INVOICES_SEND}>
-                <Button disabled={busy} onClick={() => runAction(() => sendInvoice(invoiceId))}>Send</Button>
+          </>
+        }
+        actions={
+          <>
+            {status === "draft" ? (
+              <PermGate anyOf={PERM.CLIENTS_INVOICE_EDIT}>
+                <>
+                  <Button variant="secondary" onClick={() => setAutofillOpen(true)}>
+                    Autofill
+                  </Button>
+                  <Button disabled={busy} onClick={() => runAction(() => submitInvoice(invoiceId))}>
+                    Submit for approval
+                  </Button>
+                </>
               </PermGate>
+            ) : null}
+            {status === "pending_approval" ? (
               <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
-                <Button variant="secondary" disabled={busy} onClick={() => runAction(() => unapproveInvoice(invoiceId))}>
-                  Unapprove
-                </Button>
+                <>
+                  <Button disabled={busy} onClick={() => runAction(() => approveInvoice(invoiceId))}>Approve</Button>
+                  <Button variant="secondary" disabled={busy} onClick={() => runAction(() => returnInvoiceToDraft(invoiceId))}>
+                    Return to draft
+                  </Button>
+                </>
               </PermGate>
-            </>
-          ) : null}
-          {status === "sent" && !invoice.paid_at && !invoice.voided_at ? (
-            <>
-              <PermGate anyOf={PERM.INVOICES_MARK_PAID}>
-                <Button disabled={busy} onClick={() => runAction(() => markInvoicePaid(invoiceId))}>
-                  Mark paid
-                </Button>
-              </PermGate>
-              <PermGate anyOf={[PERM.CLIENTS_INVOICE_EDIT, PERM.INVOICES_SEND]}>
+            ) : null}
+            {status === "approved" ? (
+              <>
+                <PermGate anyOf={PERM.INVOICES_SEND}>
+                  <Button disabled={busy} onClick={() => runAction(() => sendInvoice(invoiceId))}>Send</Button>
+                </PermGate>
+                <PermGate anyOf={PERM.CLIENTS_INVOICE_APPROVE}>
+                  <Button variant="secondary" disabled={busy} onClick={() => runAction(() => unapproveInvoice(invoiceId))}>
+                    Unapprove
+                  </Button>
+                </PermGate>
+              </>
+            ) : null}
+            {status === "sent" && !invoice.voided_at ? (
+              // A sent invoice is frozen; paid or not, its correction is a credit note.
+              <PermGate anyOf={PERM.CLIENTS_INVOICE_EDIT}>
                 <Button
-                  variant="danger"
-                  disabled={busy}
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: "Void this invoice?",
-                      body: "Voiding a sent invoice is a correction. The client-facing number stays in the register as voided. This cannot be undone from this screen.",
-                      confirmLabel: "Void invoice",
-                      danger: true,
-                    });
-                    if (ok) await runAction(() => voidInvoice(invoiceId));
-                  }}
+                  variant="secondary"
+                  onClick={() => router.push(`/credit-notes/new?invoice=${invoiceId}`)}
                 >
-                  Void
+                  New credit note
                 </Button>
               </PermGate>
-            </>
-          ) : null}
-          <a
-            href={`/api/v1/invoices/${invoiceId}/pdf/`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center rounded-md border border-border px-4 font-body text-sm text-cadence-ink hover:bg-surface-muted"
-          >
-            View PDF
-          </a>
-        </div>
-      </div>
+            ) : null}
+            {status === "sent" && !invoice.paid_at && !invoice.voided_at ? (
+              <>
+                <PermGate anyOf={PERM.INVOICES_MARK_PAID}>
+                  <Button disabled={busy} onClick={() => runAction(() => markInvoicePaid(invoiceId))}>
+                    Mark paid
+                  </Button>
+                </PermGate>
+                <PermGate anyOf={[PERM.CLIENTS_INVOICE_EDIT, PERM.INVOICES_SEND]}>
+                  <Button
+                    variant="danger"
+                    disabled={busy}
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: "Void this invoice?",
+                        body: "Voiding a sent invoice is a correction. The client-facing number stays in the register as voided. This cannot be undone from this screen.",
+                        confirmLabel: "Void invoice",
+                        danger: true,
+                      });
+                      if (ok) await runAction(() => voidInvoice(invoiceId));
+                    }}
+                  >
+                    Void
+                  </Button>
+                </PermGate>
+              </>
+            ) : null}
+            <a
+              href={`/api/v1/invoices/${invoiceId}/pdf/`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center rounded-md border border-border px-4 font-body text-sm text-cadence-ink hover:bg-surface-muted"
+            >
+              View PDF
+            </a>
+          </>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-8">
+        {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
 
-      {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
-
-      <section className="grid gap-6 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
-        <div className="font-body text-sm">
-          <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">From</p>
-          <p className="mt-1 text-cadence-ink">{org?.legal_name || org?.name || "—"}</p>
-          {orgAddress ? (
-            <p className="mt-1 whitespace-pre-line text-cadence-ink/60">{orgAddress}</p>
-          ) : null}
-          {org?.email ? <p className="text-cadence-ink/60">{org.email}</p> : null}
-          {org?.tax_id ? <p className="text-cadence-ink/60">Tax ID {org.tax_id}</p> : null}
-        </div>
-        <div className="font-body text-sm">
-          <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">To</p>
-          <p className="mt-1 text-cadence-ink">{invoice.client_name}</p>
-          <p className="text-cadence-ink/60">{billingQuery.data?.billing_email || "—"}</p>
-          <p className="text-cadence-ink/60">
-            {[
-              clientQuery.data?.address_line_1,
-              clientQuery.data?.city,
-              clientQuery.data?.province,
-              clientQuery.data?.postal_code,
-            ]
-              .filter(Boolean)
-              .join(", ") || "—"}
-          </p>
-        </div>
-        {org?.remit_to_details ? (
-          <div className="font-body text-sm sm:col-span-2">
-            <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
-              Payable IN
+        <section className="grid gap-6 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
+          <div className="font-body text-sm">
+            <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">From</p>
+            <p className="mt-1 text-cadence-ink">{org?.legal_name || org?.name || "—"}</p>
+            {orgAddress ? (
+              <p className="mt-1 whitespace-pre-line text-cadence-ink/60">{orgAddress}</p>
+            ) : null}
+            {org?.email ? <p className="text-cadence-ink/60">{org.email}</p> : null}
+            {org?.tax_id ? <p className="text-cadence-ink/60">Tax ID {org.tax_id}</p> : null}
+          </div>
+          <div className="font-body text-sm">
+            <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">To</p>
+            <p className="mt-1 text-cadence-ink">{invoice.client_name}</p>
+            <p className="text-cadence-ink/60">{billingQuery.data?.billing_email || "—"}</p>
+            <p className="text-cadence-ink/60">
+              {[
+                clientQuery.data?.address_line_1,
+                clientQuery.data?.city,
+                clientQuery.data?.province,
+                clientQuery.data?.postal_code,
+              ]
+                .filter(Boolean)
+                .join(", ") || "—"}
             </p>
-            <p className="mt-1 whitespace-pre-line text-cadence-ink/70">{org.remit_to_details}</p>
           </div>
-        ) : null}
-      </section>
+          {org?.remit_to_details ? (
+            <div className="font-body text-sm sm:col-span-2">
+              <p className="font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
+                Payable IN
+              </p>
+              <p className="mt-1 whitespace-pre-line text-cadence-ink/70">{org.remit_to_details}</p>
+            </div>
+          ) : null}
+        </section>
 
-      <dl className="grid max-w-xl grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
-        <div>
-          <dt className="text-cadence-ink/60">Issue date</dt>
-          <dd className="text-cadence-ink">{invoice.issue_date}</dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Due date</dt>
-          <dd className="text-cadence-ink">{invoice.due_date}</dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Subtotal</dt>
-          <dd className="text-cadence-ink">
-            {"subtotal" in invoice ? formatMoney(invoice.subtotal) : "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Tax</dt>
-          <dd className="text-cadence-ink">
-            {"tax_amount" in invoice ? formatMoney(invoice.tax_amount) : "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Total</dt>
-          <dd className="font-medium text-cadence-ink">
-            {"total" in invoice ? formatMoney(invoice.total) : "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Paid</dt>
-          <dd className="text-cadence-ink">
-            {invoice.paid_at && timeZone ? formatDate(invoice.paid_at, timeZone) : invoice.paid_at ? "—" : "Not paid"}
-          </dd>
-        </div>
-      </dl>
+        <dl className="grid max-w-xl grid-cols-2 gap-x-8 gap-y-3 font-body text-sm">
+          <div>
+            <dt className="text-cadence-ink/60">Issue date</dt>
+            <dd className="text-cadence-ink">{invoice.issue_date}</dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Due date</dt>
+            <dd className="text-cadence-ink">{invoice.due_date}</dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Subtotal</dt>
+            <dd className="text-cadence-ink">
+              {"subtotal" in invoice ? formatMoney(invoice.subtotal) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Tax</dt>
+            <dd className="text-cadence-ink">
+              {"tax_amount" in invoice ? formatMoney(invoice.tax_amount) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Total</dt>
+            <dd className="font-medium text-cadence-ink">
+              {"total" in invoice ? formatMoney(invoice.total) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Paid</dt>
+            <dd className="text-cadence-ink">
+              {invoice.paid_at && timeZone ? formatDate(invoice.paid_at, timeZone) : invoice.paid_at ? "—" : "Not paid"}
+            </dd>
+          </div>
+        </dl>
 
-      <InvoiceLinesPanel invoiceId={invoiceId} lines={invoice.lines} editable={status === "draft"} />
+        <InvoiceLinesPanel invoiceId={invoiceId} lines={invoice.lines} editable={status === "draft"} />
 
-      <Dialog open={autofillOpen} onClose={() => setAutofillOpen(false)} title="Autofill from unbilled shifts">
-        <form onSubmit={handleSubmit(submitAutofill)} noValidate className="flex flex-col gap-4">
-          <p className="font-body text-sm text-on-card-muted">
-            With no filters, this fills the draft from every unbilled worked shift of this
-            client.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="From" htmlFor="autofill-from">
-              <Input id="autofill-from" type="date" {...register("date_from")} />
+        <Dialog open={autofillOpen} onClose={() => setAutofillOpen(false)} title="Autofill from unbilled shifts">
+          <form onSubmit={handleSubmit(submitAutofill)} noValidate className="flex flex-col gap-4">
+            <p className="font-body text-sm text-on-card-muted">
+              With no filters, this fills the draft from every unbilled worked shift of this
+              client.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="From" htmlFor="autofill-from">
+                <Input id="autofill-from" type="date" {...register("date_from")} />
+              </Field>
+              <Field label="To" htmlFor="autofill-to">
+                <Input id="autofill-to" type="date" {...register("date_to")} />
+              </Field>
+            </div>
+            <Field label="Job (optional)" htmlFor="autofill-job">
+              <Select id="autofill-job" {...register("job_id")}>
+                <option value="">All jobs for this client</option>
+                {(jobsQuery.data?.results ?? []).map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.title}
+                  </option>
+                ))}
+              </Select>
             </Field>
-            <Field label="To" htmlFor="autofill-to">
-              <Input id="autofill-to" type="date" {...register("date_to")} />
-            </Field>
-          </div>
-          <Field label="Job (optional)" htmlFor="autofill-job">
-            <Select id="autofill-job" {...register("job_id")}>
-              <option value="">All jobs for this client</option>
-              {(jobsQuery.data?.results ?? []).map((j) => (
-                <option key={j.id} value={j.id}>
-                  {j.title}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Filling…" : "Autofill"}
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setAutofillOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-      {confirmDialog}
-    </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Filling…" : "Autofill"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setAutofillOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+        {confirmDialog}
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

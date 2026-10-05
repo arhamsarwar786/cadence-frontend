@@ -1,4 +1,4 @@
-import { api, ApiError, normalizeList, type Paginated } from "@/api/client";
+import { api, ApiError, normalizeList, type Paginated, fetchAllPages } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
 import type { CurrentSession, StaffUser } from "@/features/accounts/types";
 
@@ -32,5 +32,6 @@ export function listUsers(params: { page?: number; pageSize?: number } = {}): Pr
 export async function listUsersNormalized(
   params: { page?: number; pageSize?: number } = {},
 ): Promise<StaffUser[]> {
-  return normalizeList(await listUsers(params));
+  if (params.page) return normalizeList(await listUsers(params));
+  return (await fetchAllPages((page) => listUsers({ ...params, page }))).results;
 }

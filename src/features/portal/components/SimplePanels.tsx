@@ -1,6 +1,12 @@
 "use client";
 
 import { Loading } from "@/shared/ui/Loading";
+
+/** "7.00" -> "7", "6.50" -> "6.5" — years are a human number, not a money scale. */
+function formatYears(years: string): string {
+  const n = Number(years);
+  return Number.isFinite(n) ? String(n) : years;
+}
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -152,7 +158,7 @@ export function SkillsPanel() {
               className="flex items-center gap-2 rounded-full border border-border bg-surface-muted px-3 py-1 font-body text-sm text-cadence-ink"
             >
               {row.skill_name}
-              {row.years_exp != null ? <span className="text-cadence-ink/60">{row.years_exp}y</span> : null}
+              {row.years_exp != null ? <span className="text-cadence-ink/60">{formatYears(row.years_exp)}y</span> : null}
               <button
                 type="button"
                 onClick={() => openEdit(row)}

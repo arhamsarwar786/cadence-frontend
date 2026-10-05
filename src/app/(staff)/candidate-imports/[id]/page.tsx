@@ -8,7 +8,7 @@ import { describeImportBatchError } from "@/features/candidate-imports/batch-err
 import { commitBatch, getBatch, importBatchKeys, listBatchDocuments, listBatchRows } from "@/features/candidate-imports/api";
 import { isNotFound, messageFrom } from "@/shared/lib/errors";
 import { CANDIDATE_IMPORT_BATCH_STATUS_LABELS, type CandidateImportBatchStatus } from "@/shared/lib/status-labels";
-import { Badge, Button, Pagination, QueryError } from "@/shared/ui";
+import { Badge, Button, PageFrame, PageHeader, PageScrollRegion, Pagination, QueryError } from "@/shared/ui";
 
 const PAGE_SIZE = 50;
 const TONE: Record<CandidateImportBatchStatus, "neutral" | "info" | "positive" | "negative" | "warning"> = {
@@ -82,114 +82,120 @@ export default function CandidateImportBatchDetailPage() {
   if (!batch) return null;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">{batch.source_filename ?? "Import batch"}</h1>
-          <Badge tone={TONE[batch.status as CandidateImportBatchStatus] ?? "info"} className="mt-1">
-            {CANDIDATE_IMPORT_BATCH_STATUS_LABELS[batch.status as CandidateImportBatchStatus]}
-          </Badge>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {batch.status === "failed" ? (
-            <Button variant="secondary" size="sm" onClick={() => router.push("/candidate-imports")}>
-              Back — create a new package
-            </Button>
-          ) : null}
-          {batch.status === "validated" ? (
-            <Button onClick={handleCommit} disabled={committing}>
-              {committing ? "Committing…" : "Commit"}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-      {commitError ? <p className="font-body text-sm text-cadence-red">{commitError}</p> : null}
-      {batch.error ? (
-        <p className="font-body text-sm text-cadence-red">
-          {describeImportBatchError(batch.error) ?? batch.error}
-        </p>
-      ) : null}
-
-      <dl className="grid max-w-md grid-cols-1 gap-x-8 gap-y-3 font-body text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-cadence-ink/60">Rows</dt>
-          <dd className="text-cadence-ink">
-            {batch.valid_row_count ?? 0} valid / {batch.row_count ?? 0} total
-          </dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Documents</dt>
-          <dd className="text-cadence-ink">
-            {batch.matched_document_count ?? 0} matched / {batch.unmatched_document_count ?? 0} unmatched
-          </dd>
-        </div>
-        <div>
-          <dt className="text-cadence-ink/60">Committed</dt>
-          <dd className="text-cadence-ink">
-            {batch.committed_row_count ?? 0} rows, {batch.committed_document_count ?? 0} documents
-          </dd>
-        </div>
-      </dl>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-subheading text-xl text-cadence-ink">Rows</h2>
-        {rowsQuery.isError ? (
-          <QueryError error={rowsQuery.error} onRetry={() => rowsQuery.refetch()} />
-        ) : rowsQuery.data && rowsQuery.data.results.length > 0 ? (
+    <PageFrame>
+      <PageHeader
+        title={batch.source_filename ?? "Import batch"}
+        meta={
           <>
-            <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
-              {rowsQuery.data.results.map((row) => {
-                const errors = Array.isArray(row.errors) ? (row.errors as unknown[]) : [];
-                return (
-                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                    <p className="min-w-0 font-body text-sm text-cadence-ink">
-                      Row {row.row_number}
-                      {errors.length > 0 ? ` — ${errors.map(String).join(", ")}` : ""}
-                    </p>
-                    <Badge tone={row.match_status === "valid" ? "positive" : "negative"}>
-                      {row.match_status}
-                    </Badge>
+            <Badge tone={TONE[batch.status as CandidateImportBatchStatus] ?? "info"}>
+              {CANDIDATE_IMPORT_BATCH_STATUS_LABELS[batch.status as CandidateImportBatchStatus]}
+            </Badge>
+          </>
+        }
+        actions={
+          <>
+            {batch.status === "failed" ? (
+              <Button variant="secondary" size="sm" onClick={() => router.push("/candidate-imports")}>
+                Back — create a new package
+              </Button>
+            ) : null}
+            {batch.status === "validated" ? (
+              <Button onClick={handleCommit} disabled={committing}>
+                {committing ? "Committing…" : "Commit"}
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-8">
+        {commitError ? <p className="font-body text-sm text-cadence-red">{commitError}</p> : null}
+        {batch.error ? (
+          <p className="font-body text-sm text-cadence-red">
+            {describeImportBatchError(batch.error) ?? batch.error}
+          </p>
+        ) : null}
+
+        <dl className="grid max-w-md grid-cols-1 gap-x-8 gap-y-3 font-body text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-cadence-ink/60">Rows</dt>
+            <dd className="text-cadence-ink">
+              {batch.valid_row_count ?? 0} valid / {batch.row_count ?? 0} total
+            </dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Documents</dt>
+            <dd className="text-cadence-ink">
+              {batch.matched_document_count ?? 0} matched / {batch.unmatched_document_count ?? 0} unmatched
+            </dd>
+          </div>
+          <div>
+            <dt className="text-cadence-ink/60">Committed</dt>
+            <dd className="text-cadence-ink">
+              {batch.committed_row_count ?? 0} rows, {batch.committed_document_count ?? 0} documents
+            </dd>
+          </div>
+        </dl>
+
+        <section className="flex flex-col gap-2">
+          <h2 className="font-subheading text-xl text-cadence-ink">Rows</h2>
+          {rowsQuery.isError ? (
+            <QueryError error={rowsQuery.error} onRetry={() => rowsQuery.refetch()} />
+          ) : rowsQuery.data && rowsQuery.data.results.length > 0 ? (
+            <>
+              <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+                {rowsQuery.data.results.map((row) => {
+                  const errors = Array.isArray(row.errors) ? (row.errors as unknown[]) : [];
+                  return (
+                    <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                      <p className="min-w-0 font-body text-sm text-cadence-ink">
+                        Row {row.row_number}
+                        {errors.length > 0 ? ` — ${errors.map(String).join(", ")}` : ""}
+                      </p>
+                      <Badge tone={row.match_status === "valid" ? "positive" : "negative"}>
+                        {row.match_status}
+                      </Badge>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Pagination
+                page={rowsPage}
+                pageSize={PAGE_SIZE}
+                count={rowsQuery.data.count}
+                onPageChange={(page) => setPageParam("rowsPage", page)}
+              />
+            </>
+          ) : (
+            <p className="font-body text-sm text-cadence-ink/60">No rows.</p>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <h2 className="font-subheading text-xl text-cadence-ink">Documents</h2>
+          {docsQuery.isError ? (
+            <QueryError error={docsQuery.error} onRetry={() => docsQuery.refetch()} />
+          ) : docsQuery.data && docsQuery.data.results.length > 0 ? (
+            <>
+              <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+                {docsQuery.data.results.map((doc) => (
+                  <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                    <p className="min-w-0 truncate font-body text-sm text-cadence-ink">{doc.original_filename}</p>
+                    <Badge tone={doc.match_status === "matched" ? "positive" : "warning"}>{doc.match_status}</Badge>
                   </li>
-                );
-              })}
-            </ul>
-            <Pagination
-              page={rowsPage}
-              pageSize={PAGE_SIZE}
-              count={rowsQuery.data.count}
-              onPageChange={(page) => setPageParam("rowsPage", page)}
-            />
-          </>
-        ) : (
-          <p className="font-body text-sm text-cadence-ink/60">No rows.</p>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-subheading text-xl text-cadence-ink">Documents</h2>
-        {docsQuery.isError ? (
-          <QueryError error={docsQuery.error} onRetry={() => docsQuery.refetch()} />
-        ) : docsQuery.data && docsQuery.data.results.length > 0 ? (
-          <>
-            <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
-              {docsQuery.data.results.map((doc) => (
-                <li key={doc.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                  <p className="min-w-0 truncate font-body text-sm text-cadence-ink">{doc.original_filename}</p>
-                  <Badge tone={doc.match_status === "matched" ? "positive" : "warning"}>{doc.match_status}</Badge>
-                </li>
-              ))}
-            </ul>
-            <Pagination
-              page={docsPage}
-              pageSize={PAGE_SIZE}
-              count={docsQuery.data.count}
-              onPageChange={(page) => setPageParam("docsPage", page)}
-            />
-          </>
-        ) : (
-          <p className="font-body text-sm text-cadence-ink/60">No documents.</p>
-        )}
-      </section>
-    </div>
+                ))}
+              </ul>
+              <Pagination
+                page={docsPage}
+                pageSize={PAGE_SIZE}
+                count={docsQuery.data.count}
+                onPageChange={(page) => setPageParam("docsPage", page)}
+              />
+            </>
+          ) : (
+            <p className="font-body text-sm text-cadence-ink/60">No documents.</p>
+          )}
+        </section>
+      </PageScrollRegion>
+    </PageFrame>
   );
 }

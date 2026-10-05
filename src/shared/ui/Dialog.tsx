@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { cn } from "@/shared/lib/cn";
 import { useBodyScrollLock } from "@/shared/lib/use-body-scroll-lock";
 
 export interface DialogProps {
   open: boolean;
   onClose: () => void;
   title?: string;
+  /** Room for a document preview; default is the narrow form width. */
+  wide?: boolean;
   children: ReactNode;
 }
 
 /** Native modal. Title is exposed to assistive tech; Escape and backdrop
  * dismiss. Focus stays in the dialog while it is open. */
-export function Dialog({ open, onClose, title, children }: DialogProps) {
+export function Dialog({ open, onClose, title, wide = false, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useBodyScrollLock(open);
@@ -34,7 +37,10 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
       onClick={(event) => {
         if (event.target === ref.current) onClose();
       }}
-      className="dark-card scroll-area-y m-auto max-h-[min(90dvh,calc(100%-2rem))] w-[calc(100vw-2rem)] max-w-md rounded-[1.5rem] border-0 bg-card p-5 font-body text-on-card shadow-card backdrop:bg-cadence-ink/45 sm:rounded-[2rem] sm:p-6"
+      className={cn(
+        "dark-card scroll-area-y m-auto max-h-[min(90dvh,calc(100%-2rem))] w-[calc(100vw-2rem)] rounded-[1.5rem] border border-white/10 bg-card p-5 font-body text-on-card shadow-card backdrop:bg-cadence-ink/45 sm:rounded-[2rem] sm:p-6",
+        wide ? "max-w-3xl" : "max-w-md",
+      )}
     >
       {title ? (
         <h2 id={titleId} className="mb-4 font-heading text-2xl text-on-card">

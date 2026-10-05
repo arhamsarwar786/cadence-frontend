@@ -23,7 +23,8 @@ import {
   type PayrollRunStatus,
 } from "@/shared/lib/status-labels";
 import { PERM } from "@/permissions/keys";
-import { Avatar, Button, FilterChip, ListLayout, PermGate, QueryError, SearchField, Select, Table, type Column, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Avatar, Button, FilterChip, ListLayout, PermGate, QueryError, SearchField, Select, Table, type Column, PageFrame, PageHeader, PageScrollRegion } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 function preferenceLabel(method: string | undefined): string {
   if (!method) return "—";
@@ -68,7 +69,7 @@ export default function PayrollRunDetailPage() {
   const statements = query.data?.pay_statements ?? [];
   const workersLookup = useQuery({
     queryKey: ["workers-pay-method-map"],
-    queryFn: () => listWorkers({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listWorkers({ pageSize: 200, page })),
     enabled: statements.length > 0,
   });
   const payMethodByEmployee = useMemo(() => {
@@ -135,18 +136,16 @@ export default function PayrollRunDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">
-            {run.period_start} – {run.period_end}
-          </h1>
-          <div className="mt-1 flex items-center gap-2">
+      <PageHeader
+        title={<>{run.period_start} – {run.period_end}</>}
+        meta={
+          <>
             <PayrollRunStatusBadge status={status} paidAt={run.paid_at} />
             <span className="font-body text-sm text-cadence-ink/60">Payday {run.payday}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
+          </>
+        }
+        actions={
+          <>
           {status === "draft" ? (
             <PermGate anyOf={PERM.PAYROLL_APPROVE}>
               <Button disabled={busy} onClick={() => runAction(() => approvePayrollRun(runId))}>
@@ -166,8 +165,10 @@ export default function PayrollRunDetailPage() {
               <Button variant="secondary">Export CSV</Button>
             </a>
           </PermGate>
-        </div>
-      </div>
+          </>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-6">
 
       {actionError ? <p className="font-body text-sm text-cadence-red">{actionError}</p> : null}
 

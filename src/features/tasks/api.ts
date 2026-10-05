@@ -1,4 +1,4 @@
-import { api, type Paginated } from "@/api/client";
+import { api, fetchAllPages, type Paginated } from "@/api/client";
 import { resourceKeys } from "@/api/query-keys";
 import type { Task } from "@/features/tasks/types";
 
@@ -19,6 +19,11 @@ export function listTasks(params: ListTasksParams = {}): Promise<Paginated<Task>
   if (params.type) search.set("type", params.type);
   const qs = search.toString();
   return api.get<Paginated<Task>>(`/api/v1/tasks/${qs ? `?${qs}` : ""}`);
+}
+
+/** Every matching task across pages — the board is a work queue, so nothing may drop off. */
+export function listAllTasks(params: Omit<ListTasksParams, "page"> = {}): Promise<Paginated<Task>> {
+  return fetchAllPages((page) => listTasks({ ...params, page }));
 }
 
 export function getTask(id: string): Promise<Task> {

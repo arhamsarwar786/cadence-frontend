@@ -250,10 +250,11 @@ export const SIGNATURE_REQUEST_STATUS_LABELS = labels<SignatureRequestStatus>({
   revoked: "Revoked",
 });
 
-export type SignatureRequestPurpose = "payroll_release" | "onboarding";
+export type SignatureRequestPurpose = "payroll_release" | "onboarding" | "general";
 export const SIGNATURE_REQUEST_PURPOSE_LABELS = labels<SignatureRequestPurpose>({
   payroll_release: "Payroll release",
   onboarding: "Onboarding",
+  general: "General",
 });
 
 // ---- tasks ------------------------------------------------------------

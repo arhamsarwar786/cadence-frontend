@@ -23,7 +23,8 @@ import {
   type HourSheetStatus,
   type MatchStatus,
 } from "@/shared/lib/status-labels";
-import { Badge, Button, Dialog, Field, Input, PermGate, QueryError, Select, useConfirm, type BadgeTone, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Badge, Button, Dialog, Field, Input, PermGate, QueryError, Select, useConfirm, type BadgeTone, PageFrame, PageHeader, PageScrollRegion } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const LINE_FIELD_NAMES = Object.keys(hourSheetLineSchema.shape);
 
@@ -37,7 +38,7 @@ const MATCH_TONE: Record<MatchStatus, BadgeTone> = {
 function AddLineForm({ sheetId, onDone }: { sheetId: string; onDone: () => void }) {
   const workersQuery = useQuery({
     queryKey: ["workers-picker"],
-    queryFn: () => listWorkers({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listWorkers({ pageSize: 200, page })),
   });
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -164,33 +165,33 @@ export default function HourSheetDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="font-heading text-3xl text-cadence-ink">
-            {sheet.job_title ?? sheet.client_name}
-          </h1>
-          <div className="mt-1 flex items-center gap-2">
+      <PageHeader
+        title={sheet.job_title ?? sheet.client_name}
+        meta={
+          <>
             <HourSheetStatusBadge status={sheet.status as HourSheetStatus} />
             <span className="font-body text-sm text-cadence-ink/60">
               {sheet.period_start} – {sheet.period_end}
             </span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <PermGate anyOf={PERM.HOURSHEETS_APPROVE}>
-            {sheet.status === "received" ? (
-              <Button onClick={handleApprove} disabled={!hasLines || !allMatched}>
-                Approve
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={handleUnapprove}>
-                Unapprove
-              </Button>
-            )}
-          </PermGate>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <PermGate anyOf={PERM.HOURSHEETS_APPROVE}>
+              {sheet.status === "received" ? (
+                <Button onClick={handleApprove} disabled={!hasLines || !allMatched}>
+                  Approve
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={handleUnapprove}>
+                  Unapprove
+                </Button>
+              )}
+            </PermGate>
+          </>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-6">
       {sheet.status === "received" && hasLines && !allMatched ? (
         <p className="font-body text-xs text-cadence-ink/60">
           Approve is disabled until every line is matched.

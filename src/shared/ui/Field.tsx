@@ -12,12 +12,12 @@ import { Tooltip } from "@/shared/ui/Tooltip";
 
 const CONTROL_CLASSES =
   "h-10 w-full rounded-full border border-cadence-ink/10 bg-surface px-4 text-sm font-body text-cadence-ink " +
-  "placeholder:text-cadence-ink/50 focus:border-cadence-orange focus:outline-none focus:ring-2 focus:ring-cadence-yellow/50 " +
+  "placeholder:text-cadence-ink/50 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 const TEXTAREA_CLASSES =
   "min-h-24 w-full rounded-2xl border border-cadence-ink/10 bg-surface px-4 py-3 text-sm font-body text-cadence-ink " +
-  "placeholder:text-cadence-ink/50 focus:border-cadence-orange focus:outline-none focus:ring-2 focus:ring-cadence-yellow/50 " +
+  "placeholder:text-cadence-ink/50 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 export interface FieldProps {

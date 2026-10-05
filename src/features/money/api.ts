@@ -38,11 +38,13 @@ export interface ListInvoicesParams {
   pageSize?: number;
   status?: string;
   client?: string;
+  /** "true": voided only; "false": live only; absent: both. */
+  voided?: "true" | "false";
 }
 
 export function listInvoices(params: ListInvoicesParams = {}): Promise<Paginated<Invoice>> {
   return api.get<Paginated<Invoice>>(
-    `/api/v1/invoices/${toQuery({ page: params.page, page_size: params.pageSize, status: params.status, client: params.client })}`,
+    `/api/v1/invoices/${toQuery({ page: params.page, page_size: params.pageSize, status: params.status, client: params.client, voided: params.voided })}`,
   );
 }
 
@@ -82,8 +84,8 @@ export function getEmployeeYtd(employeeId: string): Promise<EmployeeYTD> {
   return api.get<EmployeeYTD>(`/api/v1/payroll/employees/${employeeId}/ytd/`);
 }
 
-export function listPayCycles(): Promise<Paginated<PayCycle> | PayCycle[]> {
-  return api.get(`/api/v1/payroll/cycles/`);
+export function listPayCycles(page?: number): Promise<Paginated<PayCycle> | PayCycle[]> {
+  return api.get(`/api/v1/payroll/cycles/${toQuery({ page, page_size: page ? 100 : undefined })}`);
 }
 
 export function exportPayrollRunUrl(id: string): string {

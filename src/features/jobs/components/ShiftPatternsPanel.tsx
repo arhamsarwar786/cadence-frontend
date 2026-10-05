@@ -11,6 +11,7 @@ import { shiftPatternSchema, type ShiftPatternFormValues } from "@/features/jobs
 import { DAYS_OF_WEEK } from "@/features/workers/schemas";
 import { applyFieldErrors, messageFrom } from "@/shared/lib/errors";
 import { Button, Dialog, Field, Input, useConfirm } from "@/shared/ui";
+import { formatTimeRange } from "@/shared/lib/datetime";
 
 const FIELD_NAMES = Object.keys(shiftPatternSchema.shape);
 const DAY_LABEL = new Map<number, string>(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
@@ -115,8 +116,7 @@ export function ShiftPatternsPanel({ jobId }: { jobId: string }) {
           {query.data.map((p) => (
             <li key={p.id} className="flex items-center justify-between px-4 py-3">
               <p className="font-body text-sm text-cadence-ink">
-                {p.days_of_week.map((d) => DAY_LABEL.get(d)).join(", ")} · {p.start_time}–
-                {p.end_time}
+                {p.days_of_week.map((d) => DAY_LABEL.get(d)).join(", ")} · {formatTimeRange(p.start_time, p.end_time)}
                 {p.is_overnight ? " (overnight)" : ""}
               </p>
               <Button size="sm" variant="ghost" onClick={() => handleDelete(p.id)}>

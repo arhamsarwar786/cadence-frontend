@@ -26,7 +26,7 @@ export function AuthSplitLayout({
             PIPEDA-compliant · Canadian-hosted
           </p>
         </aside>
-        <section className="flex flex-col justify-center bg-[#faf7f0] px-6 py-10 sm:px-10">{children}</section>
+        <section className="flex flex-col justify-center bg-surface px-6 py-10 sm:px-10">{children}</section>
       </div>
     </main>
   );

@@ -110,6 +110,7 @@ export function BottomDock({
   footer,
   showLogo,
   notificationDot,
+  trailing,
   align = "center",
 }: {
   items: DockItem[];
@@ -119,6 +120,8 @@ export function BottomDock({
   footer?: ReactNode;
   showLogo?: boolean;
   notificationDot?: boolean;
+  /** Extra dock control(s) rendered before More — e.g. the notifications bell. */
+  trailing?: ReactNode;
   align?: "center" | "start";
 }) {
   const pathname = usePathname();
@@ -156,7 +159,7 @@ export function BottomDock({
         >
           <div
             className={cn(
-              "absolute bottom-24 w-[min(22rem,calc(100vw-2rem))] rounded-[1.75rem] bg-card p-4 text-on-card shadow-card",
+              "absolute bottom-24 w-[min(22rem,calc(100vw-2rem))] rounded-[1.75rem] border border-white/10 bg-card p-4 text-on-card shadow-card",
               align === "start"
                 ? "left-1/2 -translate-x-1/2 sm:left-6 sm:translate-x-0"
                 : "left-1/2 -translate-x-1/2",
@@ -232,7 +235,7 @@ export function BottomDock({
           align === "start" ? "justify-center sm:justify-start sm:px-6" : "justify-center",
         )}
       >
-        <ul className="pointer-events-auto flex items-center gap-1 overflow-visible rounded-full bg-card p-1.5 text-on-card shadow-card">
+        <ul className="pointer-events-auto flex items-center gap-1 overflow-visible rounded-full border border-white/10 bg-card p-1.5 text-on-card shadow-card">
           {showLogo ? (
             <li>
               <Tooltip content="Dashboard">
@@ -277,6 +280,7 @@ export function BottomDock({
               </li>
             );
           })}
+          {trailing ? <li>{trailing}</li> : null}
           {hasOverflow ? (
             <li>
               <Tooltip content="More">

@@ -22,6 +22,7 @@ import { EducationPanel } from "@/features/workers/components/EducationPanel";
 import { EmploymentHistoryPanel } from "@/features/workers/components/EmploymentHistoryPanel";
 import { IncidentsPanel } from "@/features/workers/components/IncidentsPanel";
 import { LifecycleStatusBadge } from "@/features/workers/components/LifecycleStatusBadge";
+import { PhoneVerification } from "@/features/workers/components/PhoneVerification";
 import { SkillsPanel } from "@/features/workers/components/SkillsPanel";
 import { TimeOffPanel } from "@/features/workers/components/TimeOffPanel";
 import { WorkerDocumentsPanel } from "@/features/workers/components/WorkerDocumentsPanel";
@@ -37,8 +38,12 @@ import { LogFollowUpButton } from "@/features/tasks/components/LogFollowUpDialog
 import { isNotFound } from "@/shared/lib/errors";
 import { isActiveEmployee } from "@/features/workers/lifecycle";
 import type { LifecycleStatus } from "@/shared/lib/status-labels";
-import { Button, Chip, EmptyState, PDFViewer, QueryError, Tabs, PageFrame, PageScrollRegion } from "@/shared/ui";
+import { Button, Chip, EmptyState, PDFViewer, QueryError, Tabs, PageFrame, PageScrollRegion, PageHeader } from "@/shared/ui";
 import { cn } from "@/shared/lib/cn";
+import { formatTimeRange } from "@/shared/lib/datetime";
+import { DAYS_OF_WEEK } from "@/features/workers/schemas";
+
+const DAY_LABEL = new Map<number, string>(DAYS_OF_WEEK.map((d) => [d.value, d.label]));
 
 type MainTab = "resume" | "history" | "personal" | "more";
 type MoreTab =
@@ -147,16 +152,19 @@ export default function WorkerDetailPage() {
 
   return (
     <PageFrame>
-      <PageScrollRegion className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-4xl text-cadence-ink sm:text-5xl">
+      <PageHeader
+        title={
+          <>
             {worker.first_name} {worker.last_name}
             {worker.pronouns ? (
-              <span className="ml-2 font-body text-lg text-cadence-ink/60">| {worker.pronouns}</span>
+              <span className="ml-2 font-body text-lg font-normal text-cadence-ink/60">
+                | {worker.pronouns}
+              </span>
             ) : null}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          </>
+        }
+        meta={
+          <>
             <LifecycleStatusBadge status={worker.lifecycle_status as LifecycleStatus} />
             {isActiveEmployee(worker.lifecycle_status) &&
             "work_status" in worker &&
@@ -179,18 +187,20 @@ export default function WorkerDetailPage() {
               </button>
             ) : null}
             <span className="font-body text-sm text-cadence-ink/50">{roleLabel}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <LogFollowUpButton
-            entityType="employee"
-            entityId={worker.id}
-            entityLabel={`${worker.first_name} ${worker.last_name}`}
-          />
-          <WorkerLifecycleActions worker={worker} onChanged={refetch} />
-        </div>
-      </div>
-
+          </>
+        }
+        actions={
+          <>
+            <LogFollowUpButton
+              entityType="employee"
+              entityId={worker.id}
+              entityLabel={`${worker.first_name} ${worker.last_name}`}
+            />
+            <WorkerLifecycleActions worker={worker} onChanged={refetch} />
+          </>
+        }
+      />
+      <PageScrollRegion className="flex flex-col gap-6">
       <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="rounded-[1.5rem] bg-surface p-4">
           <p className="mb-2 font-fine text-[10px] uppercase tracking-wide text-cadence-ink/60">
@@ -211,7 +221,9 @@ export default function WorkerDetailPage() {
             </div>
             <div>
               <dt className="text-cadence-ink/60">Phone</dt>
-              <dd>{worker.phone || "—"}</dd>
+              <dd>
+                <PhoneVerification worker={worker} />
+              </dd>
             </div>
             <div>
               <dt className="text-cadence-ink/60">Joined</dt>
@@ -242,7 +254,7 @@ export default function WorkerDetailPage() {
                 {isActiveEmployee(worker.lifecycle_status)
                   ? (availabilityQuery.data ?? [])
                       .slice(0, 3)
-                      .map((a) => `D${a.day_of_week} ${a.start_time}–${a.end_time}`)
+                      .map((a) => `${DAY_LABEL.get(a.day_of_week) ?? `Day ${a.day_of_week}`} ${formatTimeRange(a.start_time, a.end_time)}`)
                       .join(" · ") || "—"
                   : "—"}
               </dd>
@@ -311,7 +323,7 @@ export default function WorkerDetailPage() {
                         {s.shift_date} · {s.job_title}
                       </span>
                       <span className="text-cadence-ink/55">
-                        {s.start_time}–{s.end_time}
+                        {formatTimeRange(s.start_time, s.end_time)}
                       </span>
                     </li>
                   ))}
@@ -419,7 +431,7 @@ export default function WorkerDetailPage() {
                 ) : null}
                 {moreTab === "documents" ? <WorkerDocumentsPanel workerId={workerId} /> : null}
                 {moreTab === "incidents" ? <IncidentsPanel workerId={workerId} /> : null}
-                {moreTab === "consent" ? <ConsentPanel worker={worker} /> : null}
+                {moreTab === "consent" ? <ConsentPanel worker={worker} onRefetch={refetch} /> : null}
                 {moreTab === "portal" ? <WorkerPortalAccessPanel workerId={workerId} /> : null}
               </div>
             ) : null}

@@ -10,7 +10,13 @@ import { apiLogin, DEMO, watchProblems } from "./helpers/auth";
  */
 const TAG = `QA${Date.now()}`;
 const P = "/api/v1/portal/me/";
-const MAYA_ID = "3aab5500-a99d-49b2-895f-4b0775020d0c";
+async function mayaEmployeeId(page: Page): Promise<string> {
+  const list = await call(page, "GET", "/api/v1/workers/?search=Reyes&page_size=50");
+  const rows = list.json?.results ?? list.json ?? [];
+  const maya = rows.find((w: any) => w.first_name === "Maya" && w.last_name === "Reyes");
+  if (!maya) throw new Error("Maya Reyes not found in workers list");
+  return maya.id as string;
+}
 const BASE = process.env.PLAYWRIGHT_BASE ?? `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3001"}`;
 
 function makePdf(): Buffer {
@@ -31,6 +37,7 @@ function makePdf(): Buffer {
 const PDF = makePdf();
 
 /** Set SHOW_BUGS=1 to run BUG tests un-inverted and see the real failure text. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for future known-bug tests (SHOW_BUGS)
 function bugFail() { if (!process.env.SHOW_BUGS) test.fail(); }
 
 async function csrf(page: Page) {
@@ -85,7 +92,7 @@ test.describe("worker portal", () => {
   test("BUG: home shows a misleading 00/00/00 (no error) when the shifts API fails", async ({ page }) => {
     await failRoute(page, /\/api\/v1\/portal\/me\/shifts\/$/, ["GET"], 500);
     await page.goto("/portal");
-    await expect(page.getByText(/couldn.t load|something went wrong|try again|simulated server failure/i)).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/couldn.t load|something went wrong|try again|simulated server failure/i).first()).toBeVisible({ timeout: 8000 });
   });
 
   test("profile hub + Personal tab shows masked values only", async ({ page }) => {
@@ -210,6 +217,7 @@ test.describe("worker portal", () => {
     await expect(page.locator("li", { hasText: free.name })).toContainText("3.5y");
     // remove
     await page.getByRole("button", { name: `Remove ${free.name}` }).click();
+    await confirmDialog(page, "Remove");
     await expect(page.locator("li", { hasText: free.name })).toHaveCount(0);
     expect(((await call(page, "GET", P + "skills/")).json as any[]).some((s) => s.skill_id === free.id)).toBe(false);
   });
@@ -227,7 +235,6 @@ test.describe("worker portal", () => {
   });
 
   test("skills API: PATCH with skill_id in the body must not 500", async ({ page }) => {
-    bugFail();
     const r = await call(page, "PATCH", P + "skills/d55b0593-b962-48e8-9c21-7968eb4283b9/", { skill_id: "d55b0593-b962-48e8-9c21-7968eb4283b9", years_exp: "6.5" });
     expect(r.status).toBeLessThan(500);
   });
@@ -247,7 +254,7 @@ test.describe("worker portal", () => {
     await failRoute(page, /\/api\/v1\/portal\/me\/skills\/$/, ["GET"], 500);
     await page.goto("/portal/me/skills");
     await expect(page.getByText("No skills on file.")).toHaveCount(0, { timeout: 6000 });
-    await expect(page.getByText(/simulated|went wrong|try again|couldn.t load/i)).toBeVisible();
+    await expect(page.getByText(/simulated|went wrong|try again|couldn.t load/i).first()).toBeVisible();
   });
 
   test("BUG: removing a skill when the API fails gives no message", async ({ page }) => {
@@ -255,6 +262,7 @@ test.describe("worker portal", () => {
     await expect(page.locator("li", { hasText: "Elder Care" })).toBeVisible();
     await failRoute(page, /\/api\/v1\/portal\/me\/skills\/[^/]+\/$/, ["DELETE"], 500);
     await page.getByRole("button", { name: "Remove Elder Care" }).click();
+    await confirmDialog(page, "Remove");
     await expect(page.getByText(/simulated|went wrong|try again|couldn.t/i)).toBeVisible({ timeout: 4000 });
   });
 
@@ -381,8 +389,7 @@ test.describe("worker portal", () => {
     await expect(page.locator("li", { hasText: "10:15" })).toHaveCount(0);
   });
 
-  test("BUG: availability window with end before start is accepted (no client or server validation)", async ({ page }) => {
-    bugFail();
+  test("availability window with end before start is rejected", async ({ page }) => {
     await page.goto("/portal/availability");
     await page.getByRole("button", { name: "Add window" }).click();
     await page.getByLabel("Day").selectOption("7");
@@ -427,11 +434,18 @@ test.describe("worker portal", () => {
 
   test("offers: accept and decline against the real backend; double-click safe; shifts appear", async ({ page, browser }) => {
     const root = await newPersona(browser, DEMO.root);
-    const clients = (await call(root.page, "GET", "/api/v1/clients/?page_size=50")).json.results as any[];
-    const cid = clients.find((c) => /Harbourview/.test(c.name)).id;
+    const mayaId = await mayaEmployeeId(root.page);
+    // Page through: QA runs keep adding clients, so Harbourview may not be on page one.
+    let cid: string | undefined;
+    for (let pg = 1; !cid; pg++) {
+      const page1 = (await call(root.page, "GET", `/api/v1/clients/?page_size=200&page=${pg}`)).json;
+      cid = (page1.results as Array<{ id: string; name: string }>).find((c) => /Harbourview/.test(c.name))?.id;
+      if (!page1.next) break;
+    }
+    expect(cid, "seeded Harbourview client").toBeTruthy();
     async function seed(title: string, day: string) {
       const job = (await call(root.page, "POST", "/api/v1/jobs/", { title, client: cid, bill_rate: "30.00", bill_rate_unit: "hr", start_datetime: "2027-02-01T09:00:00Z", end_datetime: "2027-02-05T17:00:00Z", headcount_needed: 1 })).json;
-      const asg = (await call(root.page, "POST", `/api/v1/jobs/${job.id}/assignments/`, { employee_id: MAYA_ID })).json;
+      const asg = (await call(root.page, "POST", `/api/v1/jobs/${job.id}/assignments/`, { employee_id: mayaId })).json;
       await call(root.page, "POST", `/api/v1/assignments/${asg.id}/shifts/`, { shift_date: day, start_time: "09:00", end_time: "17:00", break_minutes: 30 });
       return { job, asg };
     }
@@ -508,11 +522,33 @@ test.describe("worker portal", () => {
     await expect(page.getByText(/simulated|went wrong|try again|couldn.t/i)).toBeVisible({ timeout: 4000 });
   });
 
-  test("signatures: sign, decline (reason required), pdf link, replace signature, bad PNG error", async ({ page, browser }) => {
+  test("signatures: the worker sees each request's document name (label) in the list and review dialog", async ({ page, browser }) => {
     const root = await newPersona(browser, DEMO.root);
+    const mayaId = await mayaEmployeeId(root.page);
+    const label = `Contract ${TAG} ${Date.now()}`;
+    const r = await call(root.page, "POST", "/api/v1/esign/requests/", undefined, {
+      employee_id: mayaId, label, file: { name: "form.pdf", mimeType: "application/pdf", buffer: PDF },
+    });
+    expect(r.status, r.text).toBeLessThan(300);
+    try {
+      const rows = (await call(page, "GET", P + "signature-requests/")).json as Array<{ id: string; label: string }>;
+      expect(rows.find((x) => x.id === r.json.id)?.label).toBe(label);
+      await page.goto("/portal/signatures");
+      const row = page.locator("li", { hasText: label });
+      await expect(row).toBeVisible();
+      await row.getByRole("button", { name: "Review & sign" }).click();
+      await expect(page.locator("dialog[open]").getByRole("heading", { name: label })).toBeVisible();
+    } finally {
+      await call(root.page, "POST", `/api/v1/esign/requests/${r.json.id}/revoke/`);
+    }
+  });
+
+  test("signatures: review + sign, decline (reason required), receipt link, bad PNG error", async ({ page, browser }) => {
+    const root = await newPersona(browser, DEMO.root);
+    const mayaId = await mayaEmployeeId(root.page);
     const mk = async (label: string) => {
       const r = await call(root.page, "POST", "/api/v1/esign/requests/", undefined, {
-        employee_id: MAYA_ID, label, file: { name: "form.pdf", mimeType: "application/pdf", buffer: PDF },
+        employee_id: mayaId, label, file: { name: "form.pdf", mimeType: "application/pdf", buffer: PDF },
       });
       expect(r.status, r.text).toBeLessThan(300);
       return r.json;
@@ -520,34 +556,47 @@ test.describe("worker portal", () => {
     const s1 = await mk(`Sign ${TAG}`);
     const s2 = await mk(`Decline ${TAG}`);
     try {
+      // Other runs leave pending requests behind; show only this test's two so the
+      // "first" Review & sign is s1 (sign) and the next is s2 (decline).
+      await page.route((url) => url.pathname === `${P}signature-requests/`, async (route) => {
+        if (route.request().method() !== "GET") return route.fallback();
+        const res = await route.fetch();
+        const rows = (await res.json()) as Array<{ id: string }>;
+        const mine = [s1.id, s2.id];
+        await route.fulfill({ response: res, json: rows.filter((r) => mine.includes(r.id)).sort((a, b) => mine.indexOf(a.id) - mine.indexOf(b.id)) });
+      });
       await page.goto("/portal/signatures");
-      await expect(page.getByText("On file — used when you sign a request.")).toBeVisible();
+      await expect(page.getByText("On file — it is stamped onto each document you sign.")).toBeVisible();
       const pdf = await call(page, "GET", P + `signature-requests/${s1.id}/document/`);
       expect(pdf.status).toBe(200);
       expect(pdf.headers["content-type"]).toContain("pdf");
-      // row order is not guaranteed; act on the first two pending rows via API ids
-      await expect(page.getByRole("button", { name: "Sign", exact: true }).first()).toBeVisible();
-      const toSign = await call(page, "GET", P + "signature-requests/");
-      expect((toSign.json as any[]).some((x) => x.id === s1.id)).toBe(true);
-      // decline with empty reason -> nothing sent
-      let declines = 0;
-      page.on("request", (r) => { if (r.url().includes("/decline/")) declines++; });
-      page.once("dialog", (d) => d.accept("   "));
-      await page.getByRole("button", { name: "Decline" }).first().click();
-      await page.waitForTimeout(500);
-      expect(declines).toBe(0);
-      // real sign + decline by API-known ids through UI buttons
-      const before = ((await call(page, "GET", P + "signature-requests/")).json as any[]).filter((x) => x.status === "pending").length;
-      await page.getByRole("button", { name: "Sign", exact: true }).first().click();
-      await expect.poll(async () => ((await call(page, "GET", P + "signature-requests/")).json as any[]).filter((x) => x.status === "pending").length).toBe(before - 1);
-      page.once("dialog", (d) => d.accept("Not mine"));
-      await page.getByRole("button", { name: "Decline" }).first().click();
-      await expect.poll(async () => ((await call(page, "GET", P + "signature-requests/")).json as any[]).filter((x) => x.status === "pending").length).toBe(before - 2);
+      const dialog = page.locator("dialog[open]");
+      // decline with blank reason -> button stays disabled, nothing sent
+      await page.getByRole("button", { name: "Review & sign" }).first().click();
+      await expect(dialog.locator("iframe")).toBeVisible();
+      await dialog.getByRole("button", { name: "Decline", exact: true }).click();
+      await dialog.getByLabel("Why are you declining?").fill("   ");
+      await expect(dialog.getByRole("button", { name: "Decline request" })).toBeDisabled();
+      await dialog.getByRole("button", { name: "Back" }).click();
+      // sign -> list shrinks, stamped receipt link offered
+      await dialog.getByRole("button", { name: "Sign", exact: true }).click();
+      // Assert on this test's own requests: parallel tests add pending requests for Maya too.
+      const statusOf = async (id: string) => (await call(root.page, "GET", `/api/v1/esign/requests/${id}/`)).json.status;
+      await expect.poll(() => statusOf(s1.id)).toBe("signed");
+      await expect(page.getByRole("button", { name: "Review & sign" })).toHaveCount(1); // only s2 left
+      await expect(page.getByRole("link", { name: "Download signed copy" })).toBeVisible();
+      // decline with a reason
+      await page.getByRole("button", { name: "Review & sign" }).first().click();
+      await dialog.getByRole("button", { name: "Decline", exact: true }).click();
+      await dialog.getByLabel("Why are you declining?").fill("Not mine");
+      await dialog.getByRole("button", { name: "Decline request" }).click();
+      await expect.poll(() => statusOf(s2.id)).toBe("declined");
       // signing again -> API's words via API
       const again = await call(page, "POST", P + `signature-requests/${s1.id}/sign/`);
       expect(again.status).toBeGreaterThanOrEqual(400);
       // bad PNG -> message shown
-      await page.locator('input[type="file"]').setInputFiles({ name: "s.png", mimeType: "image/png", buffer: Buffer.from("notapng") });
+      await page.getByRole("button", { name: "Replace signature" }).click();
+      await page.locator('input[type="file"][accept="image/png"]').setInputFiles({ name: "s.png", mimeType: "image/png", buffer: Buffer.from("notapng") });
       await expect(page.getByText(/signature is a PNG/i)).toBeVisible();
     } finally {
       for (const s of [s1, s2]) await call(root.page, "POST", `/api/v1/esign/requests/${s.id}/revoke/`);
@@ -555,24 +604,36 @@ test.describe("worker portal", () => {
     }
   });
 
-  test("signatures: empty state and 500 on sign", async ({ page }) => {
+  test("signatures: empty state; no saved signature stays open; stale request closes and refetches", async ({ page }) => {
     await page.route(/\/portal\/me\/signature-requests\/$/, (r) => r.fulfill({ json: [] }));
     await page.goto("/portal/signatures");
-    await expect(page.getByText("No signature requests.")).toBeVisible();
+    await expect(page.getByText("Nothing to sign right now.")).toBeVisible();
     await page.unroute(/\/portal\/me\/signature-requests\/$/);
-    const req = { id: "r-1", purpose: "manual", status: "pending", expires_at: "2027-01-01T00:00:00Z" };
+    const req = { id: "r-1", purpose: "general", status: "pending", generated_on: "2026-12-01", expires_at: "2027-01-01T00:00:00Z" };
     await page.route(/\/portal\/me\/signature-requests\/$/, (r) => r.fulfill({ json: [req] }));
-    await page.route(/\/signature-requests\/r-1\/sign\/$/, (r) => r.fulfill({ status: 400, json: { detail: ["no saved signature on file"] } }));
+    await page.route(/\/signature-requests\/r-1\/document\/$/, (r) => r.fulfill({ status: 200, contentType: "application/pdf", body: Buffer.from("%PDF-1.4\n") }));
+    await page.route(/\/signature-requests\/r-1\/sign\/$/, (r) => r.fulfill({ status: 400, json: { detail: ["save your signature first — the portal's signature page"] } }));
+    // a signature "on file" so Sign is enabled; the server still has the last word
+    await page.route(/\/portal\/me\/signature\/$/, (r) =>
+      r.request().method() === "GET" ? r.fulfill({ json: { id: "s-1", width_px: 10, height_px: 10, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }) : r.fallback());
     await page.reload();
-    await page.getByRole("button", { name: "Sign", exact: true }).click();
-    await expect(page.getByText("no saved signature on file")).toBeVisible();
+    await page.getByRole("button", { name: "Review & sign" }).click();
+    const dialog = page.locator("dialog[open]");
+    const sign = dialog.getByRole("button", { name: "Sign", exact: true });
+    await sign.click();
+    await expect(dialog.getByText("save your signature first")).toBeVisible();
+    await page.unroute(/\/signature-requests\/r-1\/sign\/$/);
+    await page.route(/\/signature-requests\/r-1\/sign\/$/, (r) => r.fulfill({ status: 400, json: { detail: ["the request is revoked — only a pending one can be signed"] } }));
+    await sign.click();
+    await expect(page.getByText("the request is revoked — only a pending one can be signed")).toBeVisible();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
   });
 
-  test("BUG: signature request expiry is shown as a raw ISO timestamp", async ({ page }) => {
+  test("signature request dates are human dates, not raw ISO timestamps", async ({ page }) => {
     await page.route(/\/portal\/me\/signature-requests\/$/, (r) =>
-      r.fulfill({ json: [{ id: "r-1", purpose: "manual", status: "pending", expires_at: "2027-01-01T08:30:00.123456Z" }] }));
+      r.fulfill({ json: [{ id: "r-1", purpose: "general", status: "pending", generated_on: "2026-12-01", expires_at: "2027-01-01T08:30:00.123456Z" }] }));
     await page.goto("/portal/signatures");
-    await expect(page.getByText(/Expires/)).toBeVisible();
+    await expect(page.getByText(/Sign by/)).toBeVisible();
     await expect(page.getByText(/T\d\d:\d\d/)).toHaveCount(0);
   });
 
@@ -664,13 +725,32 @@ test.describe("worker portal", () => {
     await expect(page.getByText("Loading…")).toHaveCount(0);
   });
 
-  test("BUG: pay statement 'PDF' / 'Download PDF' link is offered but the API answers 404 (no PDF generated)", async ({ page }) => {
+  // The worker can only download a PDF the office generated (the portal never
+  // renders on demand). So: the link is offered exactly when the statement has
+  // a document, and it then serves a real PDF; without one there is no link
+  // (the API would 404) and the page says so instead.
+  test("pay statement PDF: link only when a PDF exists (and it downloads); otherwise a clear message", async ({ page }) => {
     const list = (await call(page, "GET", P + "pay-statements/")).json as any[];
-    await page.goto(`/portal/pay-statements/${list[0].id}`);
-    const href = await page.getByRole("link", { name: "Download PDF" }).getAttribute("href");
-    const r = await call(page, "GET", href!);
-    expect(r.status).toBe(200);
-    expect(r.headers["content-type"]).toContain("pdf");
+    expect(list.length).toBeGreaterThan(0);
+    const withPdf = list.find((s) => s.document_id);
+    const withoutPdf = list.find((s) => !s.document_id);
+    if (withoutPdf) {
+      expect((await call(page, "GET", P + `pay-statements/${withoutPdf.id}/pdf/`)).status).toBe(404);
+      await page.goto(`/portal/pay-statements/${withoutPdf.id}`);
+      await expect(page.getByText(/PDF copy isn.t available/i)).toBeVisible();
+      await expect(page.getByRole("link", { name: "Download PDF" })).toHaveCount(0);
+      await page.goto("/portal/pay-statements");
+      const row = page.locator("tbody tr").filter({ has: page.locator(`a[href="/portal/pay-statements/${withoutPdf.id}"]`) });
+      await expect(row).toContainText("No PDF yet");
+      await expect(row.getByRole("link", { name: "PDF", exact: true })).toHaveCount(0);
+    }
+    if (withPdf) {
+      await page.goto(`/portal/pay-statements/${withPdf.id}`);
+      const href = await page.getByRole("link", { name: "Download PDF" }).getAttribute("href", { timeout: 10_000 });
+      const r = await call(page, "GET", href!);
+      expect(r.status).toBe(200);
+      expect(r.headers["content-type"]).toContain("pdf");
+    }
   });
 
   test("pay statements: empty state and 500", async ({ page }) => {
@@ -695,15 +775,86 @@ test.describe("worker portal", () => {
     expect(Array.isArray(r.json)).toBe(true);
   });
 
-  test("BUG: no portal UI exposes the worker's notifications", async ({ page }) => {
-    bugFail();
+  type NoticeRow = { id: string; status: string };
+
+  test("portal UI exposes the worker's notifications", async ({ page }) => {
     await page.goto("/portal");
+    await expect(page.getByRole("link", { name: /^Notifications/ })).toBeVisible(); // header renders after the session loads
     const links = await page.locator("a[href]").evaluateAll((els) => els.map((e) => (e as HTMLAnchorElement).getAttribute("href")));
     expect(links.some((h) => /notification/i.test(h ?? ""))).toBe(true);
   });
 
-  test("BUG: mid-session 401 does not sign the worker out / redirect to login", async ({ page }) => {
-    bugFail();
+  test("notifications: header bell badge matches the API's unread rows and opens the page", async ({ page }) => {
+    const p = watchProblems(page);
+    const rows = (await call(page, "GET", "/api/v1/notifications/portal/me/notifications/")).json as NoticeRow[];
+    await page.goto("/portal");
+    const bell = page.getByRole("link", { name: /^Notifications/ });
+    await expect(bell).toHaveAttribute("href", "/portal/notifications");
+    if (rows.some((r) => r.status === "sent")) await expect(bell).toHaveAccessibleName(/\d+ unread/);
+    await bell.click();
+    await expect(page).toHaveURL(/\/portal\/notifications$/);
+    await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
+    if (rows.length === 0) await expect(page.getByText("No notifications yet")).toBeVisible();
+    else await expect(page.getByRole("list", { name: "Notifications" }).getByRole("listitem").first()).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(p.api, p.api.join("\n")).toEqual([]);
+    expect(p.pageErrors).toEqual([]);
+  });
+
+  test("notifications: the More menu links the page (top-level, no back arrow)", async ({ page }) => {
+    await page.goto("/portal");
+    await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("dialog", { name: "More modules" }).getByRole("link", { name: "Notifications" }).click();
+    await expect(page).toHaveURL(/\/portal\/notifications$/);
+    await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
+  });
+
+  test("notifications: Mark read persists through the API", async ({ page }) => {
+    const url = "/api/v1/notifications/portal/me/notifications/";
+    const before = ((await call(page, "GET", url)).json as NoticeRow[]).filter((r) => r.status === "sent").length;
+    test.skip(before === 0, "no unread notification seeded for the demo worker");
+    await page.goto("/portal/notifications");
+    const button = page.getByRole("button", { name: /Mark .* as read/ }).first();
+    await expect(button).toBeVisible();
+    const posted = page.waitForRequest((r) => r.url().endsWith("/notifications/portal/me/notifications/read/") && r.method() === "POST");
+    await button.click();
+    const body = (await posted).postDataJSON();
+    expect(Array.isArray(body.ids) && body.ids.length > 0).toBe(true);
+    // Check the rows we marked, not the total: parallel tests keep adding notifications for Maya.
+    await expect.poll(async () => ((await call(page, "GET", url)).json as NoticeRow[]).filter((r) => body.ids.includes(r.id) && r.status !== "read").length).toBe(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
+    const after = ((await call(page, "GET", url)).json as NoticeRow[]).filter((r) => body.ids.includes(r.id));
+    expect(after.every((r) => r.status === "read")).toBe(true);
+  });
+
+  test("notifications: empty state and 500", async ({ page }) => {
+    await page.route(/\/notifications\/portal\/me\/notifications\/$/, (r) => r.fulfill({ json: [] }));
+    await page.goto("/portal/notifications");
+    await expect(page.getByText("No notifications yet")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Notifications", exact: true })).toBeVisible();
+    await page.unroute(/\/notifications\/portal\/me\/notifications\/$/);
+    await failRoute(page, /\/notifications\/portal\/me\/notifications\/$/, ["GET"], 500);
+    await page.reload();
+    await expect(page.getByText(/simulated|went wrong/i).first()).toBeVisible();
+  });
+
+  test("notifications: e-sign email + in-app copies show as one entry linking to signatures", async ({ page }) => {
+    const base = { type: "esign", payload: { request_id: "r-1", signer_name: "Maya", org_name: "Cadence Demo", document_label: "your contract", expires_on: "2026-10-30" }, sent_at: "2026-10-01T15:00:00Z", created_at: "2026-10-01T15:00:00Z" };
+    await page.route(/\/notifications\/portal\/me\/notifications\/$/, (r) => r.fulfill({ json: [
+      { ...base, id: "aaaaaaaa-0000-4000-8000-000000000001", channel: "email", status: "sent" },
+      { ...base, id: "aaaaaaaa-0000-4000-8000-000000000002", channel: "in_app", status: "sent" },
+    ] }));
+    await page.goto("/portal/notifications");
+    const list = page.getByRole("list", { name: "Notifications" });
+    await expect(list.getByRole("listitem")).toHaveCount(1);
+    await expect(list.getByText("Cadence Demo sent you your contract to sign, by 2026-10-30.")).toBeVisible();
+    await expect(list.getByRole("link", { name: "Open signatures" })).toHaveAttribute("href", "/portal/signatures");
+    await expect(page.getByText("1 unread")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Notifications, 1 unread" })).toBeVisible();
+  });
+
+  test("mid-session 401 signs the worker out / redirects to login", async ({ page }) => {
     await page.goto("/portal/me/certs");
     await expect(page.getByRole("button", { name: "Add certification" })).toBeVisible();
     await page.route(/\/api\/v1\//, (r) => r.fulfill({ status: 401, json: { detail: "Authentication credentials were not provided." } }));
@@ -875,7 +1026,8 @@ test.describe("staff privacy", () => {
     const a = await call(page, "POST", "/api/v1/privacy/requests/", { employee_id: "00000000-0000-0000-0000-000000000000", type: "access" });
     expect(a.status).toBeGreaterThanOrEqual(400);
     expect(a.status).toBeLessThan(500);
-    const b = await call(page, "POST", "/api/v1/privacy/requests/", { employee_id: MAYA_ID, type: "bogus" });
+    const mayaId = await mayaEmployeeId(page);
+    const b = await call(page, "POST", "/api/v1/privacy/requests/", { employee_id: mayaId, type: "bogus" });
     expect(b.status).toBe(400);
     expect(JSON.stringify(b.json)).toMatch(/type/);
   });
@@ -920,7 +1072,7 @@ test.describe("staff privacy", () => {
     await page.getByRole("button", { name: "Record breach" }).click();
     await page.getByRole("button", { name: "Save record" }).click();
     // blank description: server refusal must be visible
-    await expect(dialog(page).locator("p.text-cadence-red")).toBeVisible({ timeout: 6000 });
+    await expect(dialog(page).locator("p.text-cadence-red").first()).toBeVisible({ timeout: 6000 });
     const desc = `Breach ${TAG}`;
     await page.getByLabel("Description").fill(desc);
     await page.getByLabel("Personal information involved").fill("Names, emails");

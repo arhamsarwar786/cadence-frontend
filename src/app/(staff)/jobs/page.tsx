@@ -28,6 +28,7 @@ import {
   Table,
   type Column,
 } from "@/shared/ui";
+import { fetchAllPages } from "@/api/client";
 
 const PAGE_SIZE = 50;
 const FIND_WINDOW = 200;
@@ -43,7 +44,7 @@ export default function JobsListPage() {
 
   const clientsQuery = useQuery({
     queryKey: ["clients-picker"],
-    queryFn: () => listClients({ pageSize: 200 }),
+    queryFn: () => fetchAllPages((page) => listClients({ pageSize: 200, page })),
   });
 
   const query = useQuery({
@@ -148,7 +149,7 @@ export default function JobsListPage() {
             },
           ]}
         >
-          <div className="flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4">
             {finding && (query.data?.count ?? 0) > FIND_WINDOW ? (
               <p className="font-body text-xs text-cadence-ink/60">
                 Showing matches in the first {FIND_WINDOW} of {query.data?.count} jobs

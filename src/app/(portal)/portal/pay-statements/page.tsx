@@ -41,7 +41,9 @@ export default function PortalPayStatementsPage() {
             >
               PDF
             </a>
-          ) : null}
+          ) : (
+            <span className="text-cadence-ink/50">No PDF yet</span>
+          )}
         </div>
       ),
     },
