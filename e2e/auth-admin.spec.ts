@@ -1364,6 +1364,12 @@ test.describe("reports, staff home, nav (root)", () => {
     await page.goto("/");
     await expect(page.getByText("To-do list").first()).toBeVisible();
     await expect(page.getByText("Clients", { exact: true }).first()).toBeVisible();
+    // live clock: time with seconds + full date, and it keeps ticking
+    const clock = page.locator("time").first();
+    await expect(clock).toHaveText(/^\d{1,2}:\d{2}:\d{2}\s*(a\.m\.|p\.m\.)$/);
+    await expect(page.getByText(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), \w+ \d{1,2}, \d{4}$/)).toBeVisible();
+    const first = await clock.textContent();
+    await expect.poll(() => clock.textContent(), { timeout: 4_000 }).not.toBe(first);
     await page.waitForLoadState("networkidle");
     expect(p.api).toEqual([]);
     expect(p.pageErrors).toEqual([]);

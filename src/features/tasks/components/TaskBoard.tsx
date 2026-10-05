@@ -76,26 +76,32 @@ function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
+/** Live wall clock in the org's time zone; falls back to the browser's zone until it loads. */
 function orgClockParts(now: Date, timeZone: string | undefined) {
-  if (!timeZone) {
-    return { dateLabel: "—", hour12: "—", minutes: "--", meridiem: "" };
-  }
+  const zone = timeZone || undefined;
   const dateLabel = new Intl.DateTimeFormat("en-CA", {
     weekday: "long",
     month: "long",
     day: "numeric",
-    timeZone,
+    year: "numeric",
+    timeZone: zone,
   }).format(now);
   const parts = new Intl.DateTimeFormat("en-CA", {
     hour: "numeric",
     minute: "2-digit",
+    second: "2-digit",
     hour12: true,
-    timeZone,
+    timeZone: zone,
   }).formatToParts(now);
-  const hour = parts.find((p) => p.type === "hour")?.value ?? "—";
-  const minute = parts.find((p) => p.type === "minute")?.value ?? "--";
-  const dayPeriod = (parts.find((p) => p.type === "dayPeriod")?.value ?? "").toLowerCase();
-  return { dateLabel, hour12: hour, minutes: minute.padStart(2, "0"), meridiem: dayPeriod };
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    dateLabel,
+    hour12: part("hour"),
+    minutes: part("minute").padStart(2, "0"),
+    seconds: part("second").padStart(2, "0"),
+    meridiem: part("dayPeriod").toLowerCase(),
+    iso: now.toISOString(),
+  };
 }
 
 function entityTypeForCategory(
@@ -242,7 +248,7 @@ export function TaskBoard() {
   });
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    const id = window.setInterval(() => setNow(new Date()), 1_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -326,12 +332,17 @@ export function TaskBoard() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:items-stretch lg:gap-8">
       <section className="shrink-0 pt-1 sm:pt-2">
-        <p className="font-heading text-[2.75rem] leading-none text-cadence-ink sm:text-5xl lg:text-6xl">
+        <time
+          dateTime={clock.iso}
+          aria-label={`${clock.hour12}:${clock.minutes} ${clock.meridiem}, ${clock.dateLabel}`}
+          className="block font-heading text-[2.75rem] leading-none tabular-nums text-cadence-ink sm:text-5xl lg:text-6xl"
+        >
           {clock.hour12}:{clock.minutes}
+          <span className="text-cadence-ink/45">:{clock.seconds}</span>
           <span className="ml-1 align-top font-fine text-xs text-cadence-ink/60 sm:text-sm">
             {clock.meridiem}
           </span>
-        </p>
+        </time>
         <p className="mt-1.5 font-body text-sm text-cadence-ink/65">{clock.dateLabel}</p>
 
         {fill ? (
